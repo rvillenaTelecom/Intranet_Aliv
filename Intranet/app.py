@@ -211,4 +211,6 @@ def toggle_scheduler():
     return jsonify({'status': 'no_change'})
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)
+    # Usar el puerto que asigna Render o el 5001 por defecto
+    port = int(os.environ.get("PORT", 5001))
+    app.run(debug=True, host='0.0.0.0', port=port)
