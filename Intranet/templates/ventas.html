@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}Ventas — Intranet AlivTelecom{% endblock %}
+{% block page_title %}Equipo Ventas{% endblock %}
+
+{% block content %}
+<div class="welcome-banner" style="background: linear-gradient(135deg, #1e3a5f 0%, #1a56db 70%, #0ea5e9 100%);">
+    <div class="welcome-title"><i class="fa-solid fa-chart-line" style="margin-right:10px;"></i>Equipo Ventas</div>
+    <div class="welcome-sub">Recursos, herramientas y accesos del equipo comercial de AlivTelecom.</div>
+</div>
+
+<!-- KPIs de ventas -->
+<div class="section-header">
+    <div class="section-title"><i class="fa-solid fa-trophy"></i> KPIs del mes</div>
+</div>
+<div class="stats-row">
+    <div class="stat-card">
+        <span class="stat-label">Cuota Lima</span>
+        <span class="stat-value blue">—</span>
+        <span class="stat-change">Conectar con WinForce</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">Cuota Provincias</span>
+        <span class="stat-value teal">—</span>
+        <span class="stat-change">Conectar con WinForce</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">Supervisores activos</span>
+        <span class="stat-value green">—</span>
+        <span class="stat-change">Ver reporte semanal</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">Zonas activas</span>
+        <span class="stat-value orange">—</span>
+        <span class="stat-change">Lima + Provincias</span>
+    </div>
+</div>
+
+<!-- Herramientas del equipo -->
+<div class="section-header">
+    <div class="section-title"><i class="fa-solid fa-toolbox"></i> Herramientas del equipo</div>
+</div>
+<div class="cards-grid">
+    <div class="card card-link" onclick="window.open('http://localhost:5000', '_blank')">
+        <div class="card-icon blue"><i class="fa-solid fa-code-compare"></i></div>
+        <div class="card-title">Cruce de Datos WinForce / ALIV</div>
+        <div class="card-desc">Reconcilia los registros de ventas entre WinForce y el sistema ALIV. Detecta inconsistencias rápidamente.</div>
+        <div class="card-footer">
+            <span class="badge badge-blue">Herramienta</span>
+            <a href="http://localhost:5000" target="_blank" class="btn btn-primary" onclick="event.stopPropagation()">Abrir</a>
+        </div>
+    </div>
+    <div class="card card-link" onclick="alert('Próximamente')">
+        <div class="card-icon orange"><i class="fa-solid fa-download"></i></div>
+        <div class="card-title">Descargas WinForce</div>
+        <div class="card-desc">Descarga y procesa datos de WinForce para Lima y Provincias. Genera reportes semanales y mensuales.</div>
+        <div class="card-footer">
+            <span class="badge badge-orange">Script Python</span>
+        </div>
+    </div>
+</div>
+
+<!-- Documentos y recursos -->
+<div class="section-header" style="margin-top:8px;">
+    <div class="section-title"><i class="fa-solid fa-folder-open"></i> Recursos del equipo</div>
+</div>
+<div class="cards-grid">
+    <div class="card">
+        <div class="card-icon teal"><i class="fa-solid fa-map-marked-alt"></i></div>
+        <div class="card-title">Zonificación Lima</div>
+        <div class="card-desc">Mapa de zonas y distritos de Lima. Incluye parámetros KML y asignación de supervisores.</div>
+        <div class="card-footer">
+            <span class="badge badge-teal">KML · Excel</span>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-icon green"><i class="fa-solid fa-map-location-dot"></i></div>
+        <div class="card-title">Zonificación Provincias</div>
+        <div class="card-desc">Datos geográficos y zonificación para operaciones en provincias. Cuotas por departamento.</div>
+        <div class="card-footer">
+            <span class="badge badge-green">KML · Excel</span>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-icon blue"><i class="fa-solid fa-users"></i></div>
+        <div class="card-title">Directorio Usuarios WinForce</div>
+        <div class="card-desc">Lista completa de usuarios habilitados en WinForce, con roles y agencias asignadas.</div>
+        <div class="card-footer">
+            <span class="badge badge-blue">Excel</span>
+        </div>
+    </div>
+</div>
+
+<!-- Links rápidos -->
+<div class="section-header" style="margin-top:8px;">
+    <div class="section-title"><i class="fa-solid fa-bolt"></i> Links externos</div>
+</div>
+<div class="card">
+    <div class="tag-list">
+        <span class="tag tag-blue"><i class="fa-solid fa-external-link-alt"></i> WinForce</span>
+        <span class="tag tag-teal"><i class="fa-solid fa-external-link-alt"></i> Sistema ALIV</span>
+        <span class="tag tag-green"><i class="fa-solid fa-external-link-alt"></i> Reporte Mensual PDF</span>
+        <span class="tag tag-blue"><i class="fa-solid fa-external-link-alt"></i> Dashboard Ventas</span>
+    </div>
+    <div style="margin-top:12px; font-size:12px; color:var(--text-light);">
+        <i class="fa-solid fa-circle-info"></i> Edita ventas.html para agregar URLs reales a estos links.
+    </div>
+</div>
+{% endblock %}

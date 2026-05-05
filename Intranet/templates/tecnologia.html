@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Tecnología — Intranet AlivTelecom{% endblock %}
+{% block page_title %}Equipo Tecnología{% endblock %}
+
+{% block content %}
+<div class="welcome-banner" style="background: linear-gradient(135deg, #1e1b4b 0%, #4c1d95 60%, #7c3aed 100%);">
+    <div class="welcome-title"><i class="fa-solid fa-microchip" style="margin-right:10px;"></i>Equipo Tecnología</div>
+    <div class="welcome-sub">Desarrollo, automatización e infraestructura tecnológica de AlivTelecom.</div>
+</div>
+
+<div class="section-header">
+    <div class="section-title"><i class="fa-solid fa-code"></i> Proyectos activos</div>
+</div>
+<div class="cards-grid">
+    <div class="card">
+        <div class="card-icon purple" style="--purple-bg:#7C3AED;"><i class="fa-brands fa-python"></i></div>
+        <div class="card-title">Python Automate</div>
+        <div class="card-desc">Suite de automatización: Cruce de datos, Morosidad, Descargas Rápidas e Intranet.</div>
+        <div class="card-footer">
+            <span class="badge" style="background:#7C3AED15;color:#7C3AED;">Python · Flask</span>
+            <span class="badge badge-green" style="margin-left:4px;"><i class="fa-solid fa-circle" style="font-size:7px;"></i> Activo</span>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-icon blue"><i class="fa-solid fa-server"></i></div>
+        <div class="card-title">Infraestructura</div>
+        <div class="card-desc">Gestión de servidores, deployments y monitoreo de servicios internos.</div>
+        <div class="card-footer">
+            <span class="badge badge-blue"><i class="fa-solid fa-clock"></i> Próximamente</span>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-icon teal"><i class="fa-solid fa-database"></i></div>
+        <div class="card-title">Base de datos</div>
+        <div class="card-desc">Documentación de esquemas, queries frecuentes y accesos a las bases de datos de producción.</div>
+        <div class="card-footer">
+            <span class="badge badge-teal"><i class="fa-solid fa-clock"></i> Próximamente</span>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-icon orange"><i class="fa-brands fa-git-alt"></i></div>
+        <div class="card-title">Repositorios</div>
+        <div class="card-desc">Links a los repositorios Git del equipo técnico. Código fuente y control de versiones.</div>
+        <div class="card-footer">
+            <span class="badge badge-orange"><i class="fa-solid fa-clock"></i> Próximamente</span>
+        </div>
+    </div>
+</div>
+
+<div class="section-header" style="margin-top:8px;">
+    <div class="section-title"><i class="fa-solid fa-screwdriver-wrench"></i> Stack tecnológico</div>
+</div>
+<div class="card">
+    <div class="tag-list">
+        <span class="tag tag-blue"><i class="fa-brands fa-python"></i> Python</span>
+        <span class="tag tag-teal"><i class="fa-solid fa-flask"></i> Flask</span>
+        <span class="tag tag-green"><i class="fa-solid fa-table"></i> Pandas</span>
+        <span class="tag tag-blue"><i class="fa-solid fa-file-excel"></i> OpenPyXL</span>
+        <span class="tag tag-teal"><i class="fa-solid fa-map"></i> KML / GIS</span>
+        <span class="tag tag-green"><i class="fa-brands fa-js"></i> JavaScript</span>
+        <span class="tag tag-blue"><i class="fa-brands fa-css3-alt"></i> CSS3</span>
+        <span class="tag tag-teal"><i class="fa-brands fa-git-alt"></i> Git</span>
+    </div>
+</div>
+{% endblock %}

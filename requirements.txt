@@ -1,0 +1,10 @@
+flask
+flask-apscheduler
+pandas
+openpyxl
+playwright
+sqlalchemy
+psycopg2-binary
+shapely
+lxml
+requests

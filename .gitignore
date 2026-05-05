@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+
+# Data Files (Exclude large files)
+*.xlsx
+*.xls
+*.csv
+*.kml
+*.pdf
+data.json
+
+# Local config
+.env
+.vscode/
+.idea/
+
+# Specific data directories
+Cruce_data/*.xlsx
+Descargas_Rápidas/descargas_winforce_Dept/
+Morosidad/Recibos_Resume/

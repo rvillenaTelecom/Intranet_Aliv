@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Herramientas — Intranet AlivTelecom{% endblock %}
+{% block page_title %}Herramientas{% endblock %}
+
+{% block content %}
+<div class="welcome-banner" style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);">
+    <div class="welcome-title"><i class="fa-solid fa-toolbox" style="margin-right:10px;"></i>Herramientas internas</div>
+    <div class="welcome-sub">Software de apoyo para los equipos de AlivTelecom. Accede a las aplicaciones desde aquí.</div>
+</div>
+
+<div class="section-header">
+    <div class="section-title"><i class="fa-solid fa-rocket"></i> Apps disponibles</div>
+</div>
+
+<div class="cards-grid">
+
+    <!-- Cruce de Datos -->
+    <div class="card card-link" onclick="window.open('http://localhost:5000', '_blank')">
+        <div class="card-icon blue"><i class="fa-solid fa-code-compare"></i></div>
+        <div class="card-title">Cruce de Datos</div>
+        <div class="card-desc">Reconciliación entre archivos WinForce y ALIV. Sube dos Excel y obtén el análisis de coincidencias y diferencias.</div>
+        <div class="card-footer">
+            <span class="badge badge-blue"><i class="fa-solid fa-circle" style="font-size:7px;"></i> Flask · Python</span>
+            <a href="http://localhost:5000" target="_blank" class="btn btn-primary" onclick="event.stopPropagation()">
+                <i class="fa-solid fa-arrow-up-right-from-square"></i> Abrir
+            </a>
+        </div>
+    </div>
+
+    <!-- Placeholder: Descargas Rápidas -->
+    <div class="card" style="opacity:0.7;">
+        <div class="card-icon orange"><i class="fa-solid fa-download"></i></div>
+        <div class="card-title">Descargas Rápidas</div>
+        <div class="card-desc">Scripts automatizados para descarga y procesamiento de datos WinForce por región (Lima y Provincias).</div>
+        <div class="card-footer">
+            <span class="badge badge-orange"><i class="fa-solid fa-clock"></i> Próximamente</span>
+        </div>
+    </div>
+
+    <!-- Placeholder: Morosidad -->
+    <div class="card" style="opacity:0.7;">
+        <div class="card-icon purple"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+        <div class="card-title">Análisis de Morosidad</div>
+        <div class="card-desc">Tracking de pagos vencidos y métricas de deuda por región, agencia, supervisor y paquete de producto.</div>
+        <div class="card-footer">
+            <span class="badge" style="background:#7C3AED15;color:#7C3AED;"><i class="fa-solid fa-clock"></i> Próximamente</span>
+        </div>
+    </div>
+
+    <!-- Placeholder: nueva herramienta -->
+    <div class="card" style="border: 2px dashed var(--border); background: transparent; box-shadow: none; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:180px; cursor:default;">
+        <i class="fa-solid fa-plus" style="font-size:28px; color:var(--text-light); margin-bottom:10px;"></i>
+        <div style="font-size:13px; color:var(--text-secondary); font-weight:600;">Próxima herramienta</div>
+        <div style="font-size:12px; color:var(--text-light); margin-top:4px;">Más apps en camino</div>
+    </div>
+
+</div>
+
+<!-- Info de uso -->
+<div class="section-header" style="margin-top:8px;">
+    <div class="section-title"><i class="fa-solid fa-circle-info"></i> Cómo usar las herramientas</div>
+</div>
+<div class="card">
+    <div style="display:flex; flex-direction:column; gap:12px;">
+        <div style="display:flex; gap:10px; align-items:flex-start;">
+            <div class="card-icon blue" style="width:32px;height:32px;min-width:32px;border-radius:8px;font-size:13px;"><i class="fa-solid fa-1"></i></div>
+            <div>
+                <div style="font-weight:700; font-size:13px;">Herramientas web (Flask)</div>
+                <div style="font-size:12px; color:var(--text-secondary);">Las apps con botón "Abrir" se lanzan en una nueva pestaña. Asegúrate de que el servidor local esté corriendo.</div>
+            </div>
+        </div>
+        <div style="display:flex; gap:10px; align-items:flex-start;">
+            <div class="card-icon teal" style="width:32px;height:32px;min-width:32px;border-radius:8px;font-size:13px;"><i class="fa-solid fa-2"></i></div>
+            <div>
+                <div style="font-weight:700; font-size:13px;">Scripts Python</div>
+                <div style="font-size:12px; color:var(--text-secondary);">Los scripts de Descargas Rápidas y Morosidad se ejecutan desde terminal. Pronto tendrán interfaz web propia.</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

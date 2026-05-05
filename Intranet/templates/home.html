@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Inicio — Intranet AlivTelecom{% endblock %}
+{% block page_title %}Inicio{% endblock %}
+
+{% block content %}
+<!-- Welcome banner -->
+<div class="welcome-banner">
+    <div class="welcome-title">Bienvenido, {{ user }} <span style="font-size:22px;">👋</span></div>
+    <div class="welcome-sub">Portal interno de AlivTelecom — todos los recursos de tu equipo en un solo lugar.</div>
+</div>
+
+<!-- Stats row -->
+<div class="stats-row">
+    <div class="stat-card">
+        <span class="stat-label">Herramientas activas</span>
+        <span class="stat-value blue">3</span>
+        <span class="stat-change">Apps disponibles</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">Dashboards</span>
+        <span class="stat-value teal">4</span>
+        <span class="stat-change">Links configurados</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">Equipos</span>
+        <span class="stat-value green">3</span>
+        <span class="stat-change">Ventas · Ops · Tech</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">Estado</span>
+        <span class="stat-value" style="color:#00A870; font-size:18px; padding-top:4px;"><i class="fa-solid fa-circle-check"></i> Operativo</span>
+        <span class="stat-change">Todos los sistemas OK</span>
+    </div>
+</div>
+
+<!-- Acceso rápido -->
+<div class="section-header">
+    <div class="section-title"><i class="fa-solid fa-bolt"></i> Acceso rápido</div>
+</div>
+<div class="cards-grid" style="margin-bottom:28px;">
+    <a href="{{ url_for('herramientas') }}" style="display:contents;">
+        <div class="quick-card">
+            <div class="qc-icon blue card-icon"><i class="fa-solid fa-toolbox"></i></div>
+            <div class="qc-text">
+                <div class="qc-title">Herramientas</div>
+                <div class="qc-sub">Cruce de datos, reportes y más</div>
+            </div>
+            <i class="fa-solid fa-chevron-right qc-arrow"></i>
+        </div>
+    </a>
+    <a href="{{ url_for('dashboards') }}" style="display:contents;">
+        <div class="quick-card">
+            <div class="qc-icon teal card-icon"><i class="fa-solid fa-gauge-high"></i></div>
+            <div class="qc-text">
+                <div class="qc-title">Dashboards</div>
+                <div class="qc-sub">Métricas y KPIs en tiempo real</div>
+            </div>
+            <i class="fa-solid fa-chevron-right qc-arrow"></i>
+        </div>
+    </a>
+    <a href="{{ url_for('ventas') }}" style="display:contents;">
+        <div class="quick-card">
+            <div class="qc-icon green card-icon"><i class="fa-solid fa-chart-line"></i></div>
+            <div class="qc-text">
+                <div class="qc-title">Ventas</div>
+                <div class="qc-sub">Recursos del equipo comercial</div>
+            </div>
+            <i class="fa-solid fa-chevron-right qc-arrow"></i>
+        </div>
+    </a>
+    <a href="{{ url_for('operaciones') }}" style="display:contents;">
+        <div class="quick-card">
+            <div class="qc-icon orange card-icon"><i class="fa-solid fa-gears"></i></div>
+            <div class="qc-text">
+                <div class="qc-title">Operaciones</div>
+                <div class="qc-sub">Gestión operativa y soporte</div>
+            </div>
+            <i class="fa-solid fa-chevron-right qc-arrow"></i>
+        </div>
+    </a>
+</div>
+
+<!-- Novedades -->
+<div class="section-header">
+    <div class="section-title"><i class="fa-solid fa-bullhorn"></i> Novedades</div>
+</div>
+<div class="card">
+    <div style="display:flex; flex-direction:column; gap:14px;">
+        <div style="display:flex; gap:12px; align-items:flex-start;">
+            <div class="card-icon teal" style="width:36px;height:36px;min-width:36px;border-radius:10px;font-size:15px;">
+                <i class="fa-solid fa-circle-plus"></i>
+            </div>
+            <div>
+                <div style="font-weight:700; font-size:13px;">Intranet AlivTelecom lanzada</div>
+                <div style="font-size:12px; color:var(--text-secondary); margin-top:2px;">Mayo 2026 — Portal interno disponible para todos los equipos.</div>
+            </div>
+        </div>
+        <div class="divider" style="margin:0;"></div>
+        <div style="display:flex; gap:12px; align-items:flex-start;">
+            <div class="card-icon blue" style="width:36px;height:36px;min-width:36px;border-radius:10px;font-size:15px;">
+                <i class="fa-solid fa-file-excel"></i>
+            </div>
+            <div>
+                <div style="font-weight:700; font-size:13px;">Herramienta Cruce de Datos disponible</div>
+                <div style="font-size:12px; color:var(--text-secondary); margin-top:2px;">Reconciliación entre WinForce y ALIV. Accede desde Herramientas.</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Operaciones — Intranet AlivTelecom{% endblock %}
+{% block page_title %}Equipo Operaciones{% endblock %}
+
+{% block content %}
+<div class="welcome-banner" style="background: linear-gradient(135deg, #431407 0%, #9a3412 60%, #ea580c 100%);">
+    <div class="welcome-title"><i class="fa-solid fa-gears" style="margin-right:10px;"></i>Equipo Operaciones</div>
+    <div class="welcome-sub">Gestión operativa, soporte técnico y seguimiento de incidencias de AlivTelecom.</div>
+</div>
+
+<div class="section-header">
+    <div class="section-title"><i class="fa-solid fa-list-check"></i> Recursos operativos</div>
+</div>
+
+<div class="cards-grid">
+    <div class="card">
+        <div class="card-icon orange"><i class="fa-solid fa-clipboard-list"></i></div>
+        <div class="card-title">Gestión de Incidencias</div>
+        <div class="card-desc">Registro y seguimiento de incidencias técnicas y operativas por zona y equipo.</div>
+        <div class="card-footer">
+            <span class="badge badge-orange"><i class="fa-solid fa-clock"></i> Próximamente</span>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-icon blue"><i class="fa-solid fa-headset"></i></div>
+        <div class="card-title">Soporte Técnico</div>
+        <div class="card-desc">Recursos y guías para el equipo de soporte. Manuales de troubleshooting y escalamiento.</div>
+        <div class="card-footer">
+            <span class="badge badge-blue"><i class="fa-solid fa-clock"></i> Próximamente</span>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-icon teal"><i class="fa-solid fa-network-wired"></i></div>
+        <div class="card-title">Infraestructura de Red</div>
+        <div class="card-desc">Estado de la red, nodos activos y mapas de cobertura actualizados.</div>
+        <div class="card-footer">
+            <span class="badge badge-teal"><i class="fa-solid fa-clock"></i> Próximamente</span>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-icon green"><i class="fa-solid fa-calendar-check"></i></div>
+        <div class="card-title">Planificación Operativa</div>
+        <div class="card-desc">Cronograma de actividades, mantenimientos programados y asignación de recursos.</div>
+        <div class="card-footer">
+            <span class="badge badge-green"><i class="fa-solid fa-clock"></i> Próximamente</span>
+        </div>
+    </div>
+</div>
+
+<div class="section-header" style="margin-top:8px;">
+    <div class="section-title"><i class="fa-solid fa-circle-info"></i> Sección en construcción</div>
+</div>
+<div class="card">
+    <div style="font-size:13px; color:var(--text-secondary); line-height:1.7;">
+        Esta sección está preparada para el equipo de Operaciones. Puedes agregar herramientas, links,
+        documentos y recursos propios del área editando <code style="background:#F0F4F8; padding:2px 6px; border-radius:4px; font-family:monospace;">Intranet/templates/operaciones.html</code>.
+    </div>
+</div>
+{% endblock %}

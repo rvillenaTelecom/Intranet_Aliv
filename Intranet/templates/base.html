@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Intranet AlivTelecom{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+
+<div class="layout">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo-wrap">
+                <div class="logo-icon">
+                    <i class="fa-solid fa-signal"></i>
+                </div>
+                <div class="logo-text">
+                    <span class="logo-brand">Aliv</span><span class="logo-brand accent">Telecom</span>
+                    <span class="logo-sub">Intranet</span>
+                </div>
+            </div>
+            <button class="sidebar-toggle" id="sidebarToggle" title="Colapsar menú">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+        </div>
+
+        <div class="user-info">
+            <div class="user-avatar">
+                <i class="fa-solid fa-user"></i>
+            </div>
+            <div class="user-details">
+                <span class="user-name">{{ user }}</span>
+                <span class="user-role">{{ role | capitalize }}</span>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <div class="nav-section-label">Principal</div>
+            <a href="{{ url_for('home') }}" class="nav-item {% if request.endpoint == 'home' %}active{% endif %}">
+                <i class="fa-solid fa-house"></i>
+                <span>Inicio</span>
+            </a>
+
+            <div class="nav-section-label">Equipos</div>
+            <a href="{{ url_for('ventas') }}" class="nav-item {% if request.endpoint == 'ventas' %}active{% endif %}">
+                <i class="fa-solid fa-chart-line"></i>
+                <span>Ventas</span>
+            </a>
+            <a href="{{ url_for('operaciones') }}" class="nav-item {% if request.endpoint == 'operaciones' %}active{% endif %}">
+                <i class="fa-solid fa-gears"></i>
+                <span>Operaciones</span>
+            </a>
+            <a href="{{ url_for('tecnologia') }}" class="nav-item {% if request.endpoint == 'tecnologia' %}active{% endif %}">
+                <i class="fa-solid fa-microchip"></i>
+                <span>Tecnología</span>
+            </a>
+
+            <div class="nav-section-label">Recursos</div>
+            <a href="{{ url_for('herramientas') }}" class="nav-item {% if request.endpoint == 'herramientas' %}active{% endif %}">
+                <i class="fa-solid fa-toolbox"></i>
+                <span>Herramientas</span>
+            </a>
+            <a href="{{ url_for('dashboards') }}" class="nav-item {% if request.endpoint == 'dashboards' %}active{% endif %}">
+                <i class="fa-solid fa-gauge-high"></i>
+                <span>Dashboards</span>
+            </a>
+            <a href="{{ url_for('automatizacion') }}" class="nav-item {% if request.endpoint == 'automatizacion' %}active{% endif %}">
+                <i class="fa-solid fa-robot"></i>
+                <span>Automatización</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="{{ url_for('logout') }}" class="nav-item logout">
+                <i class="fa-solid fa-right-from-bracket"></i>
+                <span>Cerrar sesión</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- Main content -->
+    <main class="main-content">
+        <header class="topbar">
+            <div class="topbar-left">
+                <h1 class="page-title">{% block page_title %}Inicio{% endblock %}</h1>
+            </div>
+            <div class="topbar-right">
+                <span class="date-badge">
+                    <i class="fa-regular fa-calendar"></i>
+                    <span id="currentDate"></span>
+                </span>
+            </div>
+        </header>
+
+        <div class="content-area">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+</div>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

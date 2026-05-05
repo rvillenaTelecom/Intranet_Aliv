@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intranet AlivTelecom — Ingreso</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body class="login-body">
+    <div class="login-box">
+        <div class="login-logo">
+            <div class="logo-icon-lg"><i class="fa-solid fa-signal"></i></div>
+            <h2>Aliv<span>Telecom</span></h2>
+            <p>Portal Intranet</p>
+        </div>
+
+        {% if error %}
+        <div class="error-msg">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <form method="POST">
+            <div class="form-group">
+                <label>Usuario</label>
+                <div class="input-wrap">
+                    <i class="fa-solid fa-user input-icon"></i>
+                    <input type="text" name="username" placeholder="Tu usuario" required autofocus>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Contraseña</label>
+                <div class="input-wrap">
+                    <i id="pwdToggle" class="fa-solid fa-eye-slash input-icon" style="cursor:pointer; left:auto; right:13px;"></i>
+                    <input type="password" name="password" id="password" placeholder="Tu contraseña" required>
+                </div>
+            </div>
+            <button type="submit" class="btn-login">
+                <i class="fa-solid fa-right-to-bracket"></i> Ingresar
+            </button>
+        </form>
+    </div>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
