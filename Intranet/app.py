@@ -22,6 +22,17 @@ scheduler = APScheduler()
 scheduler.init_app(app)
 scheduler.start()
 
+# --- VERIFICACIÓN DE PLAYWRIGHT PARA RENDER ---
+def check_playwright():
+    if os.environ.get('RENDER'):
+        print("Entorno Render detectado. Asegurando que Playwright esté listo...")
+        try:
+            subprocess.run(['python', '-m', 'playwright', 'install', 'chromium'], check=True)
+        except Exception as e:
+            print(f"Aviso: Error instalando playwright en arranque: {e}")
+
+check_playwright()
+
 USERS = {
     'admin': {'password': 'Aliv2026', 'role': 'admin', 'name': 'Administrador'},
     'ventas': {'password': 'Ventas2026', 'role': 'ventas', 'name': 'Equipo Ventas'},
