@@ -107,17 +107,24 @@ def descargar_reporte_winforce():
             except:
                 pass
             
-            # Winforce a veces muestra un error 500 despues del login.
-            # Detectamos el boton 'Sign in' de esa pagina y lo clickeamos para reintentar.
-            try:
-                sign_in_btn = page.get_by_role("button", name="Sign in")
-                if sign_in_btn.is_visible():
-                    print("   [AVISO] Winforce mostro error 500. Clickeando 'Sign in' para reintentar...")
-                    sign_in_btn.click()
-                    page.wait_for_load_state("networkidle")
-                    print("   Reintento exitoso, continuando...")
-            except:
-                pass
+            # Winforce puede mostrar error 500 repetidamente.
+            # Reintentamos hasta 10 veces haciendo clic en 'Sign in' cada vez que aparezca.
+            for intento in range(10):
+                page.wait_for_load_state("networkidle")
+                try:
+                    sign_in_btn = page.get_by_role("button", name="Sign in")
+                    if sign_in_btn.is_visible():
+                        print(f"   [AVISO] Error 500 de Winforce (intento {intento+1}/10). Reintentando...")
+                        sign_in_btn.click()
+                        time.sleep(2)
+                        continue  # vuelve al inicio del loop
+                except:
+                    pass
+                # Si no hay boton 'Sign in', salimos del loop (cargó bien)
+                print(f"   Dashboard cargado correctamente en intento {intento+1}.")
+                break
+            else:
+                raise Exception("Winforce no cargó tras 10 reintentos de error 500.")
 
             # 3. Navega a la seccion Ventas -> Ventas
             print("3. Navegando al menu Ventas -> Ventas...")
