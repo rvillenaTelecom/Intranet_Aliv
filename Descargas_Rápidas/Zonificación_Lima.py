@@ -357,7 +357,7 @@ def main():
         incremental = "--incremental" in sys.argv
         if incremental:
             # En modo incremental, borramos los últimos 7 días y subimos lo nuevo
-            upload_incremental_to_sql(df, "winforce_lima", "[Fecha de registro]")
+            upload_incremental_to_sql(df, "winforce_lima", "Fecha de registro")
         else:
             # En modo completo, reemplazamos toda la tabla
             upload_to_sql(df, "winforce_lima")

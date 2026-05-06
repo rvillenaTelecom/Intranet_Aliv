@@ -52,8 +52,14 @@ def upload_incremental_to_sql(df, table_name, date_col, days=7):
         table_name = table_name.lower()
         
         with engine.begin() as conn:
-            # Comando SQL genérico
-            query = sa.text(f"DELETE FROM {table_name} WHERE \"{date_col}\" >= '{fecha_inicio}'")
+            # Detectar el tipo de comillas según la base de datos
+            if DATABASE_URL:
+                # Nube (Postgres): Usa comillas dobles
+                query = sa.text(f"DELETE FROM {table_name} WHERE \"{date_col}\" >= '{fecha_inicio}'")
+            else:
+                # Local (SQL Server): Usa corchetes
+                query = sa.text(f"DELETE FROM {table_name} WHERE [{date_col}] >= '{fecha_inicio}'")
+            
             conn.execute(query)
             print(f"  [DB] Limpieza incremental desde {fecha_inicio} en {table_name}")
             

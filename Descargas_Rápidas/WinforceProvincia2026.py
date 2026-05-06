@@ -226,7 +226,7 @@ def descargar_reporte_winforce():
                 
                 incremental = "--incremental" in sys.argv
                 if incremental:
-                    upload_incremental_to_sql(df_sql, "winforce_provincia", "[Fecha de registro]")
+                    upload_incremental_to_sql(df_sql, "winforce_provincia", "Fecha de registro")
                 else:
                     upload_to_sql(df_sql, "winforce_provincia")
                     
