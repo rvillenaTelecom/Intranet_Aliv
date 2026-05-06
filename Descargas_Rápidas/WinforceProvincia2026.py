@@ -28,6 +28,7 @@ def descargar_reporte_winforce():
         browser = p.chromium.launch(headless=True)
         context = browser.new_context(
             accept_downloads=True,
+            viewport={'width': 1280, 'height': 720},
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
         )
         page = context.new_page()
@@ -96,15 +97,20 @@ def descargar_reporte_winforce():
 
             # 3. Navega a la sección Ventas -> Ventas
             print("3. Navegando al menú Ventas -> Ventas...")
-            # Nos aseguramos de que el menú principal esté visible y hacemos click
-            menu_principal = page.get_by_text("Ventas", exact=True).nth(0)
+            page.wait_for_load_state("networkidle")
+            time.sleep(3) # Pausa para que el JS termine de renderizar el menu
+            
+            # Buscamos el menu "Ventas" y esperamos a que sea visible
+            menu_principal = page.get_by_text("Ventas", exact=True).first
+            menu_principal.wait_for(state="visible", timeout=60000)
             menu_principal.hover()
             menu_principal.click()
             
-            # Esperamos a que el submenú aparezca y sea visible antes de clickear
+            # Esperamos a que el submenú aparezca
             print("   Esperando el submenú...")
+            # En Winforce, el submenu suele ser el segundo elemento con texto "Ventas"
             submenu = page.get_by_text("Ventas", exact=True).nth(1)
-            submenu.wait_for(state="visible", timeout=10000)
+            submenu.wait_for(state="visible", timeout=20000)
             submenu.click()
             
             print("   Esperando que cargue la vista de ventas...")
