@@ -107,28 +107,34 @@ def descargar_reporte_winforce():
             except:
                 pass
 
-            # 3. Navega a la sección Ventas -> Ventas
-            print("3. Navegando al menú Ventas -> Ventas...")
+            # 3. Navega a la seccion Ventas -> Ventas
+            print("3. Navegando al menu Ventas -> Ventas...")
             page.wait_for_load_state("networkidle")
             
-            # Verificamos si ya estamos en la página de ventas (si los filtros ya son visibles)
-            if page.locator("input#desde, .flatpickr-input").first.is_visible():
-                print("   [INFO] Ya estamos en la página de ventas. Saltando navegación de menú.")
+            # Verificamos si ya estamos en la pagina con filtros de fecha
+            ya_en_ventas = page.locator(".flatpickr-input").count() > 0
+            
+            if ya_en_ventas:
+                print("   [INFO] Ya estamos en la pagina de ventas. Saltando navegacion.")
             else:
-                # Buscamos el menu "Ventas" en la barra superior
-                menu_principal = page.locator("nav, header").get_by_text("Ventas", exact=True).first
-                try:
-                    menu_principal.wait_for(state="visible", timeout=15000)
-                    menu_principal.click()
-                    
-                    # Esperamos a que el submenú aparezca
-                    print("   Esperando el submenú...")
-                    submenu = page.locator("ul, .dropdown-menu").get_by_text("Ventas", exact=True).first
-                    submenu.wait_for(state="visible", timeout=10000)
-                    submenu.click()
-                except Exception as e:
-                    print(f"   [AVISO] No se pudo navegar por el menú, intentando continuar: {e}")
+                # Hacemos clic en 'Ventas' en cualquier parte de la pagina
+                print("   Buscando menu Ventas...")
+                page.get_by_text("Ventas", exact=True).first.click()
+                time.sleep(2)
+                
+                # Clickeamos el submenu Ventas
+                ventas_options = page.get_by_text("Ventas", exact=True).all()
+                if len(ventas_options) >= 2:
+                    ventas_options[1].click()
+                    print("   Submenu 'Ventas' clickeado.")
+                else:
+                    print("   [INFO] Un solo elemento 'Ventas', continuando.")
+                
+                page.wait_for_load_state("networkidle")
+                
+                if page.locator(".flatpickr-input").count() == 0:
                     page.screenshot(path="error_winforce.png")
+                    raise Exception("No se encontraron filtros de fecha tras navegar a Ventas. Revisa /ver-error")
             
             print("   Esperando que cargue la vista de ventas...")
             page.wait_for_load_state("networkidle")
