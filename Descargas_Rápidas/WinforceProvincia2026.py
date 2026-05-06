@@ -106,6 +106,18 @@ def descargar_reporte_winforce():
                 print("   Cerrado popup de 'Aceptar'")
             except:
                 pass
+            
+            # Winforce a veces muestra un error 500 despues del login.
+            # Detectamos el boton 'Sign in' de esa pagina y lo clickeamos para reintentar.
+            try:
+                sign_in_btn = page.get_by_role("button", name="Sign in")
+                if sign_in_btn.is_visible():
+                    print("   [AVISO] Winforce mostro error 500. Clickeando 'Sign in' para reintentar...")
+                    sign_in_btn.click()
+                    page.wait_for_load_state("networkidle")
+                    print("   Reintento exitoso, continuando...")
+            except:
+                pass
 
             # 3. Navega a la seccion Ventas -> Ventas
             print("3. Navegando al menu Ventas -> Ventas...")
