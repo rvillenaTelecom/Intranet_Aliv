@@ -225,7 +225,6 @@ def toggle_scheduler():
 @login_required
 def ver_error():
     # Esta ruta nos permite ver el error sin depender de la carpeta static de Flask
-    import send_file
     from flask import send_file
     path = os.path.join(os.getcwd(), "error_winforce.png")
     if os.path.exists(path):
