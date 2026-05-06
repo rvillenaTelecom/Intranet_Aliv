@@ -108,13 +108,13 @@ def descargar_reporte_winforce():
             page.wait_for_load_state("networkidle")
             time.sleep(3) # Pausa para que el JS termine de renderizar el menu
             
-            # Buscamos el menu "Ventas" y esperamos a que sea visible
-            menu_principal = page.locator("text='Ventas'").first
+            # Buscamos el menu "Ventas" (usando selector CSS que es mas robusto)
+            menu_principal = page.locator("a:has-text('Ventas'), li:has-text('Ventas'), [title*='Ventas']").first
             try:
                 menu_principal.wait_for(state="visible", timeout=30000)
             except:
-                page.screenshot(path="Intranet/static/error_winforce_prov.png")
-                raise Exception("No se encontro el menu 'Ventas'. Revisa la imagen en static/error_winforce_prov.png")
+                page.screenshot(path="error_winforce.png")
+                raise Exception("No se encontro el menu 'Ventas'. Revisa /ver-error")
                 
             menu_principal.hover()
             menu_principal.click()
