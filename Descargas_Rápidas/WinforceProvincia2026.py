@@ -183,34 +183,45 @@ def descargar_reporte_winforce():
             print(f"   Rango calculado: {primer_dia} al {ultimo_dia}")
             
             # Esperamos a que los inputs de fecha sean visibles
-            page.wait_for_selector(".flatpickr-input, input[id*='desde'], input[name*='desde']", timeout=30000)
+            page.wait_for_selector(".flatpickr-input", timeout=30000)
             time.sleep(1)
             
-            # Usamos page.evaluate() global para inyectar fechas sin depender del locator
+            # Usamos la API interna de Flatpickr para establecer fechas correctamente.
             page.evaluate(f"""
                 () => {{
                     const inputs = document.querySelectorAll('input.flatpickr-input');
-                    if (inputs.length >= 1) {{
+                    if (inputs.length >= 1 && inputs[0]._flatpickr) {{
+                        inputs[0]._flatpickr.setDate('{primer_dia}', true, 'd-m-Y');
+                    }} else if (inputs.length >= 1) {{
                         inputs[0].value = '{primer_dia}';
+                        inputs[0].dispatchEvent(new Event('input', {{ bubbles: true }}));
                         inputs[0].dispatchEvent(new Event('change', {{ bubbles: true }}));
                     }}
-                    if (inputs.length >= 2) {{
+                    if (inputs.length >= 2 && inputs[1]._flatpickr) {{
+                        inputs[1]._flatpickr.setDate('{ultimo_dia}', true, 'd-m-Y');
+                    }} else if (inputs.length >= 2) {{
                         inputs[1].value = '{ultimo_dia}';
+                        inputs[1].dispatchEvent(new Event('input', {{ bubbles: true }}));
                         inputs[1].dispatchEvent(new Event('change', {{ bubbles: true }}));
                     }}
                 }}
             """)
-            print(f"   Fechas establecidas via JS.")
+            print(f"   Fechas establecidas via Flatpickr API.")
+            time.sleep(1)
             
             # 5. Hace clic en "Buscar"
             print("5. Dando clic en Buscar...")
-            # Buscamos el botón por texto (rol botón con texto visible Buscar)
             page.get_by_role("button", name="Buscar").click()
 
             # 6. Espera que carguen los resultados
             print("6. Esperando a que el sistema traiga los registros...")
-            # Retraso preventivo porque no sabemos cuánto demora Winforce, ajustarlo de ser necesario
-            time.sleep(8) 
+            time.sleep(8)
+            
+            # Verificar si hay resultados antes de intentar descargar
+            page_content = page.content()
+            if 'Sin resultados que listar' in page_content or 'warning' in page_content:
+                print("   [AVISO] No hay datos en el rango de fechas seleccionado. Saltando descarga.")
+                return
 
             # 7 & 8. Espera por descarga al hacer clic en "Descargar"
             print("7. Haciendo clic en el botón Descargar...")
