@@ -62,7 +62,8 @@ def descargar_reporte_winforce():
                 except:
                     continue
             if not ms_clicked:
-                raise Exception("No se encontro el boton de login con Microsoft. Revisa error_ejecucion.png")
+                page.screenshot(path="Intranet/static/error_winforce_prov.png")
+                raise Exception("No se encontro el boton de login con Microsoft. Revisa error_winforce_prov.png en la carpeta static")
             
             # Al hacer clic, nos redirige a login.microsoftonline.com. 
             # Los selectores aquí son estándar:
@@ -95,14 +96,26 @@ def descargar_reporte_winforce():
             # Esperamos a que el login finalice y cargue Winforce
             page.wait_for_load_state("networkidle")
 
+            # A veces hay popups o avisos, intentamos cerrarlos
+            try:
+                page.get_by_role("button", name="Aceptar").click(timeout=3000)
+                print("   Cerrado popup de 'Aceptar'")
+            except:
+                pass
+
             # 3. Navega a la sección Ventas -> Ventas
             print("3. Navegando al menú Ventas -> Ventas...")
             page.wait_for_load_state("networkidle")
             time.sleep(3) # Pausa para que el JS termine de renderizar el menu
             
             # Buscamos el menu "Ventas" y esperamos a que sea visible
-            menu_principal = page.get_by_text("Ventas", exact=True).first
-            menu_principal.wait_for(state="visible", timeout=60000)
+            menu_principal = page.locator("text='Ventas'").first
+            try:
+                menu_principal.wait_for(state="visible", timeout=30000)
+            except:
+                page.screenshot(path="Intranet/static/error_winforce_prov.png")
+                raise Exception("No se encontro el menu 'Ventas'. Revisa la imagen en static/error_winforce_prov.png")
+                
             menu_principal.hover()
             menu_principal.click()
             
