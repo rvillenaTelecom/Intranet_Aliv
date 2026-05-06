@@ -217,9 +217,11 @@ def descargar_reporte_winforce():
             print("6. Esperando a que el sistema traiga los registros...")
             time.sleep(8)
             
-            # Verificar si hay resultados antes de intentar descargar
+            # Verificar si hay resultados antes de intentar descargar.
+            # IMPORTANTE: Solo chequeamos el texto exacto de Winforce, no 'warning' generico.
             page_content = page.content()
-            if 'Sin resultados que listar' in page_content or 'warning' in page_content:
+            page.screenshot(path="error_winforce.png")  # foto de diagnostico
+            if 'Sin resultados que listar' in page_content:
                 print("   [AVISO] No hay datos en el rango de fechas seleccionado. Saltando descarga.")
                 return
 
