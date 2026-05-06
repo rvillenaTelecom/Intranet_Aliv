@@ -73,11 +73,15 @@ def descargar_reporte_winforce():
             page.click("input[type='submit']") # Botón Siguiente
             
             print("   Escribiendo contrasena...")
-            page.wait_for_selector("input[type='password']")
-            page.fill("input[type='password']", PASSWORD)
-            # Pequeña espera por si hay animaciones
+            password_field = page.locator("input[type='password'], input[name='passwd']")
+            password_field.wait_for(state="visible", timeout=15000)
+            password_field.click()
             time.sleep(1)
-            page.click("input[type='submit']") # Botón Iniciar sesión
+            password_field.press_sequentially(PASSWORD, delay=100)
+            
+            # Pequeña espera para que Microsoft procese el texto
+            time.sleep(2)
+            page.click("input[type='submit'], #idSIButton9") # Botón Iniciar sesión
             
             print("   Pantalla '¿Mantener iniciada la sesión?'...")
             # Microsoft a veces pregunta, damos clic en "No" u omitimos si no aparece.
