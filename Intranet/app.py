@@ -226,10 +226,10 @@ def toggle_scheduler():
 def ver_error():
     # Esta ruta nos permite ver el error sin depender de la carpeta static de Flask
     from flask import send_file
-    path = os.path.join(os.getcwd(), "error_winforce.png")
+    path = os.path.join(BASE_PATH, "error_winforce.png")
     if os.path.exists(path):
         return send_file(path, mimetype='image/png')
-    return "No hay captura de error disponible todavía."
+    return f"No hay captura de error en: {path}"
 
 if __name__ == '__main__':
     # Usar el puerto que asigna Render o el 5001 por defecto
