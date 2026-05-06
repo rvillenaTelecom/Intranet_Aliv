@@ -168,61 +168,73 @@ def descargar_reporte_winforce():
             # Detectar modo incremental (por defecto es completo)
             incremental = "--incremental" in sys.argv
             
-            if incremental:
-                from datetime import timedelta
-                siete_dias_atras = hoy - timedelta(days=7)
-                primer_dia = siete_dias_atras.strftime("%d-%m-%Y")
-                print(f"   [MODO INCREMENTAL] Descargando ultimos 7 dias.")
-            else:
-                primer_dia = "01-01-2026"
-                print(f"   [MODO COMPLETO] Descargando todo el 2026.")
-
-            # El usuario indic que "Hasta" sea hasta la fecha actual (hoy)
-            ultimo_dia = hoy.strftime("%d-%m-%Y")
-            
-            print(f"   Rango calculado: {primer_dia} al {ultimo_dia}")
-            
-            # Esperamos a que los inputs de fecha sean visibles
+            # Esperamos a que la pagina este lista
             page.wait_for_selector(".flatpickr-input", timeout=30000)
             time.sleep(1)
             
-            # Usamos la API interna de Flatpickr para establecer fechas correctamente.
-            page.evaluate(f"""
-                () => {{
-                    const inputs = document.querySelectorAll('input.flatpickr-input');
-                    if (inputs.length >= 1 && inputs[0]._flatpickr) {{
-                        inputs[0]._flatpickr.setDate('{primer_dia}', true, 'd-m-Y');
-                    }} else if (inputs.length >= 1) {{
-                        inputs[0].value = '{primer_dia}';
-                        inputs[0].dispatchEvent(new Event('input', {{ bubbles: true }}));
-                        inputs[0].dispatchEvent(new Event('change', {{ bubbles: true }}));
+            if incremental:
+                # Para modo incremental: clic en "Esta semana" (boton de acceso rapido de Winforce)
+                print("   [MODO INCREMENTAL] Usando boton 'Esta semana'...")
+                try:
+                    esta_semana = page.get_by_text("Esta semana", exact=True).first
+                    esta_semana.click()
+                    time.sleep(1)
+                    print("   Boton 'Esta semana' clickeado.")
+                except:
+                    from datetime import timedelta
+                    siete_dias_atras = hoy - timedelta(days=7)
+                    primer_dia = siete_dias_atras.strftime("%d-%m-%Y")
+                    ultimo_dia = hoy.strftime("%d-%m-%Y")
+                    print(f"   [FALLBACK] Rango manual: {primer_dia} al {ultimo_dia}")
+                    page.evaluate(f"""
+                        () => {{
+                            const inputs = document.querySelectorAll('input.flatpickr-input');
+                            if (inputs.length >= 1 && inputs[0]._flatpickr) {{
+                                inputs[0]._flatpickr.setDate('{primer_dia}', true, 'd-m-Y');
+                            }}
+                            if (inputs.length >= 2 && inputs[1]._flatpickr) {{
+                                inputs[1]._flatpickr.setDate('{ultimo_dia}', true, 'd-m-Y');
+                            }}
+                        }}
+                    """)
+            else:
+                primer_dia = "01-01-2026"
+                ultimo_dia = hoy.strftime("%d-%m-%Y")
+                print(f"   [MODO COMPLETO] Rango: {primer_dia} al {ultimo_dia}")
+                page.evaluate(f"""
+                    () => {{
+                        const inputs = document.querySelectorAll('input.flatpickr-input');
+                        if (inputs.length >= 1 && inputs[0]._flatpickr) {{
+                            inputs[0]._flatpickr.setDate('{primer_dia}', true, 'd-m-Y');
+                        }} else if (inputs.length >= 1) {{
+                            inputs[0].value = '{primer_dia}';
+                            inputs[0].dispatchEvent(new Event('change', {{ bubbles: true }}));
+                        }}
+                        if (inputs.length >= 2 && inputs[1]._flatpickr) {{
+                            inputs[1]._flatpickr.setDate('{ultimo_dia}', true, 'd-m-Y');
+                        }} else if (inputs.length >= 2) {{
+                            inputs[1].value = '{ultimo_dia}';
+                            inputs[1].dispatchEvent(new Event('change', {{ bubbles: true }}));
+                        }}
                     }}
-                    if (inputs.length >= 2 && inputs[1]._flatpickr) {{
-                        inputs[1]._flatpickr.setDate('{ultimo_dia}', true, 'd-m-Y');
-                    }} else if (inputs.length >= 2) {{
-                        inputs[1].value = '{ultimo_dia}';
-                        inputs[1].dispatchEvent(new Event('input', {{ bubbles: true }}));
-                        inputs[1].dispatchEvent(new Event('change', {{ bubbles: true }}));
-                    }}
-                }}
-            """)
-            print(f"   Fechas establecidas via Flatpickr API.")
+                """)
+                print(f"   Fechas establecidas via Flatpickr API.")
+            
             time.sleep(1)
             
-            # 5. Hace clic en "Buscar"
-            print("5. Dando clic en Buscar...")
-            page.get_by_role("button", name="Buscar").click()
+            # 5. Hace clic en "Buscar seguimiento" (nombre exacto del boton naranja)
+            print("5. Dando clic en Buscar seguimiento...")
+            page.get_by_role("button", name="Buscar seguimiento").click()
 
             # 6. Espera que carguen los resultados
             print("6. Esperando a que el sistema traiga los registros...")
             time.sleep(8)
             
             # Verificar si hay resultados antes de intentar descargar.
-            # IMPORTANTE: Solo chequeamos el texto exacto de Winforce, no 'warning' generico.
             page_content = page.content()
             page.screenshot(path="error_winforce.png")  # foto de diagnostico
-            if 'Sin resultados que listar' in page_content:
-                print("   [AVISO] No hay datos en el rango de fechas seleccionado. Saltando descarga.")
+            if 'Sin resultados que listar' in page_content or 'Ningún dato disponible' in page_content:
+                print("   [AVISO] No hay datos en el rango de fechas. Saltando descarga.")
                 return
 
             # 7 & 8. Espera por descarga al hacer clic en "Descargar"
