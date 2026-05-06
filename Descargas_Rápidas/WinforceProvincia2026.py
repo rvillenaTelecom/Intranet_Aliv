@@ -132,7 +132,7 @@ def descargar_reporte_winforce():
             
             print("   Esperando que cargue la vista de ventas...")
             page.wait_for_load_state("networkidle")
-            time.sleep(2) # Pausa extra por si el renderizado tarda
+            time.sleep(3) # Pausa extra para que flatpickr inicialice los calendarios
 
             # 4. Aplica los filtros del mes actual
             print("4. Aplicando filtros (Desde - Hasta del mes actual)...")
@@ -157,15 +157,25 @@ def descargar_reporte_winforce():
             
             print(f"   Rango calculado: {primer_dia} al {ultimo_dia}")
             
-            # Los campos tienen "readonly" (flatpickr-input) por lo que el clásico .fill() falla buscando permitir escritura.
-            # Por lo tanto enviamos el valor directamente usando javascript nativo (evaluate) ignorando la restricción,
-            # y simulamos un evento 'change' para que la página sea consciente de esta actualización.
+            # Esperamos a que los inputs de fecha sean visibles
+            page.wait_for_selector(".flatpickr-input, input[id*='desde'], input[name*='desde']", timeout=30000)
+            time.sleep(1)
             
-            loc_desde = page.locator("xpath=//*[contains(text(),'Desde')]/following::input[1]")
-            loc_desde.evaluate(f"(el) => {{ el.value = '{primer_dia}'; el.dispatchEvent(new Event('change', {{ bubbles: true }})); }}")
-            
-            loc_hasta = page.locator("xpath=//*[contains(text(),'Hasta')]/following::input[1]")
-            loc_hasta.evaluate(f"(el) => {{ el.value = '{ultimo_dia}'; el.dispatchEvent(new Event('change', {{ bubbles: true }})); }}")
+            # Usamos page.evaluate() global para inyectar fechas sin depender del locator
+            page.evaluate(f"""
+                () => {{
+                    const inputs = document.querySelectorAll('input.flatpickr-input');
+                    if (inputs.length >= 1) {{
+                        inputs[0].value = '{primer_dia}';
+                        inputs[0].dispatchEvent(new Event('change', {{ bubbles: true }}));
+                    }}
+                    if (inputs.length >= 2) {{
+                        inputs[1].value = '{ultimo_dia}';
+                        inputs[1].dispatchEvent(new Event('change', {{ bubbles: true }}));
+                    }}
+                }}
+            """)
+            print(f"   Fechas establecidas via JS.")
             
             # 5. Hace clic en "Buscar"
             print("5. Dando clic en Buscar...")
