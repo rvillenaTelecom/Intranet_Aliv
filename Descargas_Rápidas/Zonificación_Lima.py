@@ -147,42 +147,43 @@ def main():
     cols_lower = {c.lower(): c for c in df.columns}
     col_lat = cols_lower.get('latitud')
     col_lon = cols_lower.get('longitud')
+
     if not col_lat or not col_lon:
-        log("ERROR: No se encontraron columnas de coordenadas (latitud/longitud) en el archivo.")
-        sys.exit(1)
+        log("AVISO: El archivo no tiene columnas latitud/longitud. Todos los registros se marcan como 'Sin coordenada'.")
+        df['Zona_KML'] = 'Sin coordenada'
+        df['Score_Minimo_KML'] = None
+    else:
+        # Limpiar coordenadas
+        df[col_lat] = pd.to_numeric(df[col_lat], errors='coerce')
+        df[col_lon] = pd.to_numeric(df[col_lon], errors='coerce')
 
-    # Limpiar coordenadas
-    df[col_lat] = pd.to_numeric(df[col_lat], errors='coerce')
-    df[col_lon] = pd.to_numeric(df[col_lon], errors='coerce')
+        con_coords = df[col_lat].notna() & df[col_lon].notna()
+        log(f"  Con coordenadas: {con_coords.sum():,}")
+        log(f"  Sin coordenadas: {(~con_coords).sum():,}")
 
-    con_coords = df[col_lat].notna() & df[col_lon].notna()
-    log(f"  Con coordenadas: {con_coords.sum():,}")
-    log(f"  Sin coordenadas: {(~con_coords).sum():,}")
+        # Clasificar — solo Lima (coordenadas dentro del bbox del KML)
+        lima_mask = (
+            df[col_lat].between(-13, -11) &
+            df[col_lon].between(-77.5, -76.5)
+        )
+        log(f"  En bbox de Lima: {lima_mask.sum():,}")
+        log("Clasificando registros por zona (puede tardar 1-2 min)...")
 
-    # Clasificar — solo Lima (coordenadas dentro del bbox del KML)
-    lima_mask = (
-        df[col_lat].between(-13, -11) &
-        df[col_lon].between(-77.5, -76.5)
-    )
-    log(f"  En bbox de Lima: {lima_mask.sum():,}")
-    log("Clasificando registros por zona (puede tardar 1-2 min)...")
+        df['Zona_KML'] = 'Sin coordenada'
+        df.loc[lima_mask, 'Zona_KML'] = df[lima_mask].apply(
+            lambda r: clasificar_punto(r[col_lat], r[col_lon], polys_p2, polys_nv),
+            axis=1
+        )
+        # Los que tienen coordenadas pero fuera de Lima = Sin modificación
+        fuera_lima = con_coords & ~lima_mask
+        df.loc[fuera_lima, 'Zona_KML'] = 'Sin modificación (201)'
 
-    df['Zona_KML'] = 'Sin coordenada'
-    df.loc[lima_mask, 'Zona_KML'] = df[lima_mask].apply(
-        lambda r: clasificar_punto(r[col_lat], r[col_lon], polys_p2, polys_nv),
-        axis=1
-    )
-    # Los que tienen coordenadas pero fuera de Lima = Sin modificación
-    fuera_lima = con_coords & ~lima_mask
-    df.loc[fuera_lima, 'Zona_KML'] = 'Sin modificación (201)'
-
-    # Score mínimo por zona
-    df['Score_Minimo_KML'] = df['Zona_KML'].map({
-        'Zona P2 (401)':        401,
-        'No Venta':             0,
-        'Sin modificación (201)': 201,
-        'Sin coordenada':       None,
-    })
+        df['Score_Minimo_KML'] = df['Zona_KML'].map({
+            'Zona P2 (401)':          401,
+            'No Venta':               0,
+            'Sin modificación (201)': 201,
+            'Sin coordenada':         None,
+        })
 
     # Resumen
     print()

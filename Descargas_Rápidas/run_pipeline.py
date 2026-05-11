@@ -1,6 +1,7 @@
 import subprocess
 import sys
 import os
+import io
 import logging
 from datetime import datetime
 from pathlib import Path
@@ -11,13 +12,15 @@ LOG_DIR.mkdir(exist_ok=True)
 
 log_file = LOG_DIR / f"pipeline_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log"
 
+_stdout_utf8 = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace", line_buffering=True)
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s  %(levelname)-8s  %(message)s",
     datefmt="%H:%M:%S",
     handlers=[
         logging.FileHandler(log_file, encoding="utf-8"),
-        logging.StreamHandler(sys.stdout),
+        logging.StreamHandler(_stdout_utf8),
     ],
 )
 log = logging.getLogger(__name__)
@@ -66,72 +69,127 @@ def separador(titulo: str):
     log.info(linea)
 
 
-def main(fase: str = "ambas", incremental: bool = False):
+def main(fase: str = "bd"):
     log.info(f"Log guardado en: {log_file}")
     log.info(f"Fecha de ejecucion: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
 
     # ------------------------------------------------------------------
-    # FASE 1 — Descargas y consolidacion (totalmente automatica)
+    # FASE BD — Descargas + Zonificacion + subida a BD (sin consolidar)
     # ------------------------------------------------------------------
-    if fase in ("ambas", "1"):
-        separador("FASE 1: DESCARGAS Y CONSOLIDACION")
+    if fase == "bd":
+        separador("DESCARGA 2026 + ZONIFICACION + BD")
 
-        pasos_fase1 = [
-            "WinforceLima2026.py",
-            "WinforceProvincia2026.py",
-            "Zonificación_Lima.py",
-            "Consolidar_Ventas.py",
-        ]
-
-        for script in pasos_fase1:
-            # En modo diario/incremental, saltamos la consolidación de ventas (Opción 4)
-            if incremental and "Consolidar_Ventas" in script:
-                continue
-                
-            # Solo aplicamos incremental a los scripts que lo soportan (Winforce y Zonificacion)
-            usa_incremental = incremental and ("Winforce" in script or "Zonificacion" in script or "Zonificación" in script)
-            ok = correr_script(script, critico=True, incremental=usa_incremental)
+        for script in ["WinforceLima2026.py", "WinforceProvincia2026.py", "Zonificación_Lima.py"]:
+            ok = correr_script(script, critico=True, incremental=False)
             if not ok:
-                log.error("Pipeline detenido en Fase 1.")
+                log.error("Pipeline detenido.")
                 sys.exit(1)
 
-        log.info("Fase 1 completada.")
+        log.info("Fase BD completada.")
 
     # ------------------------------------------------------------------
-    # FASE 2 — Extraccion de KPIs y reporte (requiere Power BI abierto)
+    # FASE DESCARGAS — Solo descarga Lima + Provincia (sin Zonificacion ni BD)
     # ------------------------------------------------------------------
-    if fase in ("ambas", "2"):
-        separador("FASE 2: REPORTE (Power BI debe estar abierto)")
+    if fase == "descargas":
+        separador("SOLO DESCARGAS (Lima + Provincia)")
+
+        for script in ["WinforceLima2026.py", "WinforceProvincia2026.py"]:
+            ok = correr_script(script, critico=True, incremental=False)
+            if not ok:
+                log.error("Pipeline detenido.")
+                sys.exit(1)
+
+        log.info("Descargas completadas.")
+
+    # ------------------------------------------------------------------
+    # FASE SEMANAL — Incremental (esta semana) + Zonificacion
+    # ------------------------------------------------------------------
+    if fase == "daily":
+        separador("SEMANAL: ESTA SEMANA")
+
+        for script in ["WinforceLima2026.py", "WinforceProvincia2026.py", "Zonificación_Lima.py"]:
+            ok = correr_script(script, critico=True, incremental=True)
+            if not ok:
+                log.error("Pipeline detenido.")
+                sys.exit(1)
+
+        log.info("Fase semanal completada.")
+
+    # ------------------------------------------------------------------
+    # FASE CONSOLIDAR — Solo consolida ventas Lima + Provincia
+    # ------------------------------------------------------------------
+    if fase == "consolidar":
+        separador("CONSOLIDAR VENTAS")
+
+        ok = correr_script("Consolidar_Ventas.py", critico=True)
+        if not ok:
+            log.error("Pipeline detenido.")
+            sys.exit(1)
+
+        log.info("Consolidacion completada.")
+
+    # ------------------------------------------------------------------
+    # FASE REPORTE — Extraccion de KPIs y reporte semanal (requiere Power BI)
+    # ------------------------------------------------------------------
+    if fase == "reporte":
+        separador("REPORTE SEMANAL (Power BI debe estar abierto)")
         log.info("IMPORTANTE: Asegurate de tener abierto 'Reporte Aliv Data AB' en Power BI Desktop.")
 
         ok = correr_script("ExtraerDatos.py", critico=True)
         if not ok:
             log.error("No se pudo extraer datos de Power BI. Verifica que Power BI Desktop este abierto.")
-            log.error("Pipeline detenido en Fase 2.")
             sys.exit(1)
 
         ok = correr_script("ReporteSemanal.py", critico=True)
         if not ok:
-            log.error("Pipeline detenido en Fase 2.")
             sys.exit(1)
 
-        log.info("Fase 2 completada.")
+        log.info("Reporte semanal completado.")
+
+    # ------------------------------------------------------------------
+    # FASE MAESTROS — Sube Cuota_Prov y Usuarios_Win a SQL
+    # ------------------------------------------------------------------
+    if fase == "maestros":
+        separador("SUBIR USUARIOS WIN + MAESTROS")
+
+        ok = correr_script("Cargar_Maestros_SQL.py", critico=True)
+        if not ok:
+            log.error("Pipeline detenido.")
+            sys.exit(1)
+
+        log.info("Carga de maestros completada.")
+
+    # ------------------------------------------------------------------
+    # FASE REPORTE DIARIO — Altas de ayer, promedio, top vendedores
+    # ------------------------------------------------------------------
+    if fase == "reporte_diario":
+        separador("REPORTE DIARIO (ayer)")
+
+        for script in ["ReporteDiarioLima.py", "ReporteDiarioProvincia.py", "ReporteDiarioProvinciaNorte.py"]:
+            ok = correr_script(script, critico=True)
+            if not ok:
+                log.error("Pipeline detenido.")
+                sys.exit(1)
+
+        log.info("Reporte diario completado.")
 
     separador("PIPELINE FINALIZADO")
     log.info(f"Log completo en: {log_file}")
 
 
 if __name__ == "__main__":
-    # Uso:
-    #   python run_pipeline.py          -> corre ambas fases
-    #   python run_pipeline.py fase1    -> solo descargas
-    #   python run_pipeline.py fase2    -> solo reporte (Power BI abierto)
-    arg = sys.argv[1].lower() if len(sys.argv) > 1 else "ambas"
-    if arg == "fase1":
-        main("1")
-    elif arg == "fase2":
-        main("2")
+    arg = sys.argv[1].lower() if len(sys.argv) > 1 else "bd"
+    if arg == "descargas":
+        main("descargas")
     elif arg == "daily":
-        main("1", incremental=True)
+        main("daily")
+    elif arg == "reporte":
+        main("reporte")
+    elif arg == "consolidar":
+        main("consolidar")
+    elif arg == "maestros":
+        main("maestros")
+    elif arg == "reporte_diario":
+        main("reporte_diario")
     else:
-        main("ambas")
+        main("bd")

@@ -17,14 +17,14 @@ def cargar_maestros():
     else:
         print(f"No se encontro Cuota_Prov en: {path_cuota}")
 
-    # 2. Usuarios_win (DESACTIVADO POR AHORA)
-    # path_usuarios = r"C:\Users\Usuario\Documents\Code Aliv\Python Automate\Morosidad\Usuarios_Win.xlsx"
-    # if os.path.exists(path_usuarios):
-    #     print(f"Procesando Usuarios_win...")
-    #     df_usuarios = pd.read_excel(path_usuarios)
-    #     upload_to_sql(df_usuarios, "Usuarios_win")
-    # else:
-    #     print(f"No se encontro Usuarios_Win en: {path_usuarios}")
+    # 2. Usuarios_win
+    path_usuarios = r"C:\Users\Usuario\Documents\Code Aliv\Python Automate\Morosidad\Usuarios_Win.xlsx"
+    if os.path.exists(path_usuarios):
+        print(f"Procesando Usuarios_win...")
+        df_usuarios = pd.read_excel(path_usuarios)
+        upload_to_sql(df_usuarios, "Usuarios_win")
+    else:
+        print(f"[AVISO] No se encontro Usuarios_Win en: {path_usuarios}")
 
     print("\nProceso de carga de maestros finalizado.")
     print("="*60)

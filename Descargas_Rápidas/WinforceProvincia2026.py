@@ -2,8 +2,6 @@ import os
 import sys
 from db_config import upload_to_sql, upload_incremental_to_sql
 import time
-import calendar
-import pandas as pd
 from datetime import datetime
 from playwright.sync_api import sync_playwright
 
@@ -128,36 +126,22 @@ def descargar_reporte_winforce():
 
             # 3. Navega a la seccion Ventas -> Ventas
             print("3. Navegando al menu Ventas -> Ventas...")
-            page.wait_for_load_state("networkidle")
-            
-            # Verificamos si ya estamos en la pagina con filtros de fecha
-            ya_en_ventas = page.locator(".flatpickr-input").count() > 0
-            
-            if ya_en_ventas:
-                print("   [INFO] Ya estamos en la pagina de ventas. Saltando navegacion.")
+
+            # Siempre navegamos: el login puede aterrizar en otra pagina (ej. Seguimiento)
+            page.get_by_text("Ventas", exact=True).first.click()
+            time.sleep(1)
+
+            ventas_options = page.get_by_text("Ventas", exact=True).all()
+            if len(ventas_options) >= 2:
+                ventas_options[1].click()
+                print("   Submenu 'Ventas' clickeado.")
             else:
-                # Hacemos clic en 'Ventas' en cualquier parte de la pagina
-                print("   Buscando menu Ventas...")
-                page.get_by_text("Ventas", exact=True).first.click()
-                time.sleep(2)
-                
-                # Clickeamos el submenu Ventas
-                ventas_options = page.get_by_text("Ventas", exact=True).all()
-                if len(ventas_options) >= 2:
-                    ventas_options[1].click()
-                    print("   Submenu 'Ventas' clickeado.")
-                else:
-                    print("   [INFO] Un solo elemento 'Ventas', continuando.")
-                
-                page.wait_for_load_state("networkidle")
-                
-                if page.locator(".flatpickr-input").count() == 0:
-                    page.screenshot(path="error_winforce.png")
-                    raise Exception("No se encontraron filtros de fecha tras navegar a Ventas. Revisa /ver-error")
-            
-            print("   Esperando que cargue la vista de ventas...")
-            page.wait_for_load_state("networkidle")
-            time.sleep(3) # Pausa extra para que flatpickr inicialice los calendarios
+                print("   [INFO] Un solo elemento 'Ventas', continuando.")
+
+            # Esperar a que aparezcan los filtros de fecha (no usar networkidle: listaVenta
+            # tiene polling continuo que lo bloquea indefinidamente)
+            page.wait_for_selector(".flatpickr-input", timeout=20000)
+            time.sleep(2)
 
             # 4. Aplica los filtros del mes actual
             print("4. Aplicando filtros (Desde - Hasta del mes actual)...")
@@ -173,30 +157,25 @@ def descargar_reporte_winforce():
             time.sleep(1)
             
             if incremental:
-                # Para modo incremental: clic en "Esta semana" (boton de acceso rapido de Winforce)
-                print("   [MODO INCREMENTAL] Usando boton 'Esta semana'...")
-                try:
-                    esta_semana = page.get_by_text("Esta semana", exact=True).first
-                    esta_semana.click()
-                    time.sleep(1)
-                    print("   Boton 'Esta semana' clickeado.")
-                except:
-                    from datetime import timedelta
-                    siete_dias_atras = hoy - timedelta(days=7)
-                    primer_dia = siete_dias_atras.strftime("%d-%m-%Y")
-                    ultimo_dia = hoy.strftime("%d-%m-%Y")
-                    print(f"   [FALLBACK] Rango manual: {primer_dia} al {ultimo_dia}")
-                    page.evaluate(f"""
-                        () => {{
-                            const inputs = document.querySelectorAll('input.flatpickr-input');
-                            if (inputs.length >= 1 && inputs[0]._flatpickr) {{
-                                inputs[0]._flatpickr.setDate('{primer_dia}', true, 'd-m-Y');
-                            }}
-                            if (inputs.length >= 2 && inputs[1]._flatpickr) {{
-                                inputs[1]._flatpickr.setDate('{ultimo_dia}', true, 'd-m-Y');
-                            }}
+                # Modo mensual (mes actual y anterior)
+                if hoy.month == 1:
+                    primer_dia_obj = hoy.replace(year=hoy.year - 1, month=12, day=1)
+                else:
+                    primer_dia_obj = hoy.replace(month=hoy.month - 1, day=1)
+                primer_dia = primer_dia_obj.strftime("%d-%m-%Y")
+                ultimo_dia = hoy.strftime("%d-%m-%Y")
+                print(f"   [MODO MENSUAL INCREMENTAL] Rango: {primer_dia} al {ultimo_dia}")
+                page.evaluate(f"""
+                    () => {{
+                        const inputs = document.querySelectorAll('input.flatpickr-input');
+                        if (inputs.length >= 1 && inputs[0]._flatpickr) {{
+                            inputs[0]._flatpickr.setDate('{primer_dia}', true, 'd-m-Y');
                         }}
-                    """)
+                        if (inputs.length >= 2 && inputs[1]._flatpickr) {{
+                            inputs[1]._flatpickr.setDate('{ultimo_dia}', true, 'd-m-Y');
+                        }}
+                    }}
+                """)
             else:
                 primer_dia = "01-01-2026"
                 ultimo_dia = hoy.strftime("%d-%m-%Y")
@@ -220,102 +199,64 @@ def descargar_reporte_winforce():
                 """)
                 print(f"   Fechas establecidas via Flatpickr API.")
             
-            time.sleep(1)
-            
-            # 5. Hace clic en "Buscar seguimiento" (nombre exacto del boton naranja)
-            print("5. Dando clic en Buscar seguimiento...")
-            page.get_by_role("button", name="Buscar seguimiento").click()
+            # Cerrar el calendario Flatpickr si quedó abierto (bloquea el click en Buscar)
+            page.keyboard.press("Escape")
+            time.sleep(0.5)
 
-            # 6. Espera que carguen los resultados
-            print("6. Esperando a que el sistema traiga los registros...")
-            time.sleep(8)
-            
-            # Verificar si hay resultados antes de intentar descargar.
-            page_content = page.content()
-            page.screenshot(path="error_winforce.png")  # foto de diagnostico
-            if 'Sin resultados que listar' in page_content or 'Ningún dato disponible' in page_content:
-                print("   [AVISO] No hay datos en el rango de fechas. Saltando descarga.")
-                return
+            # 5. Hace clic en "Buscar" (boton naranja de Ver ventas)
+            print("5. Dando clic en Buscar...")
+            page.get_by_role("button", name="Buscar", exact=True).click()
 
-            # 7 & 8. Espera por descarga al hacer clic en "Descargar"
-            print("7. Haciendo clic en el botón Descargar...")
-            with page.expect_download() as download_info:
-                page.get_by_role("button", name="Descargar").click()
-            
-            download = download_info.value
+            # 6. Esperar que la tabla tenga filas reales (no usar sleep fijo)
+            print("6. Esperando resultados de la busqueda...")
+            try:
+                page.wait_for_selector("table tbody tr td:not(.dataTables_empty)", timeout=45000)
+            except Exception:
+                sin_datos = page.locator("td.dataTables_empty").is_visible()
+                if sin_datos:
+                    print("   [AVISO] No hay datos en el rango de fechas. Saltando descarga.")
+                    return
+                raise
+            time.sleep(2)
 
-            # 9. Guarda el archivo en tu carpeta
-            # Forzamos a que sea .xlsx
-            suggested_name = download.suggested_filename
-            temp_path = os.path.join(CARPETA_DESCARGA, suggested_name)
-            download.save_as(temp_path)
-            
+            # 7. Clic en Descargar
+            print("7. Descargando Excel...")
             ruta_final = os.path.join(CARPETA_DESCARGA, "Winforce_Provincia.xlsx")
-            
-            if not suggested_name.lower().endswith(".xlsx"):
-                print(f"   Convirtiendo {suggested_name} a .xlsx...")
-                try:
-                    df = None
-                    # Leemos el archivo (podría ser .xls, .csv o HTML)
-                    if suggested_name.lower().endswith(".csv"):
-                        df = pd.read_csv(temp_path)
-                    else:
-                        try:
-                            # Intentamos como Excel real (.xls o .xlsx)
-                            df = pd.read_excel(temp_path)
-                        except Exception:
-                            # Muchos sistemas exportan HTML como .xls
-                            try:
-                                print("   Detectado posible formato HTML, reintentando lectura...")
-                                dfs = pd.read_html(temp_path)
-                                if dfs:
-                                    df = dfs[0]
-                            except Exception as e_html:
-                                print(f"   Error leyendo como HTML: {e_html}")
-                    
-                    if df is not None:
-                        df.to_excel(ruta_final, index=False)
-                        print(f"   Conversión exitosa.")
-                        # Intentamos borrar el temporal
-                        try:
-                            os.remove(temp_path)
-                        except:
-                            pass
-                    else:
-                        raise ValueError("No se pudo extraer data del archivo")
-
-                except Exception as conv_err:
-                    print(f"   Error al convertir: {conv_err}. Intentando renombrar...")
-                    # Pequeña pausa para liberar el archivo si hay un lock residual
-                    time.sleep(2)
-                    try:
-                        if os.path.exists(ruta_final): os.remove(ruta_final)
-                        os.rename(temp_path, ruta_final)
-                        print("   Archivo renombrado como alternativa.")
-                    except Exception as rename_err:
-                        print(f"   No se pudo renombrar: {rename_err}")
+            with page.expect_download(timeout=60000) as dl:
+                page.get_by_role("button", name="Descargar", exact=True).click()
+            download = dl.value
+            ext = os.path.splitext(download.suggested_filename)[1] or ".xlsx"
+            ruta_temp = os.path.join(CARPETA_DESCARGA, f"_tmp_provincia{ext}")
+            download.save_as(ruta_temp)
+            import pandas as pd
+            with open(ruta_temp, "rb") as f:
+                cabecera = f.read(9)
+            if cabecera[:5] in (b"<!DOC", b"<html", b"<HTML"):
+                # Winforce envia el reporte como tabla HTML (HTML-as-XLS)
+                tablas = pd.read_html(ruta_temp, encoding="utf-8")
+                if not tablas:
+                    os.remove(ruta_temp)
+                    raise Exception("HTML descargado pero no contiene tablas de datos.")
+                df = tablas[0]
             else:
-                # Si ya es .xlsx, solo lo movemos al nombre final
-                if os.path.exists(ruta_final):
-                    os.remove(ruta_final)
-                os.rename(temp_path, ruta_final)
+                try:
+                    df = pd.read_excel(ruta_temp, engine="openpyxl")
+                except Exception:
+                    df = pd.read_excel(ruta_temp, engine="xlrd")
+            os.remove(ruta_temp)
+            df.to_excel(ruta_final, index=False)
+            print(f"8. [OK] {len(df):,} registros guardados en: {ruta_final}")
 
-            print(f"8. [OK] El reporte se guardo correctamente en: {ruta_final}")
-            
             # Carga a SQL Server
             try:
                 print("   Iniciando carga a SQL Server...")
-                df_sql = pd.read_excel(ruta_final)
-                
                 incremental = "--incremental" in sys.argv
                 if incremental:
-                    upload_incremental_to_sql(df_sql, "winforce_provincia", "Fecha de registro")
+                    upload_incremental_to_sql(df, "winforce_provincia", "Fecha de registro")
                 else:
-                    upload_to_sql(df_sql, "winforce_provincia")
-                    
+                    upload_to_sql(df, "winforce_provincia")
             except Exception as sql_e:
                 print(f"   [SQL] Error al cargar: {sql_e}")
-            # Tu script de correo que procesa el Excel puede continuar a partir de ver este archivo generado
 
         except Exception as e:
             print(f"Ocurrio un error en la ejecucion: {e}")

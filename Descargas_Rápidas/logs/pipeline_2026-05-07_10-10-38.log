@@ -1,0 +1,11 @@
+10:10:38  INFO      Log guardado en: C:\Users\Usuario\Documents\Code Aliv\Python Automate\Descargas_Rápidas\logs\pipeline_2026-05-07_10-10-38.log
+10:10:38  INFO      Fecha de ejecucion: 2026-05-07 10:10
+10:10:38  INFO      =======================================================
+10:10:38  INFO        REPORTE DIARIO (ayer)
+10:10:38  INFO      =======================================================
+10:10:38  INFO      Iniciando: ReporteDiario.py 
+10:10:40  ERROR     FALLO (1s): ReporteDiario.py
+10:10:40  ERROR         Generando reporte diario para: 06/05/2026
+10:10:40  ERROR         Error conectando a Power BI: No se encontró Power BI Desktop abierto.
+10:10:40  ERROR     Paso critico fallido — pipeline detenido.
+10:10:40  ERROR     Pipeline detenido.

@@ -1,0 +1,15 @@
+10:15:58  INFO      Log guardado en: C:\Users\Usuario\Documents\Code Aliv\Python Automate\Descargas_Rápidas\logs\pipeline_2026-05-07_10-15-58.log
+10:15:58  INFO      Fecha de ejecucion: 2026-05-07 10:15
+10:15:58  INFO      =======================================================
+10:15:58  INFO        REPORTE DIARIO (ayer)
+10:15:58  INFO      =======================================================
+10:15:58  INFO      Iniciando: ReporteDiario.py 
+10:16:03  INFO      OK (4s): ReporteDiario.py
+10:16:03  INFO          Generando reporte diario para: 06/05/2026
+10:16:03  INFO             Datos: 0 altas C/E Hab. MTD · 0 ayer · 299 Lima MTD
+10:16:03  INFO          PDF generado: Reporte_Diario_Aliv_2026-05-06.pdf
+10:16:03  INFO      Reporte diario completado.
+10:16:03  INFO      =======================================================
+10:16:03  INFO        PIPELINE FINALIZADO
+10:16:03  INFO      =======================================================
+10:16:03  INFO      Log completo en: C:\Users\Usuario\Documents\Code Aliv\Python Automate\Descargas_Rápidas\logs\pipeline_2026-05-07_10-15-58.log

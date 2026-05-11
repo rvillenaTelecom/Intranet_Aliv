@@ -1,0 +1,445 @@
+# ALiV TELECOM — Dashboard de Morosidad
+## Documentación Completa v2.0 · Mayo 2026
+
+---
+
+## Tabla de contenidos
+
+1. [Arquitectura del sistema](#1-arquitectura-del-sistema)
+2. [Fuente de datos](#2-fuente-de-datos)
+3. [Categorías de clientes](#3-categorías-de-clientes)
+4. [Medidas DAX](#4-medidas-dax)
+5. [Dashboard Power BI](#5-dashboard-power-bi)
+6. [Pipeline de automatización](#6-pipeline-de-automatización)
+7. [Proceso de actualización](#7-proceso-de-actualización)
+8. [Glosario](#8-glosario)
+
+---
+
+## 1. Arquitectura del sistema
+
+El sistema tiene tres capas: extracción, procesamiento y visualización. El objetivo es tener el dashboard actualizado diariamente de forma automática.
+
+### 1.1 Componentes
+
+| Capa | Componente | Descripción |
+|------|-----------|-------------|
+| Extracción | Sistema Aliv (web) | Reporte interno con todos los clientes instalados del año |
+| Extracción | Python + Selenium | Scraper que hace login automático y descarga el reporte |
+| Procesamiento | `pipeline_morosidad.py` | Limpia, clasifica y sube los datos |
+| Almacenamiento | SQL Server `Aliv_DB` | Tabla `morosidad_diaria` actualizada cada día |
+| Visualización | Power BI Desktop | Dashboard conectado directo al SQL Server |
+| Automatización | Windows Task Scheduler | Ejecuta el pipeline a las 6:00 AM todos los días |
+
+### 1.2 Flujo diario
+
+```
+6:00 AM
+  → Task Scheduler ejecuta ejecutar_pipeline.bat
+  → Python abre Chrome y hace login en sistema Aliv
+  → Aplica filtros de fecha (01-01-2026 hasta hoy)
+  → Descarga el reporte (Ventas Win Activas)
+  → Procesa y limpia los datos
+  → Sube a SQL Server (reemplaza tabla completa)
+  → Power BI refresca al abrir o con Refresh manual
+```
+
+### 1.3 Archivos del sistema
+
+| Archivo | Función |
+|---------|---------|
+| `pipeline_morosidad.py` | Script principal — descarga, procesa y sube a SQL |
+| `ejecutar_pipeline.bat` | Ejecuta el pipeline y guarda logs diarios |
+| `Usuarios_Win.xlsx` | Vendedores y agencias para el cruce |
+| `Morosidad Dashboard.pbix` | Archivo Power BI |
+| `logs/` | Registro diario de ejecuciones |
+
+---
+
+## 2. Fuente de datos
+
+### 2.1 Tabla en SQL Server
+
+- **Servidor:** `.\SQLEXPRESS`
+- **Base de datos:** `Aliv_DB`
+- **Tabla:** `morosidad_diaria`
+- **Estrategia:** Full refresh diario — se reemplaza toda la tabla cada día
+
+### 2.2 Columnas principales
+
+| Columna SQL | Descripción |
+|-------------|-------------|
+| `DNI_Carnet_Extraj_` | Identificador único del cliente |
+| `Nombre_y_Apellidos` | Nombre completo |
+| `Departamento / Provincia / Distrito` | Ubicación geográfica |
+| `Vendedor / Supervisor` | Responsables comerciales |
+| `Canal` | `FREELANCE` o `AGENTE` |
+| `Paquete` | Nombre del plan contratado |
+| `Precio_paquete` | Monto mensual en soles |
+| `Fecha_Activacion` | Fecha real de instalación |
+| `Codigo_de_Abono` | ID único del servicio en Win |
+| `Estado_M1 / M2 / M3 / M4` | Estado de pago en cada recibo |
+| `Deuda_M1 / M2 / M3 / M4` | Monto adeudado en cada recibo |
+| `Fecha_Actualizacion` | Fecha en que corrió el pipeline |
+
+### 2.3 Sistema de recibos
+
+Win hace seguimiento a cada cliente durante sus primeros **4 meses** de servicio:
+
+| Recibo | Mes | Vence el |
+|--------|-----|----------|
+| M1 | Mes 1 | 28 del mes de instalación |
+| M2 | Mes 2 | 28 del mes siguiente |
+| M3 | Mes 3 | 28 del tercer mes |
+| M4 | Mes 4 | 28 del cuarto mes |
+
+### 2.4 Grupos Win
+
+| Grupo | Día de instalación | Vence el |
+|-------|--------------------|----------|
+| Grupo 01 | Del 1 al 22 del mes | 28 del mismo mes |
+| Grupo 02 | Del 23 al 31 del mes | 28 del mes siguiente |
+
+---
+
+## 3. Categorías de clientes
+
+Cada cliente tiene un estado en cada recibo que determina si es moroso o está al día.
+
+| Categoría | Qué significa | Moroso oficial | Riesgo real |
+|-----------|--------------|----------------|-------------|
+| **Cliente Pago** | El titular pagó directamente | No | No |
+| **Tercero Pago** | Pagó alguien más (familiar, inquilino) | No | ⚠️ SÍ |
+| **Churn** | Nunca pagó, dado de baja definitivamente | ✅ SÍ | SÍ |
+| **Cliente de Baja** | Win lo dio de baja del servicio | ✅ SÍ | SÍ |
+| **Pendiente** | Aún en evaluación | No | En evaluación |
+| **Sin dato** | La cohorte aún no llegó a ese recibo | No aplica | No aplica |
+
+> **⚠️ IMPORTANTE:** Tercero Pago es un churn disfrazado. La **tasa de riesgo real** incluye Tercero Pago además de Churn y Baja.
+
+### Fórmulas de morosidad
+
+```
+Tasa Morosidad (oficial) = (Churn + Baja) ÷ Total          → lo que Win penaliza
+Tasa Riesgo Real         = (Churn + Baja + Tercero) ÷ Total → exposición real
+```
+
+---
+
+## 4. Medidas DAX
+
+Todas las medidas están en la tabla **`Measure Table`** organizada en 6 carpetas.  
+La tabla de datos es **`Ventas_Win_Activas`**.
+
+### Carpeta 1 — Conteos
+
+```dax
+Total Clientes =
+COUNTROWS(Ventas_Win_Activas)
+
+Total Morosos =
+CALCULATE(
+    COUNTROWS(Ventas_Win_Activas),
+    Ventas_Win_Activas[Estado_M1] IN {"CHURN", "CLIENTE DE BAJA"}
+)
+
+Total Churn =
+CALCULATE(COUNTROWS(Ventas_Win_Activas), Ventas_Win_Activas[Estado_M1] = "CHURN")
+
+Total Baja =
+CALCULATE(COUNTROWS(Ventas_Win_Activas), Ventas_Win_Activas[Estado_M1] = "CLIENTE DE BAJA")
+
+Total Cliente Pago =
+CALCULATE(COUNTROWS(Ventas_Win_Activas), Ventas_Win_Activas[Estado_M1] = "CLIENTE PAGO")
+
+Total Tercero Pago =
+CALCULATE(COUNTROWS(Ventas_Win_Activas), Ventas_Win_Activas[Estado_M1] = "TERCERO PAGO")
+
+Total En Riesgo Real =
+CALCULATE(
+    COUNTROWS(Ventas_Win_Activas),
+    Ventas_Win_Activas[Estado_M1] IN {"CHURN", "CLIENTE DE BAJA", "TERCERO PAGO"}
+)
+```
+
+### Carpeta 2 — Tasas
+
+```dax
+Tasa Morosidad =
+DIVIDE([Total Morosos], [Total Clientes], 0)
+
+Tasa Morosidad % =
+FORMAT([Tasa Morosidad], "0.00%")
+
+Tasa Riesgo Real =
+DIVIDE([Total En Riesgo Real], [Total Clientes], 0)
+
+Tasa Riesgo Real % =
+FORMAT([Tasa Riesgo Real], "0.00%")
+
+Tasa Pago =
+DIVIDE([Total Cliente Pago], [Total Clientes], 0)
+```
+
+### Carpeta 3 — Umbral Win
+
+```dax
+Umbral Win = 0.045
+
+Margen vs Umbral = [Umbral Win] - [Tasa Morosidad]
+
+Estado Umbral =
+IF([Tasa Morosidad] > [Umbral Win], "⚠ Sobre umbral", "✓ Dentro del umbral")
+
+Exceso Morosos =
+MAX(INT([Total Clientes] * [Tasa Morosidad]) - INT([Total Clientes] * [Umbral Win]), 0)
+
+Mensaje Alerta =
+VAR tasa = [Tasa Morosidad]
+VAR exceso = [Exceso Morosos]
+RETURN
+IF(
+    tasa > [Umbral Win],
+    "⚠ Morosidad en " & FORMAT(tasa,"0.00%") & " — " & exceso & " clientes sobre el umbral",
+    "✓ Morosidad en " & FORMAT(tasa,"0.00%") & " — Dentro del umbral Win de 4.5%"
+)
+```
+
+### Carpeta 4 — Deuda
+
+```dax
+Deuda Total M1 = SUM(Ventas_Win_Activas[Deuda_M1])
+Deuda Total M2 = SUM(Ventas_Win_Activas[Deuda_M2])
+Deuda Total M3 = SUM(Ventas_Win_Activas[Deuda_M3])
+Deuda Total M4 = SUM(Ventas_Win_Activas[Deuda_M4])
+
+Deuda Total Acumulada = [Deuda Total M1] + [Deuda Total M2] + [Deuda Total M3] + [Deuda Total M4]
+
+Deuda Promedio por Moroso =
+DIVIDE(
+    CALCULATE(SUM(Ventas_Win_Activas[Deuda_M1]), Ventas_Win_Activas[Estado_M1] IN {"CHURN","CLIENTE DE BAJA"}),
+    [Total Morosos], 0
+)
+```
+
+### Carpeta 5 — Supervisores
+
+```dax
+Estado Supervisor =
+IF([Tasa Morosidad] >= 0.10, "🔴 CRÍTICO",
+IF([Tasa Morosidad] >= 0.045, "🟠 SOBRE UMBRAL",
+IF([Tasa Morosidad] >= 0.03,  "🟡 EN RIESGO",
+"🟢 OK")))
+
+Color Tasa =
+IF([Tasa Morosidad] >= 0.10, "#FF5F5F",
+IF([Tasa Morosidad] >= 0.045, "#FBBF24",
+IF([Tasa Morosidad] >= 0.03, "#F47920",
+"#2DD4BF")))
+```
+
+### Carpeta 6 — Gauge
+
+```dax
+Gauge Morosidad =
+ROUND([Tasa Morosidad] * 100, 2)
+```
+> Escala 0-30 para el visual gauge. El destino se configura en 4.5.
+
+---
+
+## 5. Dashboard Power BI
+
+### 5.1 Paleta de colores
+
+| Elemento | HEX | Uso |
+|----------|-----|-----|
+| Fondo canvas | `#0D0F1A` | Fondo de la página |
+| Fondo tarjetas | `#1A1D33` | Cards, paneles |
+| Naranja Aliv | `#F47920` | Acento principal, umbral |
+| Verde OK | `#2DD4BF` | Dentro del umbral, pago |
+| Rojo Alerta | `#FF5F5F` | Sobre umbral, crítico |
+| Ámbar Riesgo | `#FBBF24` | Entre 4.5% y 10% |
+| Azul Tercero | `#60A5FA` | Tercero Pago |
+| Texto principal | `#F0EFE8` | Valores de KPIs |
+| Texto subtítulos | `#8A8FAD` | Labels, texto secundario |
+
+### 5.2 Los 6 KPIs
+
+| KPI | Medida | Color borde | Color valor |
+|-----|--------|-------------|-------------|
+| Total Clientes | `[Total Clientes]` | `#2DD4BF` | `#2DD4BF` |
+| Total Morosos | `[Total Morosos]` | `#FF5F5F` | `#FF5F5F` |
+| Tasa Morosidad | `[Tasa Morosidad %]` | `#FF5F5F` | `#FF5F5F` |
+| Deuda Total M1 | `[Deuda Total M1]` | `#F47920` | `#F47920` |
+| Tasa Riesgo Real | `[Tasa Riesgo Real %]` | `#FBBF24` | `#FBBF24` |
+| Estado Umbral | `[Estado Umbral]` | `#F47920` | Condicional |
+
+### 5.3 Configuración de KPI Cards
+
+```
+Format → Canvas background : #0D0F1A · Transparencia 0%
+Format → Visual background : #1A1D33 · Transparencia 0%
+Format → Border            : Top only · grosor 3px · color según tabla
+Callout value              : tamaño 32 · color según tabla
+Category label             : texto personalizado · #8A8FAD · tamaño 11
+```
+
+### 5.4 Formato condicional (siempre usar Number, no Percent)
+
+| Regla | Desde | Hasta | Fondo | Texto |
+|-------|-------|-------|-------|-------|
+| OK | `0` | `0.03` Number | `#0D2E2A` | `#2DD4BF` |
+| En riesgo | `0.03` | `0.045` Number | `#2E1F00` | `#F47920` |
+| Sobre umbral | `0.045` | `0.10` Number | `#2E1A00` | `#FBBF24` |
+| Crítico | `0.10` | Máx. Number | `#2E0A0A` | `#FF5F5F` |
+
+> ⚠️ **CRÍTICO:** Usar **Number** siempre. Con Percent, Power BI interpreta `0.0377` como `0.0377%` en vez de `3.77%`.
+
+### 5.5 Gauge
+
+- **Visual:** Medidor (Gauge)
+- **Valor:** `[Gauge Morosidad]`
+- **Mínimo:** `0` · **Máximo:** `30` · **Destino:** `4.5`
+- **Color relleno:** degradado `#2DD4BF` → `#FF5F5F`
+- **Línea de destino:** `#F47920` · grosor 3px
+
+### 5.6 Tabla de supervisores
+
+| Columna | Campo | Formato |
+|---------|-------|---------|
+| Supervisor | `Ventas_Win_Activas[Supervisor]` | Texto |
+| Agencia | `Ventas_Win_Activas[Agencia]` | Texto |
+| Total Clientes | `[Total Clientes]` | `#,##0` |
+| Total Morosos | `[Total Morosos]` | `#,##0` |
+| Tasa M1 | `[Tasa Morosidad]` | `0.00%` + color condicional + barra |
+| Deuda Total M1 | `[Deuda Total M1]` | `S/ #,##0` |
+| Estado | `[Estado Supervisor]` | Texto con emoji |
+
+---
+
+## 6. Pipeline de automatización
+
+### 6.1 Configuración
+
+```python
+CONFIG = {
+    "url_login":   "https://alivtelecom.com/alivsistemaventas/index2.php",
+    "usuario":     "rramirez",
+    "sql_server":  r".\SQLEXPRESS",
+    "sql_db":      "Aliv_DB",
+    "sql_tabla":   "morosidad_diaria",
+}
+```
+
+### 6.2 Módulo 1 — Scraper
+
+Usa Selenium para:
+1. Abrir Chrome (modo visible para evitar anti-bots)
+2. Hacer login con usuario/contraseña
+3. Navegar a **Ventas Win > Ventas Win Activas**
+4. Aplicar filtros: fecha `01-01-2026` hasta hoy
+5. Hacer clic en **Exportar Datos**
+6. Esperar la descarga (máximo 120 segundos)
+
+### 6.3 Módulo 2 — Procesamiento
+
+- Lee el archivo HTML disfrazado de `.xls`
+- Sanitiza nombres de columnas para SQL Server (sin caracteres especiales)
+- Agrega columna `Fecha_Actualizacion` con la fecha del día
+
+### 6.4 Módulo 3 — Carga a SQL
+
+- Conecta con **Windows Authentication** (`Trusted_Connection=yes`)
+- Reemplaza la tabla completa (`if_exists="replace"`)
+- Sube de a 1,000 filas para no saturar
+- Crea índices en `DNI` y `Mes_Cohorte` para optimizar Power BI
+
+### 6.5 Instalación
+
+```bash
+pip install selenium webdriver-manager pandas pyodbc sqlalchemy
+```
+
+Además requiere:
+- Google Chrome instalado
+- ODBC Driver 17 for SQL Server
+
+### 6.6 Programar con Task Scheduler
+
+1. Buscar **Task Scheduler** en Windows
+2. **Create Basic Task** → nombre: `Pipeline Morosidad Aliv`
+3. **Trigger:** Daily → hora: `06:00 AM`
+4. **Action:** Start a program → ruta del `.bat`
+5. Finish
+
+---
+
+## 7. Proceso de actualización
+
+### 7.1 Actualización diaria (automática)
+
+El pipeline corre solo a las 6:00 AM. No requiere intervención.
+
+Verificar que funcionó en: `logs/pipeline_YYYYMMDD.log`
+
+Si hay error: revisar el log y correr manualmente:
+```bash
+python pipeline_morosidad.py
+```
+
+### 7.2 Actualización mensual (manual)
+
+Cuando llegan nuevos archivos de Win para el dashboard de cohortes:
+
+1. Poner los nuevos `.xlsx` en la carpeta junto a `procesar_morosidad.py`
+2. El script detecta automáticamente el recibo más reciente por cohorte
+3. Ejecutar: `python procesar_morosidad.py`
+4. Los archivos se actualizan en `Recibos_Resume/`
+5. En Power BI: **Home → Refresh**
+
+### 7.3 Cuando cambian vendedores
+
+1. Actualizar `Usuarios_Win.xlsx` con los vendedores nuevos
+2. Poner el archivo en la carpeta raíz
+3. El cruce de agencias se actualiza en la siguiente ejecución automática
+
+### 7.4 Estructura de carpeta
+
+```
+📁 Carpeta raíz/
+  ├── pipeline_morosidad.py
+  ├── ejecutar_pipeline.bat
+  ├── Usuarios_Win.xlsx
+  ├── Morosidad Dashboard.pbix
+  └── 📁 logs/
+        └── pipeline_20260511.log
+```
+
+---
+
+## 8. Glosario
+
+| Término | Definición |
+|---------|-----------|
+| **Morosidad** | Situación de un cliente que no pagó su recibo dentro del plazo establecido |
+| **Umbral Win** | 4.5% — porcentaje máximo de morosidad permitido. Superarlo puede generar penalidades |
+| **Churn** | Cliente que nunca pagó y fue dado de baja definitivamente por Win |
+| **Cliente de Baja** | Cliente que Win dio de baja del servicio por deuda u otro motivo |
+| **Tercero Pago** | El recibo fue pagado por alguien distinto al titular. Señal de riesgo oculto |
+| **Cohorte** | Grupo de clientes instalados en el mismo mes |
+| **M1 / M2 / M3 / M4** | Primer, segundo, tercer y cuarto recibo de seguimiento |
+| **Grupo 01** | Clientes instalados del 1 al 22. Vence el 28 del mismo mes |
+| **Grupo 02** | Clientes instalados del 23 al 31. Vence el 28 del mes siguiente |
+| **Tasa Riesgo Real** | Incluye Churn + Baja + Tercero Pago. Más alta que la oficial |
+| **Pipeline** | Proceso automatizado que descarga, procesa y sube los datos diariamente |
+| **Scraper** | Script Python que controla Chrome para descargar el reporte automáticamente |
+| **SQL Server** | Base de datos donde se almacena `morosidad_diaria` actualizada cada día |
+| **DAX** | Lenguaje de fórmulas de Power BI para medidas y columnas calculadas |
+| **MCP** | Model Context Protocol — permite a Claude crear medidas DAX directamente en Power BI |
+| **Gauge Morosidad** | Medida DAX que convierte la tasa a escala 0-30 para el visual velocímetro |
+| **Color Tasa** | Medida DAX que devuelve un hex para formato condicional automático |
+
+---
+
+*ALiV Telecom · Distribuidora Win · Documentación v2.0 · Mayo 2026 · Confidencial*

@@ -1,0 +1,15 @@
+17:28:54  INFO      Log guardado en: C:\Users\Usuario\Documents\Code Aliv\Python Automate\Descargas_Rápidas\logs\pipeline_2026-05-06_17-28-54.log
+17:28:54  INFO      Fecha de ejecucion: 2026-05-06 17:28
+17:28:54  INFO      =======================================================
+17:28:54  INFO        REPORTE DIARIO (ayer)
+17:28:54  INFO      =======================================================
+17:28:54  INFO      Iniciando: ReporteDiario.py 
+17:28:56  INFO      OK (1s): ReporteDiario.py
+17:28:56  INFO          Generando reporte diario para: 05/05/2026
+17:28:56  INFO          Datos cargados desde SQL.
+17:28:56  INFO          PDF generado: C:\Users\Usuario\Documents\Code Aliv\Python Automate\Descargas_Rápidas\Reporte_Diario_Aliv_2026-05-05.pdf
+17:28:56  INFO      Reporte diario completado.
+17:28:56  INFO      =======================================================
+17:28:56  INFO        PIPELINE FINALIZADO
+17:28:56  INFO      =======================================================
+17:28:56  INFO      Log completo en: C:\Users\Usuario\Documents\Code Aliv\Python Automate\Descargas_Rápidas\logs\pipeline_2026-05-06_17-28-54.log

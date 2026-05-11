@@ -1,0 +1,106 @@
+16:43:11  INFO      Log guardado en: C:\Users\Usuario\Documents\Code Aliv\Python Automate\Descargas_Rápidas\logs\pipeline_2026-05-06_16-43-11.log
+16:43:11  INFO      Fecha de ejecucion: 2026-05-06 16:43
+16:43:11  INFO      =======================================================
+16:43:11  INFO        DESCARGA 2026 + ZONIFICACION + BD
+16:43:11  INFO      =======================================================
+16:43:11  INFO      Iniciando: WinforceLima2026.py 
+16:44:30  INFO      OK (78s): WinforceLima2026.py
+16:44:30  INFO          Iniciando automatizaci�n con Playwright...
+16:44:30  INFO          1. Accediendo a la pagina de login...
+16:44:30  INFO             Pagina cargada: Login Page - URL: https://accesoventas.win.pe/
+16:44:30  INFO          2. Iniciando sesion con Microsoft...
+16:44:30  INFO             Escribiendo correo...
+16:44:30  INFO             Escribiendo contrasena...
+16:44:30  INFO             Pantalla '�Mantener iniciada la sesi�n?'...
+16:44:30  INFO          2.5 Redirigiendo de vuelta a Winforce y cargando Dashboard...
+16:44:30  INFO             Dashboard cargado correctamente en intento 1.
+16:44:30  INFO          3. Navegando al menu Ventas -> Ventas...
+16:44:30  INFO             Submenu 'Ventas' clickeado.
+16:44:30  INFO          4. Aplicando filtros (Desde - Hasta del mes actual)...
+16:44:30  INFO             [MODO COMPLETO] Rango: 01-01-2026 al 06-05-2026
+16:44:30  INFO             Fechas establecidas via Flatpickr API.
+16:44:30  INFO          5. Dando clic en Buscar...
+16:44:30  INFO          6. Esperando resultados de la busqueda...
+16:44:30  INFO          7. Descargando Excel...
+16:44:30  INFO          8. [OK] 10,954 registros guardados en: C:\Users\Usuario\Documents\Code Aliv\Python Automate\Descargas_R�pidas\descargas_winforce_Dept\Winforce_Lima.xlsx
+16:44:30  INFO          Cerrando navegador...
+16:44:30  INFO      Iniciando: WinforceProvincia2026.py 
+16:46:08  INFO      OK (98s): WinforceProvincia2026.py
+16:46:08  INFO          Iniciando automatizaci�n con Playwright...
+16:46:08  INFO          1. Accediendo a la pagina de login...
+16:46:08  INFO          2. Iniciando sesion con Microsoft...
+16:46:08  INFO             Escribiendo correo...
+16:46:08  INFO             Escribiendo contrasena...
+16:46:08  INFO             Pantalla '�Mantener iniciada la sesi�n?'...
+16:46:08  INFO          2.5 Redirigiendo de vuelta a Winforce y cargando Dashboard...
+16:46:08  INFO             Dashboard cargado correctamente en intento 1.
+16:46:08  INFO          3. Navegando al menu Ventas -> Ventas...
+16:46:08  INFO             Submenu 'Ventas' clickeado.
+16:46:08  INFO          4. Aplicando filtros (Desde - Hasta del mes actual)...
+16:46:08  INFO             [MODO COMPLETO] Rango: 01-01-2026 al 06-05-2026
+16:46:08  INFO             Fechas establecidas via Flatpickr API.
+16:46:08  INFO          5. Dando clic en Buscar...
+16:46:08  INFO          6. Esperando resultados de la busqueda...
+16:46:08  INFO          7. Descargando Excel...
+16:46:08  INFO          8. [OK] 6,185 registros guardados en: C:\Users\Usuario\Documents\Code Aliv\Python Automate\Descargas_R�pidas\descargas_winforce_Dept\Winforce_Provincia.xlsx
+16:46:08  INFO             Iniciando carga a SQL Server...
+16:46:08  INFO            [DB] Carga exitosa en: winforce_provincia (6185 registros)
+16:46:08  INFO          Cerrando navegador...
+16:46:08  INFO      Iniciando: Zonificación_Lima.py 
+16:51:01  INFO      OK (292s): Zonificación_Lima.py
+16:51:01  INFO          ============================================================
+16:51:01  INFO            ALIV TELECOM - Clasificador de Zonas WinForce
+16:51:01  INFO            Fuente: PARAMETROS_VENTAS.kml
+16:51:01  INFO          ============================================================
+16:51:01  INFO          [16:46:10] Leyendo KML...
+16:51:01  INFO          [16:46:10]   Poligonos P2 (celeste): 129
+16:51:01  INFO          [16:46:10]   Poligonos No Venta (rojo): 9
+16:51:01  INFO          [16:46:10] Leyendo WinForce desde: descargas_winforce_Dept\Winforce_Lima.xlsx
+16:51:01  INFO          [16:46:17]   Registros cargados: 10,954
+16:51:01  INFO          [16:46:17]   Con coordenadas: 10,954
+16:51:01  INFO          [16:46:17]   Sin coordenadas: 0
+16:51:01  INFO          [16:46:17]   En bbox de Lima: 10,885
+16:51:01  INFO          [16:46:17] Clasificando registros por zona (puede tardar 1-2 min)...
+16:51:01  INFO          
+16:51:01  INFO          ============================================================
+16:51:01  INFO            RESULTADO DE CLASIFICACION
+16:51:01  INFO          ============================================================
+16:51:01  INFO            Sin modificaci�n (201)        6,219  (56.8%)
+16:51:01  INFO            Zona P2 (401)                 4,139  (37.8%)
+16:51:01  INFO            No Venta                        596  (5.4%)
+16:51:01  INFO          
+16:51:01  INFO            Top distritos en Zona No Venta:
+16:51:01  INFO              SAN JUAN DE LURIGANCHO           271
+16:51:01  INFO              COMAS                            174
+16:51:01  INFO              VILLA EL SALVADOR                 87
+16:51:01  INFO              CARABAYLLO                        47
+16:51:01  INFO              VILLA MARIA DEL TRIUNFO           11
+16:51:01  INFO              SAN JUAN DE MIRAFLORES             5
+16:51:01  INFO              INDEPENDENCIA                      1
+16:51:01  INFO          
+16:51:01  INFO            Registros en Zona P2: 4,139
+16:51:01  INFO          ============================================================
+16:51:01  INFO          [16:46:25] Modificando archivo original: descargas_winforce_Dept\Winforce_Lima.xlsx...
+16:51:01  INFO          [16:50:19] Cambios aplicados correctamente en: descargas_winforce_Dept\Winforce_Lima.xlsx
+16:51:01  INFO          
+16:51:01  INFO          ============================================================
+16:51:01  INFO            [OK] PROCESO COMPLETADO - ARCHIVO ACTUALIZADO
+16:51:01  INFO            Ruta: descargas_winforce_Dept\Winforce_Lima.xlsx
+16:51:01  INFO            Hojas actualizadas:
+16:51:01  INFO              1. Resumen � conteo por zona
+16:51:01  INFO              2. No Venta � registros cr�ticos
+16:51:01  INFO              3. Data Completa � todos los registros con Zona_KML
+16:51:01  INFO          
+16:51:01  INFO            Nota: El archivo original ha sido modificado con la
+16:51:01  INFO            nueva clasificaci�n. Ya puedes usarlo en Power BI.
+16:51:01  INFO          ============================================================
+16:51:01  INFO          
+16:51:01  INFO            Iniciando carga a SQL Server (winforce_lima)...
+16:51:01  INFO            [DB] Carga exitosa en: winforce_lima (10954 registros)
+16:51:01  INFO          
+16:51:01  INFO          Zonificacion exitosa
+16:51:01  INFO      Fase BD completada.
+16:51:01  INFO      =======================================================
+16:51:01  INFO        PIPELINE FINALIZADO
+16:51:01  INFO      =======================================================
+16:51:01  INFO      Log completo en: C:\Users\Usuario\Documents\Code Aliv\Python Automate\Descargas_Rápidas\logs\pipeline_2026-05-06_16-43-11.log

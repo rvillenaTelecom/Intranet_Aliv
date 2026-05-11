@@ -1,0 +1,25 @@
+12:17:04  INFO      Log guardado en: C:\Users\Usuario\Documents\Code Aliv\Python Automate\Descargas_Rápidas\logs\pipeline_2026-05-07_12-17-04.log
+12:17:04  INFO      Fecha de ejecucion: 2026-05-07 12:17
+12:17:04  INFO      =======================================================
+12:17:04  INFO        REPORTE DIARIO (ayer)
+12:17:04  INFO      =======================================================
+12:17:04  INFO      Iniciando: ReporteDiarioLima.py 
+12:17:06  INFO      OK (1s): ReporteDiarioLima.py
+12:17:06  INFO          Generando reporte diario para: 06/05/2026
+12:17:06  INFO             Datos: 38 altas C/E Hab. MTD · 4 ayer · 319 Lima MTD
+12:17:06  INFO          PDF generado: Reporte_Diario_CE_Aliv_2026-05-06.pdf
+12:17:06  INFO      Iniciando: ReporteDiarioProvincia.py 
+12:17:07  INFO      OK (1s): ReporteDiarioProvincia.py
+12:17:07  INFO          Generando reporte diario Provincia para: 06/05/2026
+12:17:07  INFO             Datos: 149 altas MTD · 22 ayer · 228 preventas MTD · 7 departamentos
+12:17:07  INFO          PDF generado: Reporte_Diario_Provincia_2026-05-06.pdf
+12:17:07  INFO      Iniciando: ReporteDiarioProvinciaNorte.py 
+12:17:08  INFO      OK (1s): ReporteDiarioProvinciaNorte.py
+12:17:08  INFO          Generando reporte diario Provincia Norte para: 06/05/2026
+12:17:08  INFO             Datos: 142 altas MTD · 21 ayer · 220 preventas MTD · 4 departamentos Norte
+12:17:08  INFO          PDF generado: Reporte_Diario_ProvNorte_2026-05-06.pdf
+12:17:08  INFO      Reporte diario completado.
+12:17:08  INFO      =======================================================
+12:17:08  INFO        PIPELINE FINALIZADO
+12:17:08  INFO      =======================================================
+12:17:08  INFO      Log completo en: C:\Users\Usuario\Documents\Code Aliv\Python Automate\Descargas_Rápidas\logs\pipeline_2026-05-07_12-17-04.log
