@@ -7,6 +7,7 @@ from datetime import datetime
 from pathlib import Path
 
 BASE_DIR = Path(__file__).parent
+SCRIPTS_DIR = BASE_DIR / "Pythons"
 LOG_DIR = BASE_DIR / "logs"
 LOG_DIR.mkdir(exist_ok=True)
 
@@ -27,7 +28,7 @@ log = logging.getLogger(__name__)
 
 
 def correr_script(nombre_script: str, critico: bool = True, incremental: bool = False) -> bool:
-    script_path = BASE_DIR / nombre_script
+    script_path = SCRIPTS_DIR / nombre_script
     log.info(f"Iniciando: {nombre_script} {'[INCREMENTAL]' if incremental else ''}")
     inicio = datetime.now()
 
@@ -121,7 +122,7 @@ def main(fase: str = "bd"):
     if fase == "consolidar":
         separador("CONSOLIDAR VENTAS")
 
-        ok = correr_script("Consolidar_Ventas.py", critico=True)
+        ok = correr_script("Carga_WinReporteSemanal.py", critico=True)
         if not ok:
             log.error("Pipeline detenido.")
             sys.exit(1)
@@ -135,13 +136,9 @@ def main(fase: str = "bd"):
         separador("REPORTE SEMANAL (Power BI debe estar abierto)")
         log.info("IMPORTANTE: Asegurate de tener abierto 'Reporte Aliv Data AB' en Power BI Desktop.")
 
-        ok = correr_script("ExtraerDatos.py", critico=True)
+        ok = correr_script("Extraer_Datos_PowerBI.py", critico=True)
         if not ok:
             log.error("No se pudo extraer datos de Power BI. Verifica que Power BI Desktop este abierto.")
-            sys.exit(1)
-
-        ok = correr_script("ReporteSemanal.py", critico=True)
-        if not ok:
             sys.exit(1)
 
         log.info("Reporte semanal completado.")
@@ -152,7 +149,7 @@ def main(fase: str = "bd"):
     if fase == "maestros":
         separador("SUBIR USUARIOS WIN + MAESTROS")
 
-        ok = correr_script("Cargar_Maestros_SQL.py", critico=True)
+        ok = correr_script("Carga_UsuariosWin.py", critico=True)
         if not ok:
             log.error("Pipeline detenido.")
             sys.exit(1)

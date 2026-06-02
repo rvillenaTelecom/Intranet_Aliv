@@ -1,445 +1,1153 @@
-# ALiV TELECOM — Dashboard de Morosidad
-## Documentación Completa v2.0 · Mayo 2026
+# 📊 Documentación Técnica — Reporte Aliv Data AB
+**Archivo:** Reporte Aliv Data AB.pbix  
+**Empresa:** Aliv Telecom SAC — Distribuidor Win  
+**Región:** Lima y Provincia  
+**Última actualización de este doc:** 15-05-2026  
 
 ---
 
-## Tabla de contenidos
+## Índice
 
-1. [Arquitectura del sistema](#1-arquitectura-del-sistema)
-2. [Fuente de datos](#2-fuente-de-datos)
-3. [Categorías de clientes](#3-categorías-de-clientes)
-4. [Medidas DAX](#4-medidas-dax)
-5. [Dashboard Power BI](#5-dashboard-power-bi)
-6. [Pipeline de automatización](#6-pipeline-de-automatización)
-7. [Proceso de actualización](#7-proceso-de-actualización)
-8. [Glosario](#8-glosario)
-
----
-
-## 1. Arquitectura del sistema
-
-El sistema tiene tres capas: extracción, procesamiento y visualización. El objetivo es tener el dashboard actualizado diariamente de forma automática.
-
-### 1.1 Componentes
-
-| Capa | Componente | Descripción |
-|------|-----------|-------------|
-| Extracción | Sistema Aliv (web) | Reporte interno con todos los clientes instalados del año |
-| Extracción | Python + Selenium | Scraper que hace login automático y descarga el reporte |
-| Procesamiento | `pipeline_morosidad.py` | Limpia, clasifica y sube los datos |
-| Almacenamiento | SQL Server `Aliv_DB` | Tabla `morosidad_diaria` actualizada cada día |
-| Visualización | Power BI Desktop | Dashboard conectado directo al SQL Server |
-| Automatización | Windows Task Scheduler | Ejecuta el pipeline a las 6:00 AM todos los días |
-
-### 1.2 Flujo diario
-
-```
-6:00 AM
-  → Task Scheduler ejecuta ejecutar_pipeline.bat
-  → Python abre Chrome y hace login en sistema Aliv
-  → Aplica filtros de fecha (01-01-2026 hasta hoy)
-  → Descarga el reporte (Ventas Win Activas)
-  → Procesa y limpia los datos
-  → Sube a SQL Server (reemplaza tabla completa)
-  → Power BI refresca al abrir o con Refresh manual
-```
-
-### 1.3 Archivos del sistema
-
-| Archivo | Función |
-|---------|---------|
-| `pipeline_morosidad.py` | Script principal — descarga, procesa y sube a SQL |
-| `ejecutar_pipeline.bat` | Ejecuta el pipeline y guarda logs diarios |
-| `Usuarios_Win.xlsx` | Vendedores y agencias para el cruce |
-| `Morosidad Dashboard.pbix` | Archivo Power BI |
-| `logs/` | Registro diario de ejecuciones |
+1. [Resumen del Reporte](#1-resumen-del-reporte)
+2. [Modelo de Datos](#2-modelo-de-datos)
+3. [Tablas de Datos](#3-tablas-de-datos)
+4. [Relaciones](#4-relaciones)
+5. [Medidas DAX por tabla](#5-medidas-dax-por-tabla)
+6. [Páginas del Dashboard](#6-páginas-del-dashboard)
+7. [Filtros y Slicers](#7-filtros-y-slicers)
+8. [Notas Técnicas](#8-notas-técnicas)
 
 ---
 
-## 2. Fuente de datos
+## 1. Resumen del Reporte
 
-### 2.1 Tabla en SQL Server
+El reporte hace seguimiento del ciclo comercial completo de Aliv Telecom: desde la **preventa** (registro del pedido) → **venta** (pedido aprobado) → **alta** (instalación ejecutada). Cubre tanto Lima como Provincia, y permite analizar rendimiento por agencia, vendedor, zona KML, distrito y período de tiempo.
 
-- **Servidor:** `.\SQLEXPRESS`
-- **Base de datos:** `Aliv_DB`
-- **Tabla:** `morosidad_diaria`
-- **Estrategia:** Full refresh diario — se reemplaza toda la tabla cada día
+El reporte tiene **4 páginas**:
 
-### 2.2 Columnas principales
-
-| Columna SQL | Descripción |
-|-------------|-------------|
-| `DNI_Carnet_Extraj_` | Identificador único del cliente |
-| `Nombre_y_Apellidos` | Nombre completo |
-| `Departamento / Provincia / Distrito` | Ubicación geográfica |
-| `Vendedor / Supervisor` | Responsables comerciales |
-| `Canal` | `FREELANCE` o `AGENTE` |
-| `Paquete` | Nombre del plan contratado |
-| `Precio_paquete` | Monto mensual en soles |
-| `Fecha_Activacion` | Fecha real de instalación |
-| `Codigo_de_Abono` | ID único del servicio en Win |
-| `Estado_M1 / M2 / M3 / M4` | Estado de pago en cada recibo |
-| `Deuda_M1 / M2 / M3 / M4` | Monto adeudado en cada recibo |
-| `Fecha_Actualizacion` | Fecha en que corrió el pipeline |
-
-### 2.3 Sistema de recibos
-
-Win hace seguimiento a cada cliente durante sus primeros **4 meses** de servicio:
-
-| Recibo | Mes | Vence el |
-|--------|-----|----------|
-| M1 | Mes 1 | 28 del mes de instalación |
-| M2 | Mes 2 | 28 del mes siguiente |
-| M3 | Mes 3 | 28 del tercer mes |
-| M4 | Mes 4 | 28 del cuarto mes |
-
-### 2.4 Grupos Win
-
-| Grupo | Día de instalación | Vence el |
-|-------|--------------------|----------|
-| Grupo 01 | Del 1 al 22 del mes | 28 del mismo mes |
-| Grupo 02 | Del 23 al 31 del mes | 28 del mes siguiente |
+| Página | Nombre | Enfoque |
+|--------|--------|---------|
+| 1 | Home / País | Vista ejecutiva consolidada Lima + Provincia |
+| 2 | Lima | Detalle operativo Lima WinForce |
+| 3 | Provincia | Seguimiento por agencias de provincia |
+| 4 | Localización Lima | Análisis geográfico y de score por zona KML |
 
 ---
 
-## 3. Categorías de clientes
+## 2. Modelo de Datos
 
-Cada cliente tiene un estado en cada recibo que determina si es moroso o está al día.
+### Tablas principales
 
-| Categoría | Qué significa | Moroso oficial | Riesgo real |
-|-----------|--------------|----------------|-------------|
-| **Cliente Pago** | El titular pagó directamente | No | No |
-| **Tercero Pago** | Pagó alguien más (familiar, inquilino) | No | ⚠️ SÍ |
-| **Churn** | Nunca pagó, dado de baja definitivamente | ✅ SÍ | SÍ |
-| **Cliente de Baja** | Win lo dio de baja del servicio | ✅ SÍ | SÍ |
-| **Pendiente** | Aún en evaluación | No | En evaluación |
-| **Sin dato** | La cohorte aún no llegó a ese recibo | No aplica | No aplica |
+| Tabla | Tipo | Descripción |
+|-------|------|-------------|
+| `WinForce_Lima` | Fact | Órdenes de Lima (preventa, venta, alta) |
+| `WinForce_Provincia` | Fact | Órdenes de provincia |
+| `Calendario` | Dimensión | Tabla de fechas para filtrado temporal |
+| `Cuota_Lima` | Referencia | Cuotas mensuales por área de planeamiento Lima |
+| `Cuota_Prov` | Referencia | Cuotas mensuales por agencia y región provincia |
 
-> **⚠️ IMPORTANTE:** Tercero Pago es un churn disfrazado. La **tasa de riesgo real** incluye Tercero Pago además de Churn y Baja.
+### Tablas de medidas
 
-### Fórmulas de morosidad
-
-```
-Tasa Morosidad (oficial) = (Churn + Baja) ÷ Total          → lo que Win penaliza
-Tasa Riesgo Real         = (Churn + Baja + Tercero) ÷ Total → exposición real
-```
+| Tabla | Medidas que contiene |
+|-------|----------------------|
+| `Measures Lima` | Medidas core Lima (altas, ventas, cuota, proyección) |
+| `Measures Loc Lima` | Medidas de localización, score y análisis de zona |
+| `Measures Provincia` | Medidas para provincia y agencias |
+| `Measures Home` | Medidas consolidadas País (Lima + Provincia) |
 
 ---
 
-## 4. Medidas DAX
+## 3. Tablas de Datos
 
-Todas las medidas están en la tabla **`Measure Table`** organizada en 6 carpetas.  
-La tabla de datos es **`Ventas_Win_Activas`**.
+### 3.1 WinForce_Lima
 
-### Carpeta 1 — Conteos
+**Fuente:** `SQL Server — localhost\SQLEXPRESS → Aliv_DB → dbo.winforce_lima`
 
+**Transformaciones Power Query aplicadas:**
+- Filtrado de filas con `ID pedido` nulo o vacío (evita error en relaciones)
+- Eliminación de columnas: `#`, `Piso`, `N° departamento`, `Observación`, `Observación de Pedido`, `Motivo rechazo orden`, `Observación De Orden`, `Vendedor final`, `Tipo Alta`, `Customer ID DirecTV`, `Cobertura Win`, `Ciudad de venta`, `Punto de venta`
+- Text.Proper en: `Cliente`, `Correo del cliente`, `Departamento`, `Provincia`, `Distrito`, `Dirección de Instalación`, `Vendedor real`, `Agencia`, `Dirección Geofinder`
+- Reemplazos en `Tipo de domicilio`: `"Condominio/Edificio No Habilitado"` → `"C/E No Habilitado"`, `"Condominio/Edificio"` → `"C/E Habilitado"`
+- Columna duplicada: `Registro Date Hour` (datetime con hora) desde `Fecha de registro`
+- `Fecha de registro` convertida a `type date`
+- Columna `Index` agregada (entero incremental desde 1)
+
+**Columnas clave:**
+
+| Columna | Tipo | Descripción |
+|---------|------|-------------|
+| `ID pedido` | Text | Clave de la orden (PK de relación) |
+| `Fecha de registro` | Date | Fecha en que se creó el pedido |
+| `Fecha programación` | Date | Fecha de instalación programada / ejecutada |
+| `Registro Date Hour` | DateTime | Timestamp completo del registro |
+| `Estado orden` | Text | `Ejecutada`, `Programada`, `Anulado`, etc. |
+| `Estado del Pedido` | Text | Estado del pedido comercial |
+| `Vendedor real` | Text | Vendedor que realizó la preventa |
+| `Agencia` | Text | Agencia comercial |
+| `Area de planeamiento` | Text | Área de planificación (para cuota) |
+| `Distrito` | Text | Distrito de instalación |
+| `Zona_KML` | Text | Clasificación geográfica: `Zona P2 (401)`, `Sin modificación (201)`, `No Venta`, etc. |
+| `Score Cliente` | Numérico | Puntaje del cliente para scoring |
+| `Cumple Score Zona` | Text | `Cumple`, `No cumple`, `Sin score` |
+| `Tramo Días Instalación` | Text | `Mismo día`, `1 día`, `2 días`, `3 días`, `4+ días` |
+| `Latitud` / `Longitud` | Text | Coordenadas del punto de instalación |
+
+### 3.2 WinForce_Provincia
+
+**Fuente:** SQL Server — misma instancia, tabla `winforce_provincia` o equivalente.
+
+**Columnas clave:**
+
+| Columna | Tipo | Descripción |
+|---------|------|-------------|
+| `Agencia Comercial` | Text | Nombre de la agencia (ej: Arequipa, Trujillo) |
+| `Fecha de registro` | Date | Fecha de preventa |
+| `Fecha programación` | Date | Fecha de instalación |
+| `Estado orden` | Text | `Ejecutada`, `Programada`, etc. |
+| `Distrito` | Text | Distrito de instalación |
+
+### 3.3 Calendario
+
+Tabla de fechas generada en DAX o Power Query, con rango desde `01/01/2026` hasta la fecha actual (`TODAY()`).
+
+**Columnas:**
+
+| Columna | Tipo | Descripción |
+|---------|------|-------------|
+| `Date` | Date | Fecha completa (PK) |
+| `Año` | Entero | Año (ej: 2026) |
+| `Mes Num` | Entero | Número de mes (1–12) |
+| `Mes Texto` | Text | Nombre del mes (ej: `Mayo`) |
+| `Dia` | Entero | Día del mes (1–31) |
+| `Semana` | Entero | Número de semana del año |
+| `Dia Semana` | Text | Nombre del día |
+| `Dia Semana Num` | Entero | Número del día de semana |
+| `Trimestre` | Text | Trimestre (ej: Q2) |
+
+### 3.4 Cuota_Lima
+
+Tabla estática con cuotas mensuales por área de planificación para Lima.
+
+| Columna | Descripción |
+|---------|-------------|
+| `Area_planificacion` | Nombre del área (match con `WinForce_Lima[Area de planeamiento]`) |
+| `Mes_num` | Número de mes |
+| `Cuota` | Valor numérico de la meta mensual |
+
+### 3.5 Cuota_Prov
+
+Tabla estática con cuotas para provincia.
+
+| Columna | Descripción |
+|---------|-------------|
+| `Departamento` | Nombre de la agencia/departamento |
+| `Mes_num` | Número de mes |
+| `Cuota` | Meta mensual |
+| `Region` | `"Provincia"` (filtro para excluir Lima) |
+
+---
+
+## 4. Relaciones
+
+| Tabla Origen | Columna | → | Tabla Destino | Columna | Tipo | Activa |
+|---|---|---|---|---|---|---|
+| `WinForce_Lima` | `Fecha programación` | → | `Calendario` | `Date` | Many-to-One | ✅ Activa |
+| `WinForce_Lima` | `Fecha de registro` | → | `Calendario` | `Date` | Many-to-One | ❌ Inactiva |
+| `WinForce_Provincia` | `Fecha programación` | → | `Calendario` | `Date` | Many-to-One | ✅ Activa |
+| `WinForce_Provincia` | `Fecha de registro` | → | `Calendario` | `Date` | Many-to-One | ❌ Inactiva |
+
+> **Nota importante:** La relación activa de `WinForce_Lima` con el `Calendario` es por `Fecha programación`. Las medidas de **Ventas** usan `USERELATIONSHIP` para activar la relación inactiva con `Fecha de registro`.
+
+---
+
+## 5. Medidas DAX por Tabla
+
+### 5.1 Measures Lima — Medidas Core Lima
+
+#### Total Preventas
 ```dax
-Total Clientes =
-COUNTROWS(Ventas_Win_Activas)
+Total Preventas = COUNTROWS(WinForce_Lima)
+```
+Cuenta todas las filas de Lima, independientemente del estado. Representa el pipeline completo de preventas.
 
-Total Morosos =
+---
+
+#### Total Ventas
+```dax
+Total Ventas = 
 CALCULATE(
-    COUNTROWS(Ventas_Win_Activas),
-    Ventas_Win_Activas[Estado_M1] IN {"CHURN", "CLIENTE DE BAJA"}
+    COUNTROWS(WinForce_Lima),
+    USERELATIONSHIP(WinForce_Lima[Fecha de registro], Calendario[Date])
 )
+```
+Cuenta pedidos filtrados por `Fecha de registro` (relación inactiva activada con `USERELATIONSHIP`). Representa pedidos que pasaron a estado de venta.
 
-Total Churn =
-CALCULATE(COUNTROWS(Ventas_Win_Activas), Ventas_Win_Activas[Estado_M1] = "CHURN")
+---
 
-Total Baja =
-CALCULATE(COUNTROWS(Ventas_Win_Activas), Ventas_Win_Activas[Estado_M1] = "CLIENTE DE BAJA")
-
-Total Cliente Pago =
-CALCULATE(COUNTROWS(Ventas_Win_Activas), Ventas_Win_Activas[Estado_M1] = "CLIENTE PAGO")
-
-Total Tercero Pago =
-CALCULATE(COUNTROWS(Ventas_Win_Activas), Ventas_Win_Activas[Estado_M1] = "TERCERO PAGO")
-
-Total En Riesgo Real =
+#### Total Altas
+```dax
+Total Altas = 
 CALCULATE(
-    COUNTROWS(Ventas_Win_Activas),
-    Ventas_Win_Activas[Estado_M1] IN {"CHURN", "CLIENTE DE BAJA", "TERCERO PAGO"}
+    COUNTROWS(WinForce_Lima),
+    WinForce_Lima[Estado orden] = "Ejecutada"
 )
 ```
+Cuenta instalaciones ejecutadas. Usa la relación activa (`Fecha programación → Calendario`), por eso el contexto de fecha del visual filtra correctamente por día de instalación.
 
-### Carpeta 2 — Tasas
+---
 
+#### Cuota Mes
 ```dax
-Tasa Morosidad =
-DIVIDE([Total Morosos], [Total Clientes], 0)
-
-Tasa Morosidad % =
-FORMAT([Tasa Morosidad], "0.00%")
-
-Tasa Riesgo Real =
-DIVIDE([Total En Riesgo Real], [Total Clientes], 0)
-
-Tasa Riesgo Real % =
-FORMAT([Tasa Riesgo Real], "0.00%")
-
-Tasa Pago =
-DIVIDE([Total Cliente Pago], [Total Clientes], 0)
-```
-
-### Carpeta 3 — Umbral Win
-
-```dax
-Umbral Win = 0.045
-
-Margen vs Umbral = [Umbral Win] - [Tasa Morosidad]
-
-Estado Umbral =
-IF([Tasa Morosidad] > [Umbral Win], "⚠ Sobre umbral", "✓ Dentro del umbral")
-
-Exceso Morosos =
-MAX(INT([Total Clientes] * [Tasa Morosidad]) - INT([Total Clientes] * [Umbral Win]), 0)
-
-Mensaje Alerta =
-VAR tasa = [Tasa Morosidad]
-VAR exceso = [Exceso Morosos]
+Cuota Mes = 
+VAR MesSeleccionado = SELECTEDVALUE(Calendario[Mes Num])
+VAR AreaActual = 
+    CALCULATE(
+        SELECTEDVALUE(WinForce_Lima[Area de planeamiento]),
+        ALLSELECTED(WinForce_Lima)
+    )
 RETURN
 IF(
-    tasa > [Umbral Win],
-    "⚠ Morosidad en " & FORMAT(tasa,"0.00%") & " — " & exceso & " clientes sobre el umbral",
-    "✓ Morosidad en " & FORMAT(tasa,"0.00%") & " — Dentro del umbral Win de 4.5%"
+    NOT ISBLANK(AreaActual),
+    CALCULATE(
+        SUM(Cuota_Lima[Cuota]),
+        FILTER(Cuota_Lima, 
+            Cuota_Lima[Area_planificacion] = AreaActual && 
+            Cuota_Lima[Mes_num] = MesSeleccionado
+        )
+    ),
+    CALCULATE(
+        SUM(Cuota_Lima[Cuota]),
+        FILTER(Cuota_Lima, Cuota_Lima[Mes_num] = MesSeleccionado)
+    )
 )
 ```
+Si hay un área seleccionada, trae la cuota de esa área. Si no, suma todas las áreas del mes seleccionado.
 
-### Carpeta 4 — Deuda
+---
 
+#### Proyección Altas
 ```dax
-Deuda Total M1 = SUM(Ventas_Win_Activas[Deuda_M1])
-Deuda Total M2 = SUM(Ventas_Win_Activas[Deuda_M2])
-Deuda Total M3 = SUM(Ventas_Win_Activas[Deuda_M3])
-Deuda Total M4 = SUM(Ventas_Win_Activas[Deuda_M4])
+Proyección Altas = 
+VAR UltimoRegistro = MAX(WinForce_Lima[Fecha de registro])
+VAR MesUltimo = MONTH(UltimoRegistro)
+VAR LastYear = YEAR(UltimoRegistro)
+VAR DiaUltimo = DAY(UltimoRegistro)
+VAR MesActual = MONTH(TODAY())
+VAR ActualYear = YEAR(TODAY())
+VAR UltimoDiaMes = DAY(EOMONTH(DATE(LastYear, MesUltimo, 1), 0))
+VAR DiasDenominador =
+    IF(
+        MesUltimo = MesActual && LastYear = ActualYear,
+        DiaUltimo,
+        UltimoDiaMes
+    )
+RETURN
+    DIVIDE([Total Altas], DiasDenominador, 0) * 30
+```
+Proyecta el cierre mensual de altas basado en el ritmo actual. Si es el mes en curso, usa los días transcurridos; si es un mes pasado, usa el total de días del mes.
 
-Deuda Total Acumulada = [Deuda Total M1] + [Deuda Total M2] + [Deuda Total M3] + [Deuda Total M4]
+---
 
-Deuda Promedio por Moroso =
+#### % de Proyección
+```dax
+% de Proyección = DIVIDE([Proyección Altas], [Cuota Mes], 0)
+```
+
+---
+
+#### % Avance Cuota
+```dax
+% Avance Cuota = DIVIDE([Total Altas WF], [Cuota Mes], 0)
+```
+Avance real de altas (WF) vs cuota del mes.
+
+---
+
+#### % Alcance Cuota
+```dax
+% Alcance Cuota = DIVIDE([Total Altas], [Cuota Mes], 0)
+```
+
+---
+
+#### % Alcance Ideal
+```dax
+% Alcance Ideal = 
+VAR UltDia = MAX(WinForce_Lima[Fecha de registro])
+VAR DiasTranscurridos = DATEDIFF(DATE(YEAR(UltDia), MONTH(UltDia), 1), UltDia, DAY) + 1
+VAR DiasTotales = DAY(EOMONTH(UltDia, 0))
+RETURN DIVIDE(DiasTranscurridos, DiasTotales, 0) * 100
+```
+Porcentaje del mes transcurrido. Sirve como referencia del alcance ideal esperado (si llevas 50% del mes, idealmente deberías tener 50% de la cuota).
+
+---
+
+#### Ritmo Actual
+```dax
+Ritmo Actual = 
+VAR DiasTranscurridos = 
+    DATEDIFF(
+        MIN(WinForce_Lima[Fecha de registro]),
+        MAX(WinForce_Lima[Fecha de registro]),
+        DAY
+    ) + 1
+RETURN
+DIVIDE([Total Altas WF], DiasTranscurridos, 0)
+```
+Altas por día en el período visible.
+
+---
+
+#### Ritmo Necesario
+```dax
+Ritmo Necesario = 
+VAR UltDia = CALCULATE(MAX(WinForce_Lima[Fecha de registro]), ALL(WinForce_Lima))
+VAR DiasTotales = DAY(EOMONTH(UltDia, 0))
+VAR DiasTranscurridos = DATEDIFF(DATE(YEAR(UltDia), MONTH(UltDia), 1), UltDia, DAY) + 1
+VAR DiasRestantes = DiasTotales - DiasTranscurridos
+VAR Faltantes = MAX([Cuota Mes] - [Total Altas WF], 0)
+RETURN DIVIDE(Faltantes, DiasRestantes, 0)
+```
+Altas diarias necesarias para alcanzar la cuota con los días restantes del mes.
+
+---
+
+#### Altas Faltantes
+```dax
+Altas Faltantes = MAX([Cuota Mes] - [Total Altas WF], 0)
+```
+
+---
+
+#### % Proyección vs Cuota
+```dax
+% Proyección vs Cuota = DIVIDE([Proyección Altas], [Cuota Mes], 0)
+```
+
+---
+
+#### % Conv Preventa a Venta
+```dax
+% Conv Preventa a Venta = DIVIDE([Total Ventas], [Total Preventas], 0)
+```
+
+---
+
+#### % Conv Venta a Alta
+```dax
+% Conv Venta a Alta = DIVIDE([Total Altas], [Total Ventas], 0)
+```
+
+---
+
+#### % Preventa a Alta (General)
+```dax
+% Preventa a Alta (General) = DIVIDE([Total Altas], [Total Preventas], 0)
+```
+Conversión directa del pipeline completo a altas.
+
+---
+
+#### Instalados Mismo Día
+```dax
+Instalados Mismo Día = 
+COUNTROWS(
+    FILTER(
+        WinForce_Lima,
+        WinForce_Lima[Estado orden] = "Ejecutada"
+            && TRUNC(WinForce_Lima[Fecha de registro]) = TRUNC(WinForce_Lima[Fecha programación])
+    )
+)
+```
+Altas donde la fecha de registro y la fecha de instalación son el mismo día.
+
+---
+
+#### % Instalados Mismo Día
+```dax
+% Instalados Mismo Día = DIVIDE([Instalados Mismo Día], [Total Altas], 0)
+```
+
+---
+
+#### % Anulaciones
+```dax
+% Anulaciones = 
 DIVIDE(
-    CALCULATE(SUM(Ventas_Win_Activas[Deuda_M1]), Ventas_Win_Activas[Estado_M1] IN {"CHURN","CLIENTE DE BAJA"}),
-    [Total Morosos], 0
+    COUNTROWS(FILTER(WinForce_Lima, WinForce_Lima[Estado orden] = "Anulado")),
+    [Total Preventas WF],
+    0
 )
 ```
 
-### Carpeta 5 — Supervisores
+---
 
+#### Total Anulaciones
 ```dax
-Estado Supervisor =
-IF([Tasa Morosidad] >= 0.10, "🔴 CRÍTICO",
-IF([Tasa Morosidad] >= 0.045, "🟠 SOBRE UMBRAL",
-IF([Tasa Morosidad] >= 0.03,  "🟡 EN RIESGO",
-"🟢 OK")))
-
-Color Tasa =
-IF([Tasa Morosidad] >= 0.10, "#FF5F5F",
-IF([Tasa Morosidad] >= 0.045, "#FBBF24",
-IF([Tasa Morosidad] >= 0.03, "#F47920",
-"#2DD4BF")))
+Total Anulaciones = COUNTROWS(FILTER(WinForce_Lima, WinForce_Lima[Estado orden] = "Anulado"))
 ```
 
-### Carpeta 6 — Gauge
+---
 
+### 5.2 Measures Loc Lima — Localización y Score
+
+#### Total Altas WF
 ```dax
-Gauge Morosidad =
-ROUND([Tasa Morosidad] * 100, 2)
+Total Altas WF = 
+CALCULATE(
+    COUNTROWS(WinForce_Lima),
+    WinForce_Lima[Estado orden] = "Ejecutada"
+)
 ```
-> Escala 0-30 para el visual gauge. El destino se configura en 4.5.
+Equivalente a `Total Altas`, usada en contextos de localización Lima (tabla `Winforce_Lima` con capitalización distinta referencia la misma tabla física).
 
 ---
 
-## 5. Dashboard Power BI
-
-### 5.1 Paleta de colores
-
-| Elemento | HEX | Uso |
-|----------|-----|-----|
-| Fondo canvas | `#0D0F1A` | Fondo de la página |
-| Fondo tarjetas | `#1A1D33` | Cards, paneles |
-| Naranja Aliv | `#F47920` | Acento principal, umbral |
-| Verde OK | `#2DD4BF` | Dentro del umbral, pago |
-| Rojo Alerta | `#FF5F5F` | Sobre umbral, crítico |
-| Ámbar Riesgo | `#FBBF24` | Entre 4.5% y 10% |
-| Azul Tercero | `#60A5FA` | Tercero Pago |
-| Texto principal | `#F0EFE8` | Valores de KPIs |
-| Texto subtítulos | `#8A8FAD` | Labels, texto secundario |
-
-### 5.2 Los 6 KPIs
-
-| KPI | Medida | Color borde | Color valor |
-|-----|--------|-------------|-------------|
-| Total Clientes | `[Total Clientes]` | `#2DD4BF` | `#2DD4BF` |
-| Total Morosos | `[Total Morosos]` | `#FF5F5F` | `#FF5F5F` |
-| Tasa Morosidad | `[Tasa Morosidad %]` | `#FF5F5F` | `#FF5F5F` |
-| Deuda Total M1 | `[Deuda Total M1]` | `#F47920` | `#F47920` |
-| Tasa Riesgo Real | `[Tasa Riesgo Real %]` | `#FBBF24` | `#FBBF24` |
-| Estado Umbral | `[Estado Umbral]` | `#F47920` | Condicional |
-
-### 5.3 Configuración de KPI Cards
-
-```
-Format → Canvas background : #0D0F1A · Transparencia 0%
-Format → Visual background : #1A1D33 · Transparencia 0%
-Format → Border            : Top only · grosor 3px · color según tabla
-Callout value              : tamaño 32 · color según tabla
-Category label             : texto personalizado · #8A8FAD · tamaño 11
-```
-
-### 5.4 Formato condicional (siempre usar Number, no Percent)
-
-| Regla | Desde | Hasta | Fondo | Texto |
-|-------|-------|-------|-------|-------|
-| OK | `0` | `0.03` Number | `#0D2E2A` | `#2DD4BF` |
-| En riesgo | `0.03` | `0.045` Number | `#2E1F00` | `#F47920` |
-| Sobre umbral | `0.045` | `0.10` Number | `#2E1A00` | `#FBBF24` |
-| Crítico | `0.10` | Máx. Number | `#2E0A0A` | `#FF5F5F` |
-
-> ⚠️ **CRÍTICO:** Usar **Number** siempre. Con Percent, Power BI interpreta `0.0377` como `0.0377%` en vez de `3.77%`.
-
-### 5.5 Gauge
-
-- **Visual:** Medidor (Gauge)
-- **Valor:** `[Gauge Morosidad]`
-- **Mínimo:** `0` · **Máximo:** `30` · **Destino:** `4.5`
-- **Color relleno:** degradado `#2DD4BF` → `#FF5F5F`
-- **Línea de destino:** `#F47920` · grosor 3px
-
-### 5.6 Tabla de supervisores
-
-| Columna | Campo | Formato |
-|---------|-------|---------|
-| Supervisor | `Ventas_Win_Activas[Supervisor]` | Texto |
-| Agencia | `Ventas_Win_Activas[Agencia]` | Texto |
-| Total Clientes | `[Total Clientes]` | `#,##0` |
-| Total Morosos | `[Total Morosos]` | `#,##0` |
-| Tasa M1 | `[Tasa Morosidad]` | `0.00%` + color condicional + barra |
-| Deuda Total M1 | `[Deuda Total M1]` | `S/ #,##0` |
-| Estado | `[Estado Supervisor]` | Texto con emoji |
-
----
-
-## 6. Pipeline de automatización
-
-### 6.1 Configuración
-
-```python
-CONFIG = {
-    "url_login":   "https://alivtelecom.com/alivsistemaventas/index2.php",
-    "usuario":     "rramirez",
-    "sql_server":  r".\SQLEXPRESS",
-    "sql_db":      "Aliv_DB",
-    "sql_tabla":   "morosidad_diaria",
-}
-```
-
-### 6.2 Módulo 1 — Scraper
-
-Usa Selenium para:
-1. Abrir Chrome (modo visible para evitar anti-bots)
-2. Hacer login con usuario/contraseña
-3. Navegar a **Ventas Win > Ventas Win Activas**
-4. Aplicar filtros: fecha `01-01-2026` hasta hoy
-5. Hacer clic en **Exportar Datos**
-6. Esperar la descarga (máximo 120 segundos)
-
-### 6.3 Módulo 2 — Procesamiento
-
-- Lee el archivo HTML disfrazado de `.xls`
-- Sanitiza nombres de columnas para SQL Server (sin caracteres especiales)
-- Agrega columna `Fecha_Actualizacion` con la fecha del día
-
-### 6.4 Módulo 3 — Carga a SQL
-
-- Conecta con **Windows Authentication** (`Trusted_Connection=yes`)
-- Reemplaza la tabla completa (`if_exists="replace"`)
-- Sube de a 1,000 filas para no saturar
-- Crea índices en `DNI` y `Mes_Cohorte` para optimizar Power BI
-
-### 6.5 Instalación
-
-```bash
-pip install selenium webdriver-manager pandas pyodbc sqlalchemy
-```
-
-Además requiere:
-- Google Chrome instalado
-- ODBC Driver 17 for SQL Server
-
-### 6.6 Programar con Task Scheduler
-
-1. Buscar **Task Scheduler** en Windows
-2. **Create Basic Task** → nombre: `Pipeline Morosidad Aliv`
-3. **Trigger:** Daily → hora: `06:00 AM`
-4. **Action:** Start a program → ruta del `.bat`
-5. Finish
-
----
-
-## 7. Proceso de actualización
-
-### 7.1 Actualización diaria (automática)
-
-El pipeline corre solo a las 6:00 AM. No requiere intervención.
-
-Verificar que funcionó en: `logs/pipeline_YYYYMMDD.log`
-
-Si hay error: revisar el log y correr manualmente:
-```bash
-python pipeline_morosidad.py
-```
-
-### 7.2 Actualización mensual (manual)
-
-Cuando llegan nuevos archivos de Win para el dashboard de cohortes:
-
-1. Poner los nuevos `.xlsx` en la carpeta junto a `procesar_morosidad.py`
-2. El script detecta automáticamente el recibo más reciente por cohorte
-3. Ejecutar: `python procesar_morosidad.py`
-4. Los archivos se actualizan en `Recibos_Resume/`
-5. En Power BI: **Home → Refresh**
-
-### 7.3 Cuando cambian vendedores
-
-1. Actualizar `Usuarios_Win.xlsx` con los vendedores nuevos
-2. Poner el archivo en la carpeta raíz
-3. El cruce de agencias se actualiza en la siguiente ejecución automática
-
-### 7.4 Estructura de carpeta
-
-```
-📁 Carpeta raíz/
-  ├── pipeline_morosidad.py
-  ├── ejecutar_pipeline.bat
-  ├── Usuarios_Win.xlsx
-  ├── Morosidad Dashboard.pbix
-  └── 📁 logs/
-        └── pipeline_20260511.log
+#### Total Preventas WF
+```dax
+Total Preventas WF = COUNTROWS(Winforce_Lima)
 ```
 
 ---
 
-## 8. Glosario
-
-| Término | Definición |
-|---------|-----------|
-| **Morosidad** | Situación de un cliente que no pagó su recibo dentro del plazo establecido |
-| **Umbral Win** | 4.5% — porcentaje máximo de morosidad permitido. Superarlo puede generar penalidades |
-| **Churn** | Cliente que nunca pagó y fue dado de baja definitivamente por Win |
-| **Cliente de Baja** | Cliente que Win dio de baja del servicio por deuda u otro motivo |
-| **Tercero Pago** | El recibo fue pagado por alguien distinto al titular. Señal de riesgo oculto |
-| **Cohorte** | Grupo de clientes instalados en el mismo mes |
-| **M1 / M2 / M3 / M4** | Primer, segundo, tercer y cuarto recibo de seguimiento |
-| **Grupo 01** | Clientes instalados del 1 al 22. Vence el 28 del mismo mes |
-| **Grupo 02** | Clientes instalados del 23 al 31. Vence el 28 del mes siguiente |
-| **Tasa Riesgo Real** | Incluye Churn + Baja + Tercero Pago. Más alta que la oficial |
-| **Pipeline** | Proceso automatizado que descarga, procesa y sube los datos diariamente |
-| **Scraper** | Script Python que controla Chrome para descargar el reporte automáticamente |
-| **SQL Server** | Base de datos donde se almacena `morosidad_diaria` actualizada cada día |
-| **DAX** | Lenguaje de fórmulas de Power BI para medidas y columnas calculadas |
-| **MCP** | Model Context Protocol — permite a Claude crear medidas DAX directamente en Power BI |
-| **Gauge Morosidad** | Medida DAX que convierte la tasa a escala 0-30 para el visual velocímetro |
-| **Color Tasa** | Medida DAX que devuelve un hex para formato condicional automático |
+#### Total Ventas WF
+```dax
+Total Ventas WF = 
+CALCULATE(
+    COUNTROWS(Winforce_Lima),
+    USERELATIONSHIP(Winforce_Lima[Fecha de registro], Calendario[Date])
+)
+```
 
 ---
 
-*ALiV Telecom · Distribuidora Win · Documentación v2.0 · Mayo 2026 · Confidencial*
+#### Altas Mismo Dia
+```dax
+Altas Mismo Dia = 
+CALCULATE(
+    [Total Altas WF],
+    Winforce_Lima[Tramo Días Instalación] = "Mismo día"
+)
+```
+
+---
+
+#### Altas 1 Dia
+```dax
+Altas 1 Dia = 
+CALCULATE(
+    [Total Altas WF],
+    Winforce_Lima[Tramo Días Instalación] = "1 día"
+)
+```
+
+---
+
+#### Altas 2 Mas Dias
+```dax
+Altas 2 Mas Dias = 
+CALCULATE(
+    [Total Altas WF],
+    Winforce_Lima[Tramo Días Instalación] IN {"2 días","3 días","4+ días"}
+)
+```
+
+---
+
+#### Score Promedio
+```dax
+Score Promedio = 
+AVERAGEX(
+    FILTER(Winforce_Lima, NOT ISBLANK(Winforce_Lima[Score Cliente])),
+    Winforce_Lima[Score Cliente]
+)
+```
+Promedio del score de cliente excluyendo blancos.
+
+---
+
+#### Ventas En Riesgo
+```dax
+Ventas En Riesgo = 
+COUNTROWS(
+    FILTER(Winforce_Lima, Winforce_Lima[Cumple Score Zona] = "No cumple")
+)
+```
+
+---
+
+#### % Ventas En Riesgo
+```dax
+% Ventas En Riesgo = DIVIDE([Ventas En Riesgo], [Total Preventas WF], 0)
+```
+
+---
+
+#### Ventas Sin Score
+```dax
+Ventas Sin Score = 
+COUNTROWS(
+    FILTER(Winforce_Lima, Winforce_Lima[Cumple Score Zona] = "Sin score")
+)
+```
+
+---
+
+#### % Sin Score
+```dax
+% Sin Score = DIVIDE([Ventas Sin Score], [Total Preventas WF], 0)
+```
+
+---
+
+#### Ventas Cumple
+```dax
+Ventas Cumple = 
+COUNTROWS(
+    FILTER(
+        WinForce_Lima,
+        WinForce_Lima[Cumple Score Zona] = "Cumple"
+    )
+)
+```
+
+---
+
+#### Total Con Problema
+```dax
+Total Con Problema = 
+COUNTROWS(
+    FILTER(
+        Winforce_Lima,
+        Winforce_Lima[Zona_KML] = "No Venta"
+            || Winforce_Lima[Cumple Score Zona] = "No cumple"
+    )
+)
+```
+
+---
+
+#### % Total Con Problema
+```dax
+% Total Con Problema = DIVIDE([Total Con Problema], [Total Preventas WF], 0)
+```
+
+---
+
+#### Ventas No Venta
+```dax
+Ventas No Venta = 
+COUNTROWS(
+    FILTER(Winforce_Lima, Winforce_Lima[Zona_KML] = "No Venta")
+)
+```
+
+---
+
+#### % Participacion Zona
+```dax
+% Participacion Zona = 
+DIVIDE(
+    [Total Preventas WF],
+    CALCULATE([Total Preventas WF], ALL(Winforce_Lima[Zona_KML])),
+    0
+)
+```
+Participación de cada zona KML sobre el total.
+
+---
+
+#### Sin Score Sin Modificacion
+```dax
+Sin Score Sin Modificacion = 
+CALCULATE(
+    [Ventas Sin Score],
+    Winforce_Lima[Zona_KML] = "Sin modificación (201)"
+)
+```
+
+---
+
+#### Altas Sin Modificacion
+```dax
+Altas Sin Modificacion = 
+CALCULATE(
+    [Total Altas WF],
+    Winforce_Lima[Zona_KML] = "Sin modificación (201)"
+)
+```
+
+---
+
+#### Ventas Sin Modificacion
+```dax
+Ventas Sin Modificacion = 
+COUNTROWS(
+    FILTER(Winforce_Lima, Winforce_Lima[Zona_KML] = "Sin modificación (201)")
+)
+```
+
+---
+
+#### Preventas Sin Modificacion
+```dax
+Preventas Sin Modificacion = 
+CALCULATE(
+    [Total Preventas WF],
+    Winforce_Lima[Zona_KML] = "Sin modificación (201)"
+)
+```
+
+---
+
+#### Conv Sin Modificacion
+```dax
+Conv Sin Modificacion = DIVIDE([Altas Sin Modificacion], [Preventas Sin Modificacion], 0)
+```
+
+---
+
+#### Conv General WF
+```dax
+Conv General WF = DIVIDE([Total Altas WF], [Total Ventas WF], 0)
+```
+
+---
+
+#### Vendedores En Riesgo
+```dax
+Vendedores En Riesgo = 
+CALCULATE(
+    DISTINCTCOUNT(Winforce_Lima[Vendedor real]),
+    Winforce_Lima[Cumple Score Zona] = "No cumple"
+)
+```
+
+---
+
+#### % Ventas Riesgo Vendedor
+```dax
+% Ventas Riesgo Vendedor = 
+DIVIDE(
+    CALCULATE(
+        COUNTROWS(Winforce_Lima),
+        Winforce_Lima[Cumple Score Zona] = "No cumple"
+    ),
+    [Total Preventas WF],
+    0
+)
+```
+
+---
+
+#### Ventas Antes P2
+```dax
+Ventas Antes P2 = 
+CALCULATE(
+    COUNTROWS(Winforce_Lima),
+    ALL(Calendario),
+    Winforce_Lima[Fecha de registro] < DATE(2026, 4, 15),
+    Winforce_Lima[Zona_KML] = "Zona P2 (401)"
+)
+```
+Ventas en Zona P2 antes del 15 de abril 2026 (fecha de cambio de política).
+
+---
+
+#### Ventas Despues P2
+```dax
+Ventas Despues P2 = 
+CALCULATE(
+    COUNTROWS(Winforce_Lima),
+    ALL(Calendario),
+    Winforce_Lima[Fecha de registro] >= DATE(2026, 4, 15),
+    Winforce_Lima[Zona_KML] = "Zona P2 (401)"
+)
+```
+
+---
+
+#### Caida Altas Cambio
+```dax
+Caida Altas Cambio = 
+DIVIDE(
+    [Altas Despues Cambio] - [Altas Antes Cambio],
+    [Altas Antes Cambio],
+    0
+)
+```
+Variación porcentual de altas antes vs después del cambio de política en Zona P2.
+
+---
+
+#### % Cumple Score P2
+```dax
+% Cumple Score P2 = 
+DIVIDE(
+    CALCULATE([Ventas Cumple], WinForce_Lima[Zona_KML] = "Zona P2 (401)"),
+    [Ventas Zona P2],
+    0
+)
+```
+
+---
+
+#### Altas Semana Actual
+```dax
+Altas Semana Actual = 
+CALCULATE(
+    [Total Altas WF],
+    FILTER(
+        Calendario,
+        Calendario[Date] >= TODAY() - WEEKDAY(TODAY(), 2) + 1
+        && Calendario[Date] <= TODAY()
+    )
+)
+```
+Altas de la semana en curso (lunes a hoy).
+
+---
+
+#### Dias Sin Actividad
+```dax
+Dias Sin Actividad = 
+DATEDIFF(
+    CALCULATE(MAX(WinForce_Lima[Fecha de registro])),
+    TODAY(),
+    DAY
+)
+```
+Días desde el último registro hasta hoy. Útil para detectar si los datos están desactualizados.
+
+---
+
+### 5.3 Measures Provincia
+
+#### Total Preventas Prov
+```dax
+Total Preventas Prov = COUNTROWS(Winforce_Provincia)
+```
+
+---
+
+#### Total Ventas Prov
+```dax
+Total Ventas Prov = 
+CALCULATE(
+    COUNTROWS(WinForce_Provincia),
+    USERELATIONSHIP(WinForce_Provincia[Fecha de registro], Calendario[Date])
+)
+```
+
+---
+
+#### Total Altas Prov
+```dax
+Total Altas Prov = 
+CALCULATE(
+    COUNTROWS(WinForce_Provincia),
+    WinForce_Provincia[Estado orden] = "Ejecutada",
+    USERELATIONSHIP(WinForce_Provincia[Fecha programación], Calendario[Date])
+)
+```
+Usa `USERELATIONSHIP` porque la relación activa de `WinForce_Provincia` con el Calendario es por `Fecha de registro`.
+
+---
+
+#### Cuota Mes Prov
+```dax
+Cuota Mes Prov = 
+VAR MesSeleccionado = SELECTEDVALUE(Calendario[Mes Num])
+VAR AgenciaActual = SELECTEDVALUE(Winforce_Provincia[Agencia Comercial])
+RETURN
+IF(
+    NOT ISBLANK(AgenciaActual),
+    CALCULATE(
+        SUM(Cuota_Prov[Cuota]),
+        Cuota_Prov[Departamento] = AgenciaActual,
+        Cuota_Prov[Mes_num] = MesSeleccionado,
+        Cuota_Prov[Region] = "Provincia"
+    ),
+    SUMX(
+        FILTER(
+            VALUES(Winforce_Provincia[Agencia Comercial]),
+            Winforce_Provincia[Agencia Comercial] <> "Lima"
+        ),
+        VAR Agencia = Winforce_Provincia[Agencia Comercial]
+        RETURN
+        CALCULATE(
+            SUM(Cuota_Prov[Cuota]),
+            Cuota_Prov[Departamento] = Agencia,
+            Cuota_Prov[Mes_num] = MesSeleccionado,
+            Cuota_Prov[Region] = "Provincia"
+        )
+    )
+)
+```
+Si hay agencia seleccionada, trae su cuota. Si no, suma cuotas de todas las agencias provincia (excluyendo Lima).
+
+---
+
+#### Proyeccion Cierre Prov
+```dax
+Proyeccion Cierre Prov = 
+VAR UltimoGlobal = CALCULATE(MAX(Winforce_Provincia[Fecha de registro]), ALL(Winforce_Provincia))
+VAR DiasTranscurridos = DATEDIFF(DATE(YEAR(UltimoGlobal), MONTH(UltimoGlobal), 1), UltimoGlobal, DAY) + 1
+RETURN
+DIVIDE([Total Altas Prov], DiasTranscurridos, 0) * 30
+```
+
+---
+
+#### % Alcance Prov
+```dax
+% Alcance Prov = DIVIDE([Total Altas Prov], [Cuota Mes Prov], 0)
+```
+
+---
+
+#### % Proyeccion Prov
+```dax
+% Proyeccion Prov = DIVIDE([Proyeccion Cierre Prov], [Cuota Mes Prov], 0)
+```
+
+---
+
+#### Ritmo Actual Prov
+```dax
+Ritmo Actual Prov = 
+VAR UltDia = CALCULATE(MAX(WinForce_Provincia[Fecha de registro]), ALL(WinForce_Provincia))
+VAR DiasTranscurridos = 
+    DATEDIFF(
+        DATE(YEAR(UltDia), MONTH(UltDia), 1),
+        UltDia,
+        DAY
+    ) + 1
+RETURN
+    DIVIDE([Total Altas Prov], DiasTranscurridos, 0)
+```
+
+---
+
+#### Ritmo Necesario Prov
+```dax
+Ritmo Necesario Prov = 
+VAR UltDia = CALCULATE(MAX(WinForce_Provincia[Fecha de registro]), ALL(WinForce_Provincia))
+VAR DiasTotales = DAY(EOMONTH(UltDia, 0))
+VAR DiasTranscurridos = DATEDIFF(DATE(YEAR(UltDia), MONTH(UltDia), 1), UltDia, DAY) + 1
+VAR DiasRestantes = MAX(DiasTotales - DiasTranscurridos, 1)
+VAR Faltantes = MAX([Cuota Mes Prov] - [Total Altas Prov], 0)
+RETURN DIVIDE(Faltantes, DiasRestantes, 0)
+```
+
+---
+
+#### Altas Faltantes Prov
+```dax
+Altas Faltantes Prov = MAX([Cuota Mes Prov] - [Total Altas Prov], 0)
+```
+
+---
+
+#### % Alcance Ideal Prov
+```dax
+% Alcance Ideal Prov = 
+VAR UltimoGlobal = CALCULATE(MAX(Winforce_Provincia[Fecha de registro]), ALL(Winforce_Provincia))
+VAR DiasTranscurridos = DATEDIFF(DATE(YEAR(UltimoGlobal), MONTH(UltimoGlobal), 1), UltimoGlobal, DAY) + 1
+VAR DiasTotales = DAY(EOMONTH(UltimoGlobal, 0))
+RETURN DIVIDE(DiasTranscurridos, DiasTotales, 0) * 100
+```
+
+---
+
+#### % Conv Preventa a Venta Prov
+```dax
+% Conv Preventa a Venta Prov = DIVIDE([Total Ventas Prov], [Total Preventas Prov], 0)
+```
+
+---
+
+#### Conv Prov
+```dax
+Conv Prov = DIVIDE([Total Altas Prov], [Total Ventas Prov], 0)
+```
+
+---
+
+#### Agencias En Meta
+```dax
+Agencias En Meta = 
+COUNTROWS(
+    FILTER(
+        VALUES(Winforce_Provincia[Agencia Comercial]),
+        [% Alcance Prov] >= 100
+    )
+)
+```
+
+---
+
+#### Agencias En Riesgo
+```dax
+Agencias En Riesgo = 
+COUNTROWS(
+    FILTER(
+        VALUES(Winforce_Provincia[Agencia Comercial]),
+        [% Alcance Prov] >= 80 && [% Alcance Prov] < 100
+    )
+)
+```
+
+---
+
+#### Agencias Bajo Meta
+```dax
+Agencias Bajo Meta = 
+COUNTROWS(
+    FILTER(
+        VALUES(Winforce_Provincia[Agencia Comercial]),
+        [% Alcance Prov] < 80
+    )
+)
+```
+
+---
+
+### 5.4 Measures Home — Vista País
+
+#### Total Ventas País
+```dax
+Total Ventas País = COUNTROWS(Winforce_Lima) + COUNTROWS(Winforce_Provincia)
+```
+
+---
+
+#### Total Altas País
+```dax
+Total Altas País = 
+[Total Altas WF] + 
+CALCULATE(
+    COUNTROWS(Winforce_Provincia),
+    Winforce_Provincia[Estado orden] = "Ejecutada"
+)
+```
+
+---
+
+#### Conversion País
+```dax
+Conversion País = DIVIDE([Total Altas País], [Total Ventas País], 0)
+```
+
+---
+
+#### Distritos País
+```dax
+Distritos País = 
+DISTINCTCOUNT(Winforce_Lima[Distrito]) + 
+DISTINCTCOUNT(Winforce_Provincia[Distrito])
+```
+
+---
+
+## 6. Páginas del Dashboard
+
+### Página 1 — Home / País
+
+**Propósito:** Vista ejecutiva consolidada con KPIs nacionales.
+
+**Slicers:** Mes, Año
+
+**KPIs principales:**
+- `Total Ventas País`
+- `Total Altas País`
+- `Conversion País`
+- `Distritos País`
+
+**Visuales:**
+- Cards de KPIs nacionales
+- Comparativa Lima vs Provincia (barras o tabla)
+- Mapa de calor por distrito (si hay mapa configurado)
+
+---
+
+### Página 2 — Lima
+
+**Propósito:** Seguimiento operativo diario de Lima.
+
+**Slicers:**
+- `Fecha de registro` (rango de fechas — slider)
+- `Mes` (dropdown)
+- `Area de planeamiento` (dropdown)
+- `Agencia` (dropdown)
+- `Tipo de domicilio` (dropdown)
+- `Distrito` (dropdown)
+- `Estado orden` (dropdown)
+
+**KPIs principales:**
+
+| Card | Medida |
+|------|--------|
+| Total Ventas | `Total Ventas` |
+| Total Altas (Instalados) | `Total Altas` |
+| Proyección Altas | `Proyección Altas` |
+| % de Proyección | `% de Proyección` |
+| Alcance Actual | `% Avance Cuota` |
+| % Alcance Ideal | `% Alcance Ideal` |
+| Ritmo Actual | `Ritmo Actual` |
+| Ritmo Necesario | `Ritmo Necesario` |
+| Cuota Mes | `Cuota Mes` |
+
+**Gráfico "Registros Diarios":**
+- Eje X: `Calendario[Año]`, `Calendario[Mes Texto]`, `Calendario[Dia]`
+- Valores: `Total Ventas` (naranja), `Total Altas` (verde)
+- Muestra actividad diaria del mes seleccionado
+
+**Gráfico "Avance vs Cuota + Proyección":**
+- Velocímetro / gauge con `Total Altas` vs `Cuota Mes`
+- Indicador de proyección de cierre
+
+**Tabla de detalle:** Vendedor real, altas, ventas, conversión
+
+---
+
+### Página 3 — Provincia
+
+**Propósito:** Seguimiento por agencias de provincia.
+
+**Slicers:**
+- `Mes`
+- `Agencia Comercial`
+
+**KPIs principales:**
+
+| Card | Medida |
+|------|--------|
+| Total Preventas Prov | `Total Preventas Prov` |
+| Total Ventas Prov | `Total Ventas Prov` |
+| Total Altas Prov | `Total Altas Prov` |
+| Cuota Prov | `Cuota Mes Prov` |
+| % Alcance Prov | `% Alcance Prov` |
+| Proyección Cierre | `Proyeccion Cierre Prov` |
+| Ritmo Actual | `Ritmo Actual Prov` |
+| Ritmo Necesario | `Ritmo Necesario Prov` |
+| Altas Faltantes | `Altas Faltantes Prov` |
+
+**Semáforo de agencias:**
+
+| Estado | Medida | Criterio |
+|--------|--------|----------|
+| 🟢 En Meta | `Agencias En Meta` | `% Alcance Prov >= 100%` |
+| 🟡 En Riesgo | `Agencias En Riesgo` | `80% <= % Alcance Prov < 100%` |
+| 🔴 Bajo Meta | `Agencias Bajo Meta` | `% Alcance Prov < 80%` |
+
+**Tabla por agencia:** Agencia, Preventas, Ventas, Altas, Cuota, % Alcance, Proyección
+
+---
+
+### Página 4 — Localización Lima
+
+**Propósito:** Análisis geográfico y de calidad de leads por zona KML y score.
+
+**Slicers:**
+- `Mes`
+- `Zona_KML`
+- `Vendedor real`
+
+**KPIs principales:**
+
+| Card | Medida |
+|------|--------|
+| Score Promedio | `Score Promedio` |
+| Ventas En Riesgo | `Ventas En Riesgo` |
+| % Ventas En Riesgo | `% Ventas En Riesgo` |
+| Vendedores En Riesgo | `Vendedores En Riesgo` |
+| Total Con Problema | `Total Con Problema` |
+| % Sin Score | `% Sin Score` |
+| % Cumple Score P2 | `% Cumple Score P2` |
+
+**Análisis de tramos de instalación:**
+
+| Tramo | Medida |
+|-------|--------|
+| Mismo día | `Altas Mismo Dia` |
+| 1 día | `Altas 1 Dia` |
+| 2+ días | `Altas 2 Mas Dias` |
+
+**Análisis Zona P2 (comparativa antes/después 15-abr-2026):**
+- `Ventas Antes P2` vs `Ventas Despues P2`
+- `Altas Antes Cambio` vs `Altas Despues Cambio`
+- `Caida Altas Cambio` (% variación)
+
+**Tabla sin modificación (Zona 201):**
+- `Preventas Sin Modificacion`, `Altas Sin Modificacion`, `Conv Sin Modificacion`
+
+**Mapa:** Puntos por `Latitud` / `Longitud`, coloreados por `Cumple Score Zona`
+
+---
+
+## 7. Filtros y Slicers
+
+### Slicer de Fecha de registro (Lima)
+- Tipo: Rango de fechas (slider)
+- Campo: `WinForce_Lima[Fecha de registro]`
+- **Importante:** Este slicer afecta `Total Ventas` (que usa `Fecha de registro`) pero **no afecta** `Total Altas` porque la relación activa es por `Fecha programación`.
+
+### Slicer de Mes
+- Campo: `Calendario[Mes Texto]`
+- Afecta todos los visuales vía el Calendario
+
+### Slicers de dimensiones (Lima)
+- `Area de planeamiento`, `Agencia`, `Tipo de domicilio`, `Distrito`, `Estado orden`
+- Filtran directamente sobre `WinForce_Lima`
+
+---
+
+## 8. Notas Técnicas
+
+### Relación activa vs USERELATIONSHIP
+
+El modelo tiene dos relaciones entre `WinForce_Lima` y `Calendario`:
+
+- **Activa:** `Fecha programación → Calendario[Date]`  
+  → Usada por `Total Altas`, `Total Preventas`  
+  → El filtro de día/mes del visual filtra por **día de instalación**
+
+- **Inactiva:** `Fecha de registro → Calendario[Date]`  
+  → Activada con `USERELATIONSHIP` en `Total Ventas`  
+  → Filtra por **día en que se creó el pedido**
+
+> **Consecuencia práctica:** Una alta programada para el 1 de mayo pero registrada el 29 de abril aparecerá en **mayo** en `Total Altas` y en **abril** en `Total Ventas`. Esto es correcto e intencional.
+
+---
+
+### Filtro de nulos en WinForce_Lima
+
+Se agregó este paso en Power Query para evitar errores en Power BI Service:
+
+```powerquery
+#"Filtered Null ID" = Table.SelectRows(
+    #"Added Index", 
+    each [#"ID pedido"] <> null and [#"ID pedido"] <> ""
+)
+```
+
+Filas con `ID pedido` nulo son excluidas antes de cargar al modelo.
+
+---
+
+### Calendario dinámico
+
+El Calendario genera fechas hasta `TODAY()`. Esto significa que **cada refresh amplía el calendario** un día más. Si el refresh no se ejecuta, el calendario no incluye fechas futuras y las altas programadas a futuro no aparecen en el visual.
+
+---
+
+### Publicación en Power BI Service
+
+El modelo se publica desde Power BI Desktop → **Inicio → Publicar → Workspace: Ventas**.
+
+Para que el refresh automático funcione en el Service, el gateway debe tener configurada la conexión a `localhost\SQLEXPRESS`. Si el gateway no está activo, el refresh fallará con error de origen de datos.
+
+---
+
+*Documentación generada automáticamente desde el modelo activo vía MCP — 15/05/2026*

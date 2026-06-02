@@ -1,1 +1,7 @@
 flask>=3.0.0
+sqlalchemy
+pandas
+pyodbc
+openpyxl
+lxml
+jinja2

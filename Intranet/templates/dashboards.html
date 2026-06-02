@@ -15,15 +15,15 @@
 
 <div class="cards-grid">
 
-    <!-- Dashboard 1: placeholder Power BI / Looker / etc -->
-    <div class="card card-link" onclick="alert('Configura la URL del dashboard en dashboards.html')">
+    <!-- Dashboard 1: Dashboard Interno SQL -->
+    <div class="card card-link" onclick="window.location.href='{{ url_for('dashboard_ventas') }}'">
         <div class="card-icon teal"><i class="fa-solid fa-chart-pie"></i></div>
-        <div class="card-title">Dashboard Ventas</div>
-        <div class="card-desc">Métricas de ventas por región, distrito, supervisor y producto. Actualización diaria.</div>
+        <div class="card-title">Dashboard Ventas (Live)</div>
+        <div class="card-desc">Métricas en tiempo real consultadas directamente desde SQL Server. Ventas, Altas y Conversión.</div>
         <div class="card-footer">
-            <span class="badge badge-teal"><i class="fa-brands fa-microsoft"></i> Power BI</span>
-            <button class="btn btn-outline" onclick="event.stopPropagation(); alert('Agrega la URL del dashboard aquí')">
-                <i class="fa-solid fa-arrow-up-right-from-square"></i> Abrir
+            <span class="badge badge-teal"><i class="fa-solid fa-database"></i> SQL Live</span>
+            <button class="btn btn-outline" onclick="event.stopPropagation(); window.open('https://app.powerbi.com/groups/me/reports/your-report-id', '_blank')">
+                <i class="fa-brands fa-microsoft"></i> Ir a Power BI
             </button>
         </div>
     </div>

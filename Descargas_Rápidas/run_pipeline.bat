@@ -21,7 +21,7 @@ cd /d "%~dp0"
 
 :: Menu de opciones
 echo   1 - Todo 2026: Lima + Provincia + Zonificacion + subir a BD
-echo   2 - SEMANAL: Solo esta semana ^(rapido^)
+echo   2 - Mensual: Solo esta semana ^(rapido^)
 echo   3 - Reporte Semanal ^(Power BI debe estar abierto^)
 echo   4 - Consolidar Ventas
 echo   5 - Subir Usuarios Win

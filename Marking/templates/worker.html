@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block title %}Mi Asistencia — AlivTelecom Marking{% endblock %}
+
+{% block content %}
+<div class="dashboard-grid">
+    <!-- Panel de Control y Marcación (Izquierda) -->
+    <div class="sidebar">
+        <!-- Tarjeta de Reloj en Vivo -->
+        <div class="card clock-panel">
+            <h2 class="card-title" style="margin-bottom: 10px; justify-content: center;">
+                <i class="fa-solid fa-business-time"></i> Registro Diario
+            </h2>
+            <div class="live-clock" id="liveClock">--:--:--</div>
+            <div class="live-date" id="liveDate">Cargando fecha...</div>
+            
+            <div class="marking-actions">
+                <!-- Entrada -->
+                <form method="POST" action="{{ url_for('mark_action', action='clock_in') }}">
+                    {% if not today_marking or not today_marking.clock_in %}
+                    <div class="mode-selector">
+                        <label class="mode-option">
+                            <input type="radio" name="mode" value="presencial" checked>
+                            <span class="mode-chip mode-chip-pres">🏢 Presencial</span>
+                        </label>
+                        <label class="mode-option">
+                            <input type="radio" name="mode" value="remoto">
+                            <span class="mode-chip mode-chip-rem">🏠 Remoto</span>
+                        </label>
+                    </div>
+                    {% endif %}
+                    <button type="submit" class="btn-mark btn-mark-in" {% if today_marking and today_marking.clock_in %}disabled{% endif %}>
+                        <i class="fa-solid fa-right-to-bracket"></i> Marcar Entrada
+                    </button>
+                </form>
+                
+                <!-- Inicio Break -->
+                <form method="POST" action="{{ url_for('mark_action', action='break_start') }}">
+                    <button type="submit" class="btn-mark btn-mark-break-start" 
+                        {% if not today_marking or not today_marking.clock_in or today_marking.break_start or today_marking.clock_out %}disabled{% endif %}>
+                        <i class="fa-solid fa-mug-hot"></i> Iniciar Break
+                    </button>
+                </form>
+                
+                <!-- Fin Break -->
+                <form method="POST" action="{{ url_for('mark_action', action='break_end') }}">
+                    <button type="submit" class="btn-mark btn-mark-break-end" 
+                        {% if not today_marking or not today_marking.break_start or today_marking.break_end or today_marking.clock_out %}disabled{% endif %}>
+                        <i class="fa-solid fa-circle-check"></i> Terminar Break
+                    </button>
+                </form>
+                
+                <!-- Salida -->
+                <form method="POST" action="{{ url_for('mark_action', action='clock_out') }}">
+                    <button type="submit" class="btn-mark btn-mark-out" 
+                        {% if not today_marking or not today_marking.clock_in or today_marking.clock_out or (today_marking.break_start and not today_marking.break_end) %}disabled{% endif %}>
+                        <i class="fa-solid fa-house-laptop"></i> Marcar Salida
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Tarjeta de Horario Establecido -->
+        <div class="card">
+            <h3 class="card-title">
+                <i class="fa-solid fa-calendar-week"></i> Mi Horario
+            </h3>
+            <div class="schedule-info-item">
+                <span class="schedule-label">Jornada</span>
+                <span class="schedule-value">{{ user.schedule_start }} - {{ user.schedule_end }}</span>
+            </div>
+            <div class="schedule-info-item">
+                <span class="schedule-label">Entrada Registrada</span>
+                <span class="schedule-value">{% if today_marking and today_marking.clock_in %}{{ today_marking.clock_in.strftime('%H:%M:%S') }}{% else %}--:--{% endif %}</span>
+            </div>
+            <div class="schedule-info-item">
+                <span class="schedule-label">Estado de Entrada</span>
+                <span class="schedule-value">
+                    {% if today_marking and today_marking.clock_in %}
+                        {% if today_marking.status == 'A tiempo' %}
+                            <span class="badge badge-ontime">A tiempo</span>
+                        {% else %}
+                            <span class="badge badge-late">Tarde</span>
+                        {% endif %}
+                    {% else %}
+                        <span class="schedule-value">Sin marcar</span>
+                    {% endif %}
+                </span>
+            </div>
+            <div class="schedule-info-item">
+                <span class="schedule-label">Break Registrado</span>
+                <span class="schedule-value">
+                    {% if today_marking and today_marking.break_start %}
+                        {% if today_marking.break_end %}
+                            {{ today_marking.break_start.strftime('%H:%M') }} a {{ today_marking.break_end.strftime('%H:%M') }}
+                        {% else %}
+                            En Break <span class="badge badge-break" style="margin-left: 5px;">activo</span>
+                        {% endif %}
+                    {% else %}
+                        --:--
+                    {% endif %}
+                </span>
+            </div>
+            <div class="schedule-info-item">
+                <span class="schedule-label">Modalidad Hoy</span>
+                <span class="schedule-value">
+                    {% if today_marking and today_marking.clock_in %}
+                        {% if today_marking.mode == 'remoto' %}
+                            <span class="badge badge-remoto">🏠 Remoto</span>
+                        {% else %}
+                            <span class="badge badge-presencial">🏢 Presencial</span>
+                        {% endif %}
+                    {% else %}
+                        <span style="color: var(--text-light);">Sin marcar</span>
+                    {% endif %}
+                </span>
+            </div>
+            <div class="schedule-info-item">
+                <span class="schedule-label">Salida Registrada</span>
+                <span class="schedule-value">{% if today_marking and today_marking.clock_out %}{{ today_marking.clock_out.strftime('%H:%M:%S') }}{% else %}--:--{% endif %}</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Historial de Marcaciones (Derecha) -->
+    <div class="main-panel">
+        <div class="card">
+            <h2 class="card-title">
+                <i class="fa-solid fa-list-check"></i> Historial de Asistencia del Mes
+            </h2>
+            <div class="table-container">
+                <table class="table-premium">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Modalidad</th>
+                            <th>Entrada</th>
+                            <th>Break Inicio</th>
+                            <th>Break Fin</th>
+                            <th>Salida</th>
+                            <th>Horas Break</th>
+                            <th>Horas Trabajo</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if history %}
+                            {% for m in history %}
+                            <tr>
+                                <td style="font-weight: 700;">{{ m.date.strftime('%d/%m/%Y') }}</td>
+                                <td>
+                                    {% if m.mode == 'remoto' %}
+                                        <span class="badge badge-remoto">🏠 Remoto</span>
+                                    {% else %}
+                                        <span class="badge badge-presencial">🏢 Presencial</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ m.clock_in.strftime('%H:%M:%S') if m.clock_in else '--:--' }}</td>
+                                <td>{{ m.break_start.strftime('%H:%M') if m.break_start else '--:--' }}</td>
+                                <td>{{ m.break_end.strftime('%H:%M') if m.break_end else '--:--' }}</td>
+                                <td>{{ m.clock_out.strftime('%H:%M:%S') if m.clock_out else '--:--' }}</td>
+                                <td>{{ "{:.2f}".format(m.break_hours) if m.break_hours else '0.00' }} hrs</td>
+                                <td style="font-weight: 600; color: var(--primary);">{{ "{:.2f}".format(m.total_hours) if m.total_hours else '0.00' }} hrs</td>
+                                <td>
+                                    {% if m.status == 'A tiempo' %}
+                                        <span class="badge badge-ontime">A tiempo</span>
+                                    {% elif m.status == 'Tarde' %}
+                                        <span class="badge badge-late">Tarde</span>
+                                    {% else %}
+                                        <span class="badge badge-incomplete">Incompleto</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="9" style="text-align: center; color: var(--text-light); padding: 30px;">
+                                    <i class="fa-regular fa-calendar-times" style="font-size: 1.5rem; margin-bottom: 8px;"></i>
+                                    <p>No se encontraron registros de marcación en el mes actual.</p>
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Reloj en tiempo real
+    function updateClock() {
+        const now = new Date();
+        const hrs = String(now.getHours()).padStart(2, '0');
+        const mins = String(now.getMinutes()).padStart(2, '0');
+        const secs = String(now.getSeconds()).padStart(2, '0');
+        
+        document.getElementById('liveClock').textContent = `${hrs}:${mins}:${secs}`;
+        
+        // Fecha formateada
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        document.getElementById('liveDate').textContent = now.toLocaleDateString('es-ES', options);
+    }
+    
+    setInterval(updateClock, 1000);
+    updateClock(); // Carga inicial
+</script>
+{% endblock %}

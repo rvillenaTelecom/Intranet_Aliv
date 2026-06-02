@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Asistencia — AlivTelecom{% endblock %}</title>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- CSS Customizado -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="app-container">
+        {% if session.get('user_id') %}
+        <nav class="navbar">
+            <a href="#" class="navbar-brand">
+                <i class="fa-solid fa-clock-rotate-left"></i> AlivTelecom Marking
+            </a>
+            <div class="navbar-user">
+                <div class="user-info">
+                    <div class="user-name">{{ session.get('user_name') }}</div>
+                    <div class="user-role">{{ 'Recursos Humanos' if session.get('user_role') == 'hr' else 'Colaborador' }}</div>
+                </div>
+                <a href="{{ url_for('logout') }}" class="btn-logout">
+                    <i class="fa-solid fa-right-from-bracket"></i> Salir
+                </a>
+            </div>
+        </nav>
+        {% endif %}
+
+        <main class="main-content">
+            <!-- Mensajes Flash -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category if category != 'error' else 'danger' }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

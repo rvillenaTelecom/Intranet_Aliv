@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+
+{% block title %}Panel RRHH — AlivTelecom Marking{% endblock %}
+
+{% block content %}
+<!-- Cabecera de Administración -->
+<div class="admin-header">
+    <div>
+        <h1 style="font-size: 1.8rem; background: linear-gradient(135deg, var(--text-primary), var(--text-secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+            Panel de Control de Recursos Humanos
+        </h1>
+        <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 4px;">Supervisión de puntualidad y horas laboradas</p>
+    </div>
+    <div class="admin-actions">
+        <button class="btn-action btn-action-add" onclick="openModal()">
+            <i class="fa-solid fa-user-plus"></i> Registrar Trabajador
+        </button>
+        <a href="{{ url_for('export_excel', user_id=selected_user, start_date=start_date, end_date=end_date) }}" class="btn-action btn-action-export">
+            <i class="fa-solid fa-file-excel"></i> Exportar a Excel
+        </a>
+    </div>
+</div>
+
+<!-- Tarjetas de Estadísticas del Día -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon stat-icon-blue">
+            <i class="fa-solid fa-users-viewfinder"></i>
+        </div>
+        <div class="stat-info">
+            <span class="stat-value">{{ stats.active_today }}</span>
+            <span class="stat-label">Presentes Hoy</span>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon stat-icon-amber">
+            <i class="fa-solid fa-mug-saucer"></i>
+        </div>
+        <div class="stat-info">
+            <span class="stat-value">{{ stats.in_break }}</span>
+            <span class="stat-label">En Break Activo</span>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon stat-icon-red">
+            <i class="fa-solid fa-user-clock"></i>
+        </div>
+        <div class="stat-info">
+            <span class="stat-value">{{ stats.late_today }}</span>
+            <span class="stat-label">Tardanzas Hoy</span>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon stat-icon-green">
+            <i class="fa-solid fa-address-book"></i>
+        </div>
+        <div class="stat-info">
+            <span class="stat-value">{{ stats.total_workers }}</span>
+            <span class="stat-label">Total Empleados</span>
+        </div>
+    </div>
+</div>
+
+<!-- Barra de Filtros -->
+<div class="filters-bar">
+    <form method="GET" action="{{ url_for('hr_dashboard') }}" class="filters-form">
+        <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label">Empleado</label>
+            <select name="user_id" class="form-control">
+                <option value="">-- Todos --</option>
+                {% for w in workers %}
+                <option value="{{ w.id }}" {% if selected_user == w.id|string %}selected{% endif %}>{{ w.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label">Fecha Desde</label>
+            <input type="date" name="start_date" class="form-control" value="{{ start_date }}">
+        </div>
+        
+        <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label">Fecha Hasta</label>
+            <input type="date" name="end_date" class="form-control" value="{{ end_date }}">
+        </div>
+        
+        <button type="submit" class="btn-filter">
+            <i class="fa-solid fa-filter"></i> Filtrar
+        </button>
+    </form>
+</div>
+
+<!-- Tabla Global de Marcaciones -->
+<div class="card" style="padding: 0; overflow: hidden;">
+    <h2 class="card-title" style="padding: 24px 24px 10px 24px; margin-bottom: 0;">
+        <i class="fa-solid fa-list-check"></i> Reporte de Marcaciones
+    </h2>
+    <div class="table-container" style="border: none; border-radius: 0;">
+        <table class="table-premium">
+            <thead>
+                <tr>
+                    <th>Empleado</th>
+                    <th>Fecha</th>
+                    <th>Modalidad</th>
+                    <th>Entrada</th>
+                    <th>Break Inicio</th>
+                    <th>Break Fin</th>
+                    <th>Salida</th>
+                    <th>Horas Break</th>
+                    <th>Horas Trabajo</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if markings %}
+                    {% for m in markings %}
+                    <tr>
+                        <td style="font-weight: 700;">{{ m.user_name }}</td>
+                        <td>{{ m.date }}</td>
+                        <td>
+                            {% if m.mode == 'remoto' %}
+                                <span class="badge badge-remoto">🏠 Remoto</span>
+                            {% else %}
+                                <span class="badge badge-presencial">🏢 Presencial</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ m.clock_in }}</td>
+                        <td>{{ m.break_start }}</td>
+                        <td>{{ m.break_end }}</td>
+                        <td>{{ m.clock_out }}</td>
+                        <td>{{ m.break_hours }} hrs</td>
+                        <td style="font-weight: 700; color: var(--primary);">{{ m.total_hours }} hrs</td>
+                        <td>
+                            {% if m.status == 'A tiempo' %}
+                                <span class="badge badge-ontime">A tiempo</span>
+                            {% elif m.status == 'Tarde' %}
+                                <span class="badge badge-late">Tarde</span>
+                            {% else %}
+                                <span class="badge badge-incomplete">Incompleto</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="10" style="text-align: center; color: var(--text-light); padding: 40px;">
+                            <i class="fa-solid fa-triangle-exclamation" style="font-size: 1.8rem; margin-bottom: 10px;"></i>
+                            <p>No se encontraron registros de asistencia con los filtros seleccionados.</p>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal para Registrar Nuevo Trabajador -->
+<div class="modal" id="addWorkerModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 style="font-size: 1.3rem;"><i class="fa-solid fa-user-plus" style="color: var(--primary);"></i> Registrar Trabajador</h3>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <form method="POST" action="{{ url_for('register_worker') }}">
+            <div class="form-group">
+                <label for="name" class="form-label">Nombre Completo</label>
+                <input type="text" id="name" name="name" class="form-control" placeholder="Ej. Juan Pérez" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="reg_username" class="form-label">Nombre de usuario</label>
+                <input type="text" id="reg_username" name="username" class="form-control" placeholder="Ej. jperez" required autocomplete="off">
+            </div>
+            
+            <div class="form-group">
+                <label for="reg_password" class="form-label">Contraseña Inicial</label>
+                <input type="password" id="reg_password" name="password" class="form-control" placeholder="Ej. Clave2026!" required autocomplete="off">
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="schedule_start" class="form-label">Hora Entrada</label>
+                    <input type="time" id="schedule_start" name="schedule_start" class="form-control" value="08:00" required>
+                </div>
+                <div class="form-group">
+                    <label for="schedule_end" class="form-label">Hora Salida</label>
+                    <input type="time" id="schedule_end" name="schedule_end" class="form-control" value="17:00" required>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn-primary" style="margin-top: 15px;">
+                <i class="fa-solid fa-circle-check"></i> Guardar Empleado
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function openModal() {
+        document.getElementById('addWorkerModal').classList.add('active');
+    }
+    
+    function closeModal() {
+        document.getElementById('addWorkerModal').classList.remove('active');
+    }
+    
+    // Cerrar modal al hacer clic fuera del contenido
+    window.onclick = function(event) {
+        const modal = document.getElementById('addWorkerModal');
+        if (event.target === modal) {
+            closeModal();
+        }
+    }
+</script>
+{% endblock %}
