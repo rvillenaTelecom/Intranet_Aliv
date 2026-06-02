@@ -221,15 +221,32 @@ def descargar_reporte_winforce():
             print("5. Dando clic en Buscar...")
             page.get_by_role("button", name="Buscar", exact=True).click()
 
-            # 6. Esperar que la tabla tenga filas reales (no usar sleep fijo)
+            # 6. Esperar a que la búsqueda termine (el botón se habilite o la tabla quede vacía)
             print("6. Esperando resultados de la busqueda...")
             try:
-                page.wait_for_selector("table tbody tr td:not(.dataTables_empty)", timeout=45000)
-            except Exception:
-                sin_datos = page.locator("td.dataTables_empty").is_visible()
-                if sin_datos:
+                res = page.wait_for_function("""() => {
+                    const btn = document.querySelector('#descargarventaexcel');
+                    const emptyCell = document.querySelector('td.dataTables_empty');
+                    
+                    // Si el botón no está deshabilitado, terminó la carga y hay datos
+                    if (btn && !btn.disabled) {
+                        return "ready";
+                    }
+                    
+                    // Si la celda vacía está presente y visible, terminó la carga y no hay datos
+                    if (emptyCell && window.getComputedStyle(emptyCell).display !== 'none') {
+                        return "empty";
+                    }
+                    
+                    return false;
+                }""", timeout=60000)
+                
+                estado = res.json_value()
+                if estado == "empty":
                     print("   [AVISO] No hay datos en el rango de fechas. Saltando descarga.")
                     return
+            except Exception as e:
+                print(f"   [ERROR] Espera de resultados excedió el tiempo límite: {e}")
                 raise
             time.sleep(2)
 
@@ -237,7 +254,7 @@ def descargar_reporte_winforce():
             print("7. Descargando Excel...")
             ruta_final = os.path.join(CARPETA_DESCARGA, "Winforce_Lima.xlsx")
             with page.expect_download(timeout=60000) as dl:
-                page.get_by_role("button", name="Descargar", exact=True).click()
+                page.get_by_role("button", name="Descargar", exact=True).click(no_wait_after=True)
             download = dl.value
             ext = os.path.splitext(download.suggested_filename)[1] or ".xlsx"
             ruta_temp = os.path.join(CARPETA_DESCARGA, f"_tmp_lima{ext}")

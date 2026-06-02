@@ -27,7 +27,7 @@ Morosidad/Recibos_Resume/
 # Logs and screenshots
 *.log
 Descargas_Rápidas/logs/
-Descargas_Rápidas/error_ejecucion.png
+error_ejecucion.png
 
 # IDE / Tool configs
 .claude/
