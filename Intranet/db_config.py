@@ -6,14 +6,19 @@ import re as _re_sql
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
+_engine = None
+
 
 def get_engine():
-    """Crea un motor de conexión automático (Local o Nube)."""
+    """Crea (o reutiliza) el motor de conexión automático (Local o Nube)."""
+    global _engine
+    if _engine is not None:
+        return _engine
     if DATABASE_URL:
         url = DATABASE_URL
         if url.startswith("postgres://"):
             url = url.replace("postgres://", "postgresql://", 1)
-        return sa.create_engine(url)
+        _engine = sa.create_engine(url, pool_size=10, max_overflow=5, pool_pre_ping=True)
     else:
         SERVER = r'.\SQLEXPRESS'
         DATABASE = 'Aliv_DB'
@@ -24,7 +29,8 @@ def get_engine():
             f"Trusted_Connection=yes;"
         )
         params = urllib.parse.quote_plus(connection_string)
-        return sa.create_engine(f"mssql+pyodbc:///?odbc_connect={params}", fast_executemany=True)
+        _engine = sa.create_engine(f"mssql+pyodbc:///?odbc_connect={params}", fast_executemany=True)
+    return _engine
 
 
 # ─── SQL DIALECT ADAPTER (SQL Server → PostgreSQL) ───────────────────────────

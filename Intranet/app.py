@@ -11,6 +11,7 @@ import queue
 import time
 import json
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
 try:
     import db_helper
 except ImportError:
@@ -28,6 +29,20 @@ _FASES_VALIDAS = {'bd', 'daily', 'consolidar', 'subida_aliv', 'reporte_diario'}
 _pipeline_running = False
 _pipeline_proc    = None
 _pipeline_log     = []   # [(tipo, dato), ...] del run actual
+
+_dashboard_cache = {}
+_CACHE_TTL = 300  # 5 minutos
+
+
+def _cache_get(key):
+    entry = _dashboard_cache.get(key)
+    if entry and time.time() - entry[0] < _CACHE_TTL:
+        return entry[1]
+    return None
+
+
+def _cache_set(key, data):
+    _dashboard_cache[key] = (time.time(), data)
 
 try:
     db_helper.init_dim_usuarios_table()
@@ -167,38 +182,57 @@ def dashboard_ventas():
     ]
     mes_nombre = next((m['nombre'] for m in meses if m['id'] == mes), '')
 
-    kpi_lima   = db_helper.get_kpi_lima(mes, anio, area=area, dia=dia)
-    kpi_prov   = db_helper.get_kpi_provincia(mes, anio)
-    trend_lima = db_helper.get_daily_trend_lima(mes, anio, area=area)
-    trend_prov = db_helper.get_daily_trend_provincia(mes, anio)
-    top_dist   = db_helper.get_top_distritos_lima(mes, anio, area=area, dia=dia)
-    tipo_vivienda = db_helper.get_tipo_vivienda_lima(mes, anio, area=area, dia=dia)
-    dist_estados = db_helper.get_distribucion_estados_lima(mes, anio, area=area, dia=dia)
-    pivot_planes  = db_helper.get_pivot_planes_agencia(mes, anio, area=area, dia=dia)
-    vel_planes    = db_helper.get_velocidad_planes_lima(mes, anio, area=area, dia=dia)
-    tabla_prov = db_helper.get_tabla_provincia(mes, anio)
-    loc_lima    = db_helper.get_localizacion_lima(mes, anio, area=area)
-    puntos_mapa = db_helper.get_puntos_mapa_lima(mes, anio, area=area)
-
     anios = list(range(2024, datetime.now().year + 2))
 
+    cache_key = (mes, anio, area, dia)
+    db_data = _cache_get(cache_key)
+
+    if db_data is None:
+        _queries = {
+            'kpi_lima':      lambda: db_helper.get_kpi_lima(mes, anio, area=area, dia=dia),
+            'kpi_prov':      lambda: db_helper.get_kpi_provincia(mes, anio),
+            'trend_lima':    lambda: db_helper.get_daily_trend_lima(mes, anio, area=area),
+            'trend_prov':    lambda: db_helper.get_daily_trend_provincia(mes, anio),
+            'top_dist':      lambda: db_helper.get_top_distritos_lima(mes, anio, area=area, dia=dia),
+            'tipo_vivienda': lambda: db_helper.get_tipo_vivienda_lima(mes, anio, area=area, dia=dia),
+            'dist_estados':  lambda: db_helper.get_distribucion_estados_lima(mes, anio, area=area, dia=dia),
+            'pivot_planes':  lambda: db_helper.get_pivot_planes_agencia(mes, anio, area=area, dia=dia),
+            'vel_planes':    lambda: db_helper.get_velocidad_planes_lima(mes, anio, area=area, dia=dia),
+            'tabla_prov':    lambda: db_helper.get_tabla_provincia(mes, anio),
+            'loc_lima':      lambda: db_helper.get_localizacion_lima(mes, anio, area=area),
+            'puntos_mapa':   lambda: db_helper.get_puntos_mapa_lima(mes, anio, area=area),
+        }
+        db_data = {}
+        with ThreadPoolExecutor(max_workers=6) as executor:
+            futures = {executor.submit(fn): name for name, fn in _queries.items()}
+            for future in as_completed(futures):
+                name = futures[future]
+                try:
+                    db_data[name] = future.result()
+                except Exception as e:
+                    print(f"[dashboard] {name}: {e}")
+                    db_data[name] = None
+        _cache_set(cache_key, db_data)
+
+    loc_lima = db_data.get('loc_lima')
     return render_template('dashboard_ventas.html',
                            user=session['name'], role=session['role'],
                            mes_actual=mes, anio_actual=anio,
                            mes_nombre=mes_nombre, meses=meses, anios=anios,
                            area=area, dia_actual=dia or 0,
-                           kpi_lima=kpi_lima, kpi_prov=kpi_prov,
-                           trend_lima=trend_lima,
-                           trend_prov=trend_prov,
-                           top_dist=top_dist,
-                           tipo_vivienda=tipo_vivienda,
-                           dist_estados=dist_estados,
-                           pivot_planes=pivot_planes,
-                           vel_planes=vel_planes,
-                           tabla_prov=tabla_prov,
+                           kpi_lima=db_data.get('kpi_lima'),
+                           kpi_prov=db_data.get('kpi_prov'),
+                           trend_lima=db_data.get('trend_lima'),
+                           trend_prov=db_data.get('trend_prov'),
+                           top_dist=db_data.get('top_dist'),
+                           tipo_vivienda=db_data.get('tipo_vivienda'),
+                           dist_estados=db_data.get('dist_estados'),
+                           pivot_planes=db_data.get('pivot_planes'),
+                           vel_planes=db_data.get('vel_planes'),
+                           tabla_prov=db_data.get('tabla_prov'),
                            loc_lima=loc_lima,
                            loc_zonas=loc_lima['zonas'] if loc_lima else [],
-                           puntos_mapa=puntos_mapa)
+                           puntos_mapa=db_data.get('puntos_mapa'))
 
 @app.route('/ventas')
 @login_required
