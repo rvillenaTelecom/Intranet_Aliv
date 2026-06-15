@@ -29,17 +29,6 @@ _pipeline_running = False
 _pipeline_proc    = None
 _pipeline_log     = []   # [(tipo, dato), ...] del run actual
 
-# --- VERIFICACIÓN DE PLAYWRIGHT PARA RENDER ---
-def check_playwright():
-    if os.environ.get('RENDER'):
-        print("Entorno Render detectado. Asegurando que Playwright esté listo...")
-        try:
-            subprocess.run(['python', '-m', 'playwright', 'install', 'chromium'], check=True)
-        except Exception as e:
-            print(f"Aviso: Error instalando playwright en arranque: {e}")
-
-check_playwright()
-
 try:
     db_helper.init_dim_usuarios_table()
 except Exception as _e:
