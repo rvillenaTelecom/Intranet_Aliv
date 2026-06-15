@@ -1,0 +1,288 @@
+{% extends "base.html" %}
+{% block title %}Usuarios — Intranet AlivTelecom{% endblock %}
+{% block page_title %}Usuarios y Jerarquías{% endblock %}
+
+{% block content %}
+
+<!-- Banner -->
+<div class="welcome-banner" style="background: linear-gradient(135deg, #0a2540 0%, #0066CC 60%, #00C8DC 100%);">
+    <div class="welcome-title"><i class="fa-solid fa-users-gear" style="margin-right:10px;"></i>Usuarios y Jerarquías</div>
+    <div class="welcome-sub">Directorio de vendedores, supervisores y agencias de AlivTelecom. Solo admin puede crear o editar.</div>
+</div>
+
+<!-- Stats -->
+<div class="stats-row" style="grid-template-columns: repeat(4, minmax(140px, 1fr)); margin-bottom: 24px;">
+    <div class="stat-card">
+        <div class="stat-label">Total Registrados</div>
+        <div class="stat-value blue">{{ stats.total }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Activos</div>
+        <div class="stat-value teal">{{ stats.activos }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Supervisores</div>
+        <div class="stat-value orange">{{ stats.supervisores }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Agencias</div>
+        <div class="stat-value green">{{ stats.agencias }}</div>
+    </div>
+</div>
+
+<!-- Header + botón -->
+<div class="section-header">
+    <div class="section-title"><i class="fa-solid fa-list"></i> Directorio</div>
+    {% if role == 'admin' %}
+    <button class="btn btn-primary" onclick="openModal()">
+        <i class="fa-solid fa-user-plus"></i> Nuevo Usuario
+    </button>
+    {% endif %}
+</div>
+
+<!-- Filtros -->
+<form method="GET" action="{{ url_for('usuarios') }}" style="display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap; align-items:flex-end;">
+    <div class="form-group" style="margin:0; flex:2; min-width:160px;">
+        <label>Buscar</label>
+        <input type="text" name="search" value="{{ filters.search }}" placeholder="Vendedor o nombre..." class="u-input">
+    </div>
+    <div class="form-group" style="margin:0; min-width:140px;">
+        <label>Agencia</label>
+        <select name="agencia" class="u-input">
+            <option value="">-- Todas --</option>
+            {% for ag in agencias %}
+            <option value="{{ ag }}" {% if filters.agencia == ag %}selected{% endif %}>{{ ag }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="form-group" style="margin:0; min-width:130px;">
+        <label>Cargo</label>
+        <select name="cargo" class="u-input">
+            <option value="">-- Todos --</option>
+            {% for c in cargos %}
+            <option value="{{ c }}" {% if filters.cargo == c %}selected{% endif %}>{{ c }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="form-group" style="margin:0; min-width:110px;">
+        <label>Estado</label>
+        <select name="estado" class="u-input">
+            <option value="">-- Todos --</option>
+            <option value="Activo"   {% if filters.estado == 'Activo'   %}selected{% endif %}>Activo</option>
+            <option value="Inactivo" {% if filters.estado == 'Inactivo' %}selected{% endif %}>Inactivo</option>
+        </select>
+    </div>
+    <button type="submit" class="btn btn-primary" style="height:38px; align-self:flex-end;">
+        <i class="fa-solid fa-filter"></i> Filtrar
+    </button>
+    {% if filters.search or filters.agencia or filters.cargo or filters.estado %}
+    <a href="{{ url_for('usuarios') }}" class="btn btn-outline" style="height:38px; align-self:flex-end; display:inline-flex; align-items:center; gap:6px;">
+        <i class="fa-solid fa-xmark"></i> Limpiar
+    </a>
+    {% endif %}
+</form>
+
+<!-- Tabla -->
+<div class="card" style="padding:0; overflow:hidden;">
+    <div style="overflow-x:auto;">
+        <table class="u-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Vendedor Win</th>
+                    <th>Nombre Completo</th>
+                    <th>Cargo</th>
+                    <th>Agencia</th>
+                    <th>Supervisor ALIV</th>
+                    <th>Canal</th>
+                    <th>Estado</th>
+                    <th>Registrado</th>
+                    {% if role == 'admin' %}<th>Acciones</th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+            {% if usuarios %}
+                {% for u in usuarios %}
+                <tr>
+                    <td style="color:var(--text-light); font-size:12px;">{{ loop.index }}</td>
+                    <td style="font-weight:700; font-family:monospace; font-size:13px; white-space:nowrap;">{{ u.vendedor | upper }}</td>
+                    <td>{{ (u.nombre_completo | title) if u.nombre_completo else '—' }}</td>
+                    <td>
+                        {% if u.cargo == 'Supervisor' %}
+                            <span class="u-badge u-badge-sup">{{ u.cargo }}</span>
+                        {% elif u.cargo == 'Jefe de Agencia' %}
+                            <span class="u-badge u-badge-jefe">{{ u.cargo }}</span>
+                        {% elif u.cargo == 'Admin' %}
+                            <span class="u-badge u-badge-admin">{{ u.cargo }}</span>
+                        {% else %}
+                            <span class="u-badge u-badge-vend">{{ u.cargo }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ u.agencia or '—' }}</td>
+                    <td>{{ u.supervisor or '—' }}</td>
+                    <td>
+                        {% if u.canal == 'Lima' %}
+                            <span class="u-badge u-badge-lima">Lima</span>
+                        {% elif u.canal == 'Provincia' %}
+                            <span class="u-badge u-badge-prov">Provincia</span>
+                        {% elif u.canal == 'Ambos' %}
+                            <span class="u-badge u-badge-ambos">Ambos</span>
+                        {% else %}
+                            <span style="color:var(--text-light);">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if u.estado == 'Activo' %}
+                            <span class="u-badge u-badge-activo"><i class="fa-solid fa-circle" style="font-size:6px;"></i> Activo</span>
+                        {% else %}
+                            <span class="u-badge u-badge-inactivo">Inactivo</span>
+                        {% endif %}
+                    </td>
+                    <td style="font-size:12px; color:var(--text-secondary); white-space:nowrap;">{{ u.fecha_registro or '—' }}</td>
+                    {% if role == 'admin' %}
+                    <td>
+                        <div style="display:flex; gap:6px;">
+                            <button class="u-btn-edit" onclick='editUsuario({{ u | tojson }})' title="Editar">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+                            <form method="POST" action="{{ url_for('eliminar_usuario', uid=u.id) }}"
+                                  onsubmit="return confirm('¿Eliminar a {{ u.vendedor }}? Esta acción no se puede deshacer.');"
+                                  style="display:inline;">
+                                <button type="submit" class="u-btn-del" title="Eliminar">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="{{ 10 if role == 'admin' else 9 }}" class="u-empty">
+                        <i class="fa-solid fa-users-slash"></i>
+                        <p>No se encontraron usuarios con los filtros seleccionados.</p>
+                    </td>
+                </tr>
+            {% endif %}
+            </tbody>
+        </table>
+    </div>
+    {% if usuarios %}
+    <div style="padding:12px 20px; border-top:1px solid var(--border); font-size:12px; color:var(--text-secondary);">
+        {{ usuarios | length }} registro{{ 's' if usuarios | length != 1 else '' }} mostrado{{ 's' if usuarios | length != 1 else '' }}
+    </div>
+    {% endif %}
+</div>
+
+{% if role == 'admin' %}
+<!-- Modal Añadir / Editar -->
+<div class="u-modal-overlay" id="uModal">
+    <div class="u-modal-box">
+        <div class="u-modal-header">
+            <h3><i class="fa-solid fa-user-pen" style="color:var(--primary);"></i> <span id="modalTitleText">Nuevo Usuario</span></h3>
+            <button onclick="closeModal()" class="u-modal-close" type="button">&times;</button>
+        </div>
+        <form method="POST" action="{{ url_for('guardar_usuario') }}" id="uForm">
+            <input type="hidden" name="id" id="fId" value="">
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                <div class="form-group" style="margin:0;">
+                    <label>Vendedor Win <span style="color:#DC2626;">*</span></label>
+                    <input type="text" name="vendedor" id="fVendedor" class="u-input" placeholder="Username en Winforce" required>
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label>Nombre Completo</label>
+                    <input type="text" name="nombre_completo" id="fNombre" class="u-input" placeholder="Ej. Juan Pérez">
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label>Cargo</label>
+                    <select name="cargo" id="fCargo" class="u-input">
+                        <option value="Vendedor">Vendedor</option>
+                        <option value="Supervisor">Supervisor</option>
+                        <option value="Jefe de Agencia">Jefe de Agencia</option>
+                        <option value="Coordinador">Coordinador</option>
+                        <option value="Admin">Admin</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label>Canal</label>
+                    <select name="canal" id="fCanal" class="u-input">
+                        <option value="">— Sin canal —</option>
+                        <option value="Lima">Lima</option>
+                        <option value="Provincia">Provincia</option>
+                        <option value="Ambos">Ambos</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label>Agencia</label>
+                    <input type="text" name="agencia" id="fAgencia" class="u-input" list="agenciasList" placeholder="Ej. Agencia Lima Norte">
+                    <datalist id="agenciasList">
+                        {% for ag in agencias %}<option value="{{ ag }}">{% endfor %}
+                    </datalist>
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label>Supervisor ALIV</label>
+                    <input type="text" name="supervisor" id="fSupervisor" class="u-input" list="supervisoresList" placeholder="Ej. Carlos Ramos">
+                    <datalist id="supervisoresList">
+                        {% for sv in supervisores %}<option value="{{ sv }}">{% endfor %}
+                    </datalist>
+                </div>
+                <div class="form-group" style="margin:0; grid-column: 1 / -1;">
+                    <label>Estado</label>
+                    <select name="estado" id="fEstado" class="u-input" style="max-width:200px;">
+                        <option value="Activo">Activo</option>
+                        <option value="Inactivo">Inactivo</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style="display:flex; gap:10px; margin-top:24px; justify-content:flex-end;">
+                <button type="button" onclick="closeModal()" class="btn btn-outline">Cancelar</button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa-solid fa-circle-check"></i> <span id="btnSubmitText">Guardar</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openModal(isEdit) {
+    document.getElementById('uModal').classList.add('active');
+    if (!isEdit) {
+        document.getElementById('uForm').reset();
+        document.getElementById('fId').value = '';
+        document.getElementById('modalTitleText').textContent = 'Nuevo Usuario';
+        document.getElementById('btnSubmitText').textContent = 'Guardar';
+    }
+}
+
+function closeModal() {
+    document.getElementById('uModal').classList.remove('active');
+}
+
+function editUsuario(u) {
+    document.getElementById('fId').value        = u.id;
+    document.getElementById('fVendedor').value  = u.vendedor || '';
+    document.getElementById('fNombre').value    = u.nombre_completo || '';
+    document.getElementById('fCargo').value     = u.cargo || 'Vendedor';
+    document.getElementById('fCanal').value     = u.canal || '';
+    document.getElementById('fAgencia').value   = u.agencia || '';
+    document.getElementById('fSupervisor').value = u.supervisor || '';
+    document.getElementById('fEstado').value    = u.estado || 'Activo';
+    document.getElementById('modalTitleText').textContent = 'Editar Usuario';
+    document.getElementById('btnSubmitText').textContent  = 'Actualizar';
+    openModal(true);
+}
+
+window.addEventListener('click', function(e) {
+    const modal = document.getElementById('uModal');
+    if (modal && e.target === modal) closeModal();
+});
+</script>
+{% endblock %}

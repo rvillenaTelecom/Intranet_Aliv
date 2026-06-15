@@ -67,6 +67,16 @@
                 <i class="fa-solid fa-gauge-high"></i>
                 <span>Dashboards</span>
             </a>
+
+            <div class="nav-section-label">Gestión</div>
+            <a href="{{ url_for('usuarios') }}" class="nav-item {% if request.endpoint in ['usuarios','guardar_usuario','eliminar_usuario'] %}active{% endif %}">
+                <i class="fa-solid fa-users-gear"></i>
+                <span>Usuarios</span>
+            </a>
+            <a href="{{ url_for('pipeline') }}" class="nav-item {% if request.endpoint in ['pipeline','pipeline_ejecutar','pipeline_stream','pipeline_estado','pipeline_cancelar'] %}active{% endif %}">
+                <i class="fa-solid fa-terminal"></i>
+                <span>Pipeline</span>
+            </a>
         </nav>
 
         <div class="sidebar-footer">
@@ -92,11 +102,60 @@
         </header>
 
         <div class="content-area">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div id="flashMessages">
+                {% for category, message in messages %}
+                <div class="flash-msg flash-{{ category }}">
+                    <i class="fa-solid {% if category == 'success' %}fa-circle-check{% else %}fa-circle-exclamation{% endif %}"></i>
+                    <span>{{ message }}</span>
+                    <button onclick="this.parentElement.remove()" class="flash-close">&times;</button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% endwith %}
+
             {% block content %}{% endblock %}
         </div>
     </main>
 </div>
 
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% block scripts %}{% endblock %}
+
+<!-- ===== CHAT WIDGET ===== -->
+<button class="chat-fab" id="chatFab" onclick="chatToggle()" title="Asistente IA">
+    <i class="fa-solid fa-robot"></i>
+    <span class="chat-fab-pulse"></span>
+</button>
+
+<div class="chat-panel" id="chatPanel">
+    <div class="chat-header">
+        <div class="chat-header-info">
+            <div class="chat-avatar"><i class="fa-solid fa-robot"></i></div>
+            <div>
+                <div class="chat-title">Asistente IA</div>
+                <div class="chat-subtitle">AlivTelecom · Gemini</div>
+            </div>
+        </div>
+        <button class="chat-close-btn" onclick="chatToggle()" title="Cerrar">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+    </div>
+    <div class="chat-messages" id="chatMessages">
+        <div class="chat-msg chat-msg-ai">
+            <div class="chat-bubble">¡Hola, <strong>{{ user }}</strong>! Soy el asistente virtual de AlivTelecom. Puedo ayudarte con métricas de ventas, análisis de datos y consejos de negocio. ¿En qué te puedo ayudar?</div>
+        </div>
+    </div>
+    <div class="chat-input-area">
+        <input type="text" class="chat-input" id="chatInput" placeholder="Escribe tu pregunta…" autocomplete="off">
+        <button class="chat-send-btn" id="chatSendBtn" onclick="chatSend()">
+            <i class="fa-solid fa-paper-plane"></i>
+        </button>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/chat.js') }}"></script>
 </body>
 </html>

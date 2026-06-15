@@ -27,8 +27,8 @@ def descargar_reporte_winforce():
     # CONFIGURACIÓN (Deberás rellenar estos datos con los reales)
     # ---------------------------------------------------------
     URL_LOGIN = "https://accesoventas.win.pe/" # Cambia por la URL real
-    USUARIO = "aescalantep@alivtelecom.pe"
-    PASSWORD = "Y&956668626747ar"
+    USUARIO = "backoffice11@alivtelecom.pe"
+    PASSWORD = "C@836235653909oz"
     
     # Carpeta donde se guardará el Excel descargado (usando la carpeta actual)
     CARPETA_DESCARGA = os.path.join(os.getcwd(), "descargas_winforce_Dept")
@@ -284,9 +284,9 @@ def descargar_reporte_winforce():
             # Carga a SQL Server
             try:
                 print("   Iniciando carga a SQL Server...")
-                incremental = "--incremental" in sys.argv
                 if incremental:
-                    upload_incremental_to_sql(df, "winforce_provincia", "Fecha de registro")
+                    # primer_dia_obj ya fue calculado arriba al aplicar los filtros de fecha
+                    upload_incremental_to_sql(df, "winforce_provincia", "Fecha de registro", start_date=primer_dia_obj)
                 else:
                     upload_to_sql(df, "winforce_provincia")
             except Exception as sql_e:

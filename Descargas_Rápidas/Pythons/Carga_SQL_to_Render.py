@@ -70,28 +70,37 @@ def upload_to_sql(df, table_name, if_exists='replace'):
         print(f"  [DB] ERROR: {e}")
         return False
 
-def upload_incremental_to_sql(df, table_name, date_col, days=None):
+def upload_incremental_to_sql(df, table_name, date_col, days=None, start_date=None):
     """
-    Carga incremental inteligente: Borra la data desde la fecha mínima encontrada 
-    en el DataFrame y luego sube la nueva información. Esto evita duplicados 
-    independientemente de cuántos días se hayan descargado.
+    Carga incremental inteligente: Borra desde `start_date` (si se provee) o desde la
+    fecha mínima del DataFrame, y luego sube la nueva información.
+
+    Usar `start_date` explícito evita que registros con fechas antiguas en el Excel
+    (ej. ventas retroactivas de febrero en una descarga de mayo) borren datos históricos.
     """
     try:
         engine = get_engine()
-        
-        # Asegurarse de que la columna de fecha sea datetime
-        df_temp = df.copy()
-        df_temp[date_col] = pd.to_datetime(df_temp[date_col], dayfirst=True, errors='coerce')
-        fecha_minima = df_temp[date_col].min()
-        
-        if pd.isna(fecha_minima):
-            # Si no hay fechas válidas, usamos el método tradicional de 7 días como respaldo
-            from datetime import datetime, timedelta
-            dias_atras = days if days is not None else 7
-            fecha_inicio = (datetime.now() - timedelta(days=dias_atras)).strftime('%Y-%m-%d')
-            print(f"  [DB] AVISO: No se detectaron fechas en '{date_col}'. Usando respaldo: {fecha_inicio}")
+
+        if start_date is not None:
+            # Fecha de inicio explícita: más segura que derivarla del contenido del DataFrame
+            if hasattr(start_date, 'strftime'):
+                fecha_inicio = start_date.strftime('%Y-%m-%d')
+            else:
+                fecha_inicio = str(start_date)
+            print(f"  [DB] Usando fecha de inicio explícita: {fecha_inicio}")
         else:
-            fecha_inicio = fecha_minima.strftime('%Y-%m-%d')
+            # Comportamiento anterior: derivar desde el DataFrame
+            df_temp = df.copy()
+            df_temp[date_col] = pd.to_datetime(df_temp[date_col], dayfirst=True, errors='coerce')
+            fecha_minima = df_temp[date_col].min()
+
+            if pd.isna(fecha_minima):
+                from datetime import datetime, timedelta
+                dias_atras = days if days is not None else 7
+                fecha_inicio = (datetime.now() - timedelta(days=dias_atras)).strftime('%Y-%m-%d')
+                print(f"  [DB] AVISO: No se detectaron fechas en '{date_col}'. Usando respaldo: {fecha_inicio}")
+            else:
+                fecha_inicio = fecha_minima.strftime('%Y-%m-%d')
         
         # En SQL Server respetamos el nombre, en Postgres minúsculas
         nombre_final = table_name if not DATABASE_URL else table_name.lower()

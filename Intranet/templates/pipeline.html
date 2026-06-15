@@ -1,0 +1,400 @@
+{% extends "base.html" %}
+{% block title %}Pipeline — Intranet AlivTelecom{% endblock %}
+{% block page_title %}Pipeline de Datos{% endblock %}
+
+{% block content %}
+
+<!-- Banner -->
+<div class="pl-banner">
+    <div class="pl-banner-left">
+        <div class="pl-banner-icon"><i class="fa-solid fa-terminal"></i></div>
+        <div>
+            <div class="pl-banner-title">Automatización de Datos</div>
+            <div class="pl-banner-sub">Ejecuta los procesos de descarga, zonificación y carga a base de datos.</div>
+        </div>
+    </div>
+    <div id="plStatus" class="pl-status pl-status-idle">
+        <i class="fa-solid fa-circle-check"></i> Listo
+    </div>
+</div>
+
+{% if is_render %}
+<div class="pl-alert pl-alert-warn">
+    <i class="fa-solid fa-triangle-exclamation"></i>
+    <span>El pipeline requiere entorno local (Playwright + archivos Excel). No disponible en Render.</span>
+</div>
+{% endif %}
+
+{% if role != 'admin' %}
+<div class="pl-alert pl-alert-info">
+    <i class="fa-solid fa-circle-info"></i>
+    <span>Solo el administrador puede ejecutar procesos. Puedes ver el estado pero no iniciar ninguno.</span>
+</div>
+{% endif %}
+
+<!-- Cards grid -->
+<div class="pl-grid">
+
+    <div class="pl-card" data-fase="bd">
+        <div class="pl-card-header" style="--cl:#0066CC">
+            <div class="pl-card-icon"><i class="fa-solid fa-database"></i></div>
+            <span class="pl-card-badge">~30 min</span>
+        </div>
+        <div class="pl-card-body">
+            <div class="pl-card-title">Todo 2026</div>
+            <div class="pl-card-desc">Descarga Lima + Provincia desde Winforce, aplica zonificación KML y sube todo a SQL desde el 01-01-2026 hasta hoy. Usa esto cuando haya varios días sin actualizar.</div>
+        </div>
+        <div class="pl-card-footer">
+            {% if role == 'admin' and not is_render %}
+            <button class="pl-btn pl-btn-run" onclick="ejecutar('bd')" data-fase="bd">
+                <i class="fa-solid fa-play"></i> Ejecutar
+            </button>
+            {% else %}
+            <button class="pl-btn pl-btn-run" disabled>
+                <i class="fa-solid fa-play"></i> Ejecutar
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="pl-card" data-fase="daily">
+        <div class="pl-card-header" style="--cl:#16A34A">
+            <div class="pl-card-icon" style="background:rgba(22,163,74,.15);color:#16A34A"><i class="fa-solid fa-bolt"></i></div>
+            <span class="pl-card-badge">~10-15 min</span>
+        </div>
+        <div class="pl-card-body">
+            <div class="pl-card-title">Solo este mes <span class="pl-tag">Recomendado</span></div>
+            <div class="pl-card-desc">Descarga solo el mes actual y el anterior (rango incremental). Mucho más rápido, ideal para uso diario. No borra datos históricos.</div>
+        </div>
+        <div class="pl-card-footer">
+            {% if role == 'admin' and not is_render %}
+            <button class="pl-btn pl-btn-run pl-btn-green" onclick="ejecutar('daily')" data-fase="daily">
+                <i class="fa-solid fa-play"></i> Ejecutar
+            </button>
+            {% else %}
+            <button class="pl-btn pl-btn-run" disabled>
+                <i class="fa-solid fa-play"></i> Ejecutar
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="pl-card" data-fase="consolidar">
+        <div class="pl-card-header" style="--cl:#EA580C">
+            <div class="pl-card-icon" style="background:rgba(234,88,12,.15);color:#EA580C"><i class="fa-solid fa-layer-group"></i></div>
+            <span class="pl-card-badge">~2 min</span>
+        </div>
+        <div class="pl-card-body">
+            <div class="pl-card-title">Consolidar Ventas</div>
+            <div class="pl-card-desc">Une Lima + Provincia en la tabla maestra de ventas y actualiza métricas agregadas. Ejecutar después de descargar datos nuevos.</div>
+        </div>
+        <div class="pl-card-footer">
+            {% if role == 'admin' and not is_render %}
+            <button class="pl-btn pl-btn-run pl-btn-orange" onclick="ejecutar('consolidar')" data-fase="consolidar">
+                <i class="fa-solid fa-play"></i> Ejecutar
+            </button>
+            {% else %}
+            <button class="pl-btn pl-btn-run" disabled>
+                <i class="fa-solid fa-play"></i> Ejecutar
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="pl-card" data-fase="subida_aliv">
+        <div class="pl-card-header" style="--cl:#0891B2">
+            <div class="pl-card-icon" style="background:rgba(8,145,178,.15);color:#0891B2"><i class="fa-solid fa-file-arrow-up"></i></div>
+            <span class="pl-card-badge">~1 min</span>
+        </div>
+        <div class="pl-card-body">
+            <div class="pl-card-title">Subida Aliv</div>
+            <div class="pl-card-desc">Sube <code>Aliv_ventas_activas.xls</code> a la tabla <code>ventas_aliv</code> en SQL Server. <strong>El archivo debe estar en <code>descargas_winforce_Dept/</code></strong> antes de ejecutar.</div>
+        </div>
+        <div class="pl-card-footer">
+            {% if role == 'admin' and not is_render %}
+            <button class="pl-btn pl-btn-run pl-btn-cyan" onclick="ejecutar('subida_aliv')" data-fase="subida_aliv">
+                <i class="fa-solid fa-play"></i> Ejecutar
+            </button>
+            {% else %}
+            <button class="pl-btn pl-btn-run" disabled>
+                <i class="fa-solid fa-play"></i> Ejecutar
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="pl-card" data-fase="reporte_diario">
+        <div class="pl-card-header" style="--cl:#DC2626">
+            <div class="pl-card-icon" style="background:rgba(220,38,38,.15);color:#DC2626"><i class="fa-solid fa-calendar-day"></i></div>
+            <span class="pl-card-badge">~3-5 min</span>
+        </div>
+        <div class="pl-card-body">
+            <div class="pl-card-title">Reporte Diario</div>
+            <div class="pl-card-desc">Genera el reporte de altas del día anterior para Lima, Provincia y Norte. Se usa para el seguimiento diario de ventas.</div>
+        </div>
+        <div class="pl-card-footer">
+            {% if role == 'admin' and not is_render %}
+            <button class="pl-btn pl-btn-run pl-btn-red" onclick="ejecutar('reporte_diario')" data-fase="reporte_diario">
+                <i class="fa-solid fa-play"></i> Ejecutar
+            </button>
+            {% else %}
+            <button class="pl-btn pl-btn-run" disabled>
+                <i class="fa-solid fa-play"></i> Ejecutar
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="pl-card" data-fase="whatsapp_reporte">
+        <div class="pl-card-header" style="--cl:#25D366">
+            <div class="pl-card-icon" style="background:rgba(37,211,102,.15);color:#25D366"><i class="fa-brands fa-whatsapp"></i></div>
+            <span class="pl-card-badge">Instantáneo</span>
+        </div>
+        <div class="pl-card-body">
+            <div class="pl-card-title">Avance WhatsApp</div>
+            <div class="pl-card-desc">Genera mensajes de avance diario listos para copiar y compartir en los grupos de WhatsApp del equipo comercial.</div>
+        </div>
+        <div class="pl-card-footer" style="display:flex; gap:6px;">
+            <button class="pl-btn pl-btn-green" style="background:#128C7E; font-size:12px; padding:8px 6px;" onclick="generarWhatsApp('manana')">
+                <i class="fa-solid fa-cloud-sun"></i> Mañana
+            </button>
+            <button class="pl-btn pl-btn-green" style="background:#075E54; font-size:12px; padding:8px 6px;" onclick="generarWhatsApp('tarde')">
+                <i class="fa-solid fa-sun"></i> Tarde
+            </button>
+            <button class="pl-btn pl-btn-green" style="background:#1f2937; font-size:12px; padding:8px 6px;" onclick="generarWhatsApp('noche')">
+                <i class="fa-solid fa-moon"></i> Noche
+            </button>
+        </div>
+    </div>
+
+</div>
+
+<!-- Terminal panel -->
+<div class="pl-terminal-wrap" id="plTermWrap" style="display:none">
+    <div class="pl-terminal-header">
+        <div class="pl-terminal-title">
+            <i class="fa-solid fa-terminal"></i>
+            <span id="plTermTitle">Salida del proceso</span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+            <span id="plTermCode" class="pl-term-code" style="display:none"></span>
+            {% if role == 'admin' %}
+            <button class="pl-term-btn pl-term-cancel" id="plBtnCancelar" onclick="cancelar()" style="display:none">
+                <i class="fa-solid fa-stop"></i> Cancelar
+            </button>
+            {% endif %}
+            <button class="pl-term-btn" onclick="cerrarTerminal()">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+    </div>
+    <div class="pl-terminal" id="plTerminal"></div>
+</div>
+
+<!-- Modal de Previsualización de WhatsApp -->
+<div class="u-modal-overlay" id="waModalOverlay">
+    <div class="u-modal-box" style="max-width: 480px; padding: 24px;">
+        <div class="u-modal-header" style="margin-bottom: 16px; padding-bottom: 10px;">
+            <h3 id="waModalTitle" style="margin: 0; font-size: 16px; display: flex; align-items: center; gap: 8px;">
+                <i class="fa-brands fa-whatsapp" style="color: #25D366; font-size: 20px;"></i>
+                <span>Mensaje de WhatsApp</span>
+            </h3>
+            <button class="u-modal-close" onclick="cerrarWhatsAppModal()">&times;</button>
+        </div>
+        <div class="u-modal-body">
+            <p style="font-size: 12.5px; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.4;">
+                Previsualiza y edita el mensaje generado antes de enviarlo:
+            </p>
+            <textarea id="waMessageText" class="u-input" style="width: 100%; height: 260px; font-family: 'Consolas', 'Courier New', monospace; font-size: 13px; line-height: 1.45; padding: 12px; border-radius: 8px; border: 1.5px solid var(--border); box-sizing: border-box; resize: vertical; margin-bottom: 18px; outline: none;"></textarea>
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button class="btn btn-outline" style="padding: 8px 16px; font-size: 13px; border-radius: 6px;" onclick="cerrarWhatsAppModal()">Cerrar</button>
+                <button class="btn btn-primary" id="waCopyBtn" style="padding: 8px 18px; font-size: 13px; border-radius: 6px; background: #25D366; color: white; border: none; display: flex; align-items: center; gap: 6px; cursor: pointer; transition: background 0.2s;" onclick="copiarWhatsAppMensaje(event)">
+                    <i class="fa-solid fa-copy"></i>
+                    <span>Copiar Mensaje</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const NOMBRES = {
+    bd:             'Todo 2026',
+    daily:          'Solo este mes',
+    consolidar:     'Consolidar Ventas',
+    subida_aliv:    'Subida Aliv',
+    reporte_diario: 'Reporte Diario',
+};
+
+let _sse = null;
+let _corriendo = {{ 'true' if corriendo else 'false' }};
+
+function setRunning(running) {
+    _corriendo = running;
+    const btns = document.querySelectorAll('.pl-btn-run');
+    const statusEl = document.getElementById('plStatus');
+    const cancelBtn = document.getElementById('plBtnCancelar');
+
+    btns.forEach(b => { b.disabled = running; });
+
+    if (running) {
+        statusEl.className = 'pl-status pl-status-running';
+        statusEl.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> En ejecución…';
+        if (cancelBtn) cancelBtn.style.display = '';
+    } else {
+        statusEl.className = 'pl-status pl-status-idle';
+        statusEl.innerHTML = '<i class="fa-solid fa-circle-check"></i> Listo';
+        if (cancelBtn) cancelBtn.style.display = 'none';
+    }
+}
+
+function ejecutar(fase) {
+    if (_corriendo) return;
+
+    const termWrap = document.getElementById('plTermWrap');
+    const terminal = document.getElementById('plTerminal');
+    const termTitle = document.getElementById('plTermTitle');
+    const termCode  = document.getElementById('plTermCode');
+
+    terminal.innerHTML = '';
+    termCode.style.display = 'none';
+    termTitle.textContent  = 'Ejecutando: ' + (NOMBRES[fase] || fase);
+    termWrap.style.display = 'block';
+    termWrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    setRunning(true);
+
+    const fd = new FormData();
+    fd.append('fase', fase);
+
+    fetch('/pipeline/ejecutar', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+            if (!data.ok) {
+                appendLine('❌ ' + (data.error || 'Error desconocido'), 'err');
+                setRunning(false);
+                return;
+            }
+            iniciarSSE();
+        })
+        .catch(err => {
+            appendLine('❌ Error de red: ' + err, 'err');
+            setRunning(false);
+        });
+}
+
+function iniciarSSE() {
+    if (_sse) _sse.close();
+    _sse = new EventSource('/pipeline/stream');
+
+    _sse.onmessage = function(e) {
+        const msg = JSON.parse(e.data);
+        if (msg.t === 'l') {
+            appendLine(msg.v);
+        } else if (msg.t === 'err') {
+            appendLine('❌ ' + msg.v, 'err');
+        } else if (msg.t === 'done') {
+            const ok = msg.code === 0;
+            const termCode = document.getElementById('plTermCode');
+            termCode.style.display = '';
+            termCode.className = 'pl-term-code ' + (ok ? 'pl-term-code-ok' : 'pl-term-code-err');
+            termCode.innerHTML = ok
+                ? '<i class="fa-solid fa-circle-check"></i> Completado'
+                : '<i class="fa-solid fa-circle-xmark"></i> Falló (código ' + msg.code + ')';
+            setRunning(false);
+            _sse.close();
+        } else if (msg.t === 'idle') {
+            setRunning(false);
+            _sse.close();
+        }
+    };
+
+    _sse.onerror = function() {
+        if (!_corriendo) return;
+        appendLine('⚠️ Conexión interrumpida. Reconectando…', 'warn');
+    };
+}
+
+function appendLine(text, cls) {
+    const terminal = document.getElementById('plTerminal');
+    const line = document.createElement('div');
+    line.className = 'pl-term-line' + (cls ? ' pl-term-' + cls : '');
+    line.textContent = text;
+    terminal.appendChild(line);
+    terminal.scrollTop = terminal.scrollHeight;
+}
+
+function cancelar() {
+    fetch('/pipeline/cancelar', { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.ok) appendLine('⏹ Proceso cancelado por el usuario.', 'warn');
+        });
+}
+
+function cerrarTerminal() {
+    document.getElementById('plTermWrap').style.display = 'none';
+    if (_sse) _sse.close();
+}
+
+function generarWhatsApp(tiempo) {
+    fetch(`/api/whatsapp-mensaje?tiempo=${tiempo}`)
+        .then(r => r.json())
+        .then(data => {
+            if (!data.ok) {
+                alert('Error al generar el mensaje: ' + (data.error || 'Desconocido'));
+                return;
+            }
+            document.getElementById('waModalTitle').innerHTML = `
+                <i class="fa-brands fa-whatsapp" style="color: #25D366; font-size: 20px;"></i>
+                <span>${data.titulo}</span>
+            `;
+            document.getElementById('waMessageText').value = data.mensaje;
+            document.getElementById('waModalOverlay').classList.add('active');
+        })
+        .catch(err => {
+            alert('Error al conectar con el servidor: ' + err);
+        });
+}
+
+function cerrarWhatsAppModal() {
+    document.getElementById('waModalOverlay').classList.remove('active');
+}
+
+function copiarWhatsAppMensaje(event) {
+    const textarea = document.getElementById('waMessageText');
+    textarea.select();
+    textarea.setSelectionRange(0, 99999);
+    navigator.clipboard.writeText(textarea.value)
+        .then(() => {
+            const btn = document.getElementById('waCopyBtn');
+            const icon = btn.querySelector('i');
+            const span = btn.querySelector('span');
+            const originalBG = btn.style.background;
+            
+            icon.className = 'fa-solid fa-check';
+            span.textContent = '¡Copiado!';
+            btn.style.background = '#128C7E';
+            
+            setTimeout(() => {
+                icon.className = 'fa-solid fa-copy';
+                span.textContent = 'Copiar Mensaje';
+                btn.style.background = originalBG || '#25D366';
+            }, 2000);
+        })
+        .catch(err => {
+            alert('No se pudo copiar el mensaje: ' + err);
+        });
+}
+
+// Si ya hay proceso corriendo al cargar la página, conectar al stream
+if (_corriendo) {
+    setRunning(true);
+    document.getElementById('plTermWrap').style.display = 'block';
+    iniciarSSE();
+}
+</script>
+{% endblock %}

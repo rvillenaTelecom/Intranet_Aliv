@@ -25,8 +25,8 @@ def descargar_reporte_winforce():
     # CONFIGURACIÓN (Deberás rellenar estos datos con los reales)
     # ---------------------------------------------------------
     URL_LOGIN = "https://accesoventas.win.pe/" # Cambia por la URL real
-    USUARIO = "aescalantel@alivtelecom.pe"
-    PASSWORD = "B^308708891216um"
+    USUARIO = "backoffice11@alivtelecom.pe"
+    PASSWORD = "C@836235653909oz"
     
     # Carpeta donde se guardará el Excel descargado (usando la carpeta actual)
     CARPETA_DESCARGA = os.path.join(os.getcwd(), "descargas_winforce_Dept")
