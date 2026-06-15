@@ -80,7 +80,8 @@ def main(fase: str = "bd"):
     if fase == "bd":
         separador("DESCARGA 2026 + ZONIFICACION + BD")
 
-        for script in ["WinforceLima2026.py", "WinforceProvincia2026.py", "Zonificación_Lima.py"]:
+        # Se desactivó Provincia temporalmente: ["WinforceLima2026.py", "WinforceProvincia2026.py", "Zonificación_Lima.py"]
+        for script in ["WinforceLima2026.py", "Zonificación_Lima.py"]:
             ok = correr_script(script, critico=True, incremental=False)
             if not ok:
                 log.error("Pipeline detenido.")
@@ -94,7 +95,8 @@ def main(fase: str = "bd"):
     if fase == "descargas":
         separador("SOLO DESCARGAS (Lima + Provincia)")
 
-        for script in ["WinforceLima2026.py", "WinforceProvincia2026.py"]:
+        # Se desactivó Provincia temporalmente: ["WinforceLima2026.py", "WinforceProvincia2026.py"]
+        for script in ["WinforceLima2026.py"]:
             ok = correr_script(script, critico=True, incremental=False)
             if not ok:
                 log.error("Pipeline detenido.")
@@ -108,7 +110,8 @@ def main(fase: str = "bd"):
     if fase == "daily":
         separador("SEMANAL: ESTA SEMANA")
 
-        for script in ["WinforceLima2026.py", "WinforceProvincia2026.py", "Zonificación_Lima.py"]:
+        # Se desactivó Provincia temporalmente: ["WinforceLima2026.py", "WinforceProvincia2026.py", "Zonificación_Lima.py"]
+        for script in ["WinforceLima2026.py", "Zonificación_Lima.py"]:
             ok = correr_script(script, critico=True, incremental=True)
             if not ok:
                 log.error("Pipeline detenido.")
@@ -130,31 +133,18 @@ def main(fase: str = "bd"):
         log.info("Consolidacion completada.")
 
     # ------------------------------------------------------------------
-    # FASE REPORTE — Extraccion de KPIs y reporte semanal (requiere Power BI)
+    # FASE SUBIDA ALIV — Sube Aliv_ventas_activas.xls a SQL
     # ------------------------------------------------------------------
-    if fase == "reporte":
-        separador("REPORTE SEMANAL (Power BI debe estar abierto)")
-        log.info("IMPORTANTE: Asegurate de tener abierto 'Reporte Aliv Data AB' en Power BI Desktop.")
+    if fase == "subida_aliv":
+        separador("SUBIDA ALIV (ventas_aliv)")
+        log.info("IMPORTANTE: El archivo Aliv_ventas_activas.xls debe estar en descargas_winforce_Dept/")
 
-        ok = correr_script("Extraer_Datos_PowerBI.py", critico=True)
-        if not ok:
-            log.error("No se pudo extraer datos de Power BI. Verifica que Power BI Desktop este abierto.")
-            sys.exit(1)
-
-        log.info("Reporte semanal completado.")
-
-    # ------------------------------------------------------------------
-    # FASE MAESTROS — Sube Cuota_Prov y Usuarios_Win a SQL
-    # ------------------------------------------------------------------
-    if fase == "maestros":
-        separador("SUBIR USUARIOS WIN + MAESTROS")
-
-        ok = correr_script("Carga_UsuariosWin.py", critico=True)
+        ok = correr_script("Subida_Aliv.py", critico=True)
         if not ok:
             log.error("Pipeline detenido.")
             sys.exit(1)
 
-        log.info("Carga de maestros completada.")
+        log.info("Subida Aliv completada.")
 
     # ------------------------------------------------------------------
     # FASE REPORTE DIARIO — Altas de ayer, promedio, top vendedores
@@ -180,12 +170,10 @@ if __name__ == "__main__":
         main("descargas")
     elif arg == "daily":
         main("daily")
-    elif arg == "reporte":
-        main("reporte")
     elif arg == "consolidar":
         main("consolidar")
-    elif arg == "maestros":
-        main("maestros")
+    elif arg == "subida_aliv":
+        main("subida_aliv")
     elif arg == "reporte_diario":
         main("reporte_diario")
     else:

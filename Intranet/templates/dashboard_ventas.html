@@ -158,6 +158,26 @@
 .caida-neg { background: #fee2e2; color: #991b1b; }
 .caida-pos { background: #d1fae5; color: #065f46; }
 
+/* ── Mapa: tooltip distritos ─────────────────────────────── */
+.dist-tooltip {
+    background: rgba(15,23,42,0.88) !important;
+    color: #fff !important;
+    border: none !important;
+    border-radius: 6px !important;
+    padding: 5px 10px !important;
+    font-size: 12px !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,.3) !important;
+    white-space: nowrap !important;
+}
+.dist-tooltip::before { display:none !important; }
+.mapa-hint {
+    position: absolute; bottom: 10px; left: 10px; z-index: 999;
+    background: rgba(255,255,255,.92); border-radius: 8px;
+    padding: 5px 10px; font-size: 11px; color: #475569;
+    box-shadow: 0 1px 4px rgba(0,0,0,.15); pointer-events: none;
+    display: flex; align-items: center; gap: 5px;
+}
+
 /* ── Responsive ──────────────────────────────────────────── */
 @media (max-width: 1200px) {
     .kpi-row.cols-6 { grid-template-columns: repeat(3, 1fr); }
@@ -173,9 +193,10 @@
 
 
 <!-- ═══ BARRA DE FILTROS ══════════════════════════════════════════ -->
-<div class="filter-bar">
-    <div class="filter-left">
-        <!-- Tabs -->
+<div class="filter-bar" style="flex-direction:column; align-items:stretch; gap:0;">
+
+    <!-- Fila 1: tabs + filtros principales (todos los tabs) -->
+    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
         <div class="tab-nav">
             <button class="tab-btn active" onclick="switchTab('lima',this)">
                 <i class="fa-solid fa-city"></i> Lima
@@ -187,30 +208,60 @@
                 <i class="fa-solid fa-location-dot"></i> Localización
             </button>
         </div>
-
-        <!-- Filtros -->
-        <form method="GET" id="filterForm" class="filter-right">
-            <span class="filter-label">Mes:</span>
-            <select name="mes" class="fsel">
-                {% for m in meses %}
-                <option value="{{ m.id }}" {% if mes_actual == m.id %}selected{% endif %}>{{ m.nombre }}</option>
-                {% endfor %}
-            </select>
-            <span class="filter-label">Año:</span>
-            <select name="anio" class="fsel">
-                {% for y in anios %}
-                <option value="{{ y }}" {% if anio_actual == y %}selected{% endif %}>{{ y }}</option>
-                {% endfor %}
-            </select>
-            <button type="submit" class="btn-apply">
-                <i class="fa-solid fa-magnifying-glass"></i> Aplicar
-            </button>
-        </form>
+        <div class="filter-right">
+            <form method="GET" id="filterForm" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <span class="filter-label">Mes:</span>
+                <select name="mes" class="fsel">
+                    {% for m in meses %}
+                    <option value="{{ m.id }}" {% if mes_actual == m.id %}selected{% endif %}>{{ m.nombre }}</option>
+                    {% endfor %}
+                </select>
+                <span class="filter-label">Año:</span>
+                <select name="anio" class="fsel">
+                    {% for y in anios %}
+                    <option value="{{ y }}" {% if anio_actual == y %}selected{% endif %}>{{ y }}</option>
+                    {% endfor %}
+                </select>
+                <span class="filter-label" id="areaLabel">Área:</span>
+                <select name="area" class="fsel" id="areaSelect">
+                    <option value="" {% if not area %}selected{% endif %}>Todas</option>
+                    <option value="Vertical" {% if area == 'Vertical' %}selected{% endif %}>Vertical</option>
+                    <option value="Horizontal" {% if area == 'Horizontal' %}selected{% endif %}>Horizontal</option>
+                </select>
+                <span class="filter-label">Día:</span>
+                <select name="dia" class="fsel" style="min-width:70px;">
+                    <option value="0" {% if not dia_actual %}selected{% endif %}>Todos</option>
+                    {% for d in range(1, 32) %}
+                    <option value="{{ d }}" {% if dia_actual == d %}selected{% endif %}>{{ d }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn-apply">
+                    <i class="fa-solid fa-magnifying-glass"></i> Aplicar
+                </button>
+                <input type="hidden" id="tabInput" name="tab" value="{{ request.args.get('tab', 'lima') }}">
+            </form>
+            <span class="period-badge">
+                <i class="fa-solid fa-calendar-days"></i>
+                {% if dia_actual %}Día {{ dia_actual }} · {% endif %}{{ mes_nombre }} {{ anio_actual }}
+            </span>
+        </div>
     </div>
-    <span class="period-badge">
-        <i class="fa-solid fa-calendar-days"></i>
-        {{ mes_nombre }} {{ anio_actual }}
-    </span>
+
+    <!-- Fila 2: filtros de cliente (solo tab Localización) -->
+    <div id="locFiltrosBar" style="display:none; border-top:1px solid #f1f5f9; margin-top:10px; padding-top:10px; align-items:center; gap:10px; flex-wrap:wrap;">
+        <span class="filter-label">Distrito:</span>
+        <select id="distritoFilter" class="fsel" style="min-width:170px;" onchange="filtrarMapa()">
+            <option value="">Todos los distritos</option>
+        </select>
+        <span class="filter-label">Dirección:</span>
+        <input id="dirSearch" type="text" class="fsel" placeholder="Buscar dirección o Geofinder…"
+               style="min-width:220px;" autocomplete="off">
+        <span id="locStats" style="font-size:12px; color:var(--text-secondary); white-space:nowrap; margin-left:4px;">
+            <b id="statPuntos" style="color:var(--primary);">—</b> instalaciones
+            &nbsp;<b id="statDistritos" style="color:#10b981;">—</b> distritos
+        </span>
+    </div>
+
 </div>
 
 
@@ -232,33 +283,33 @@
     <div class="kcard green">
         <div class="kcard-label">Altas Instaladas</div>
         <div class="kcard-main" style="color:#10b981;">{{ "{:,}".format(k.altas) }}</div>
-        <div class="kcard-sub">Cuota: <b>{{ "{:,}".format(k.cuota) }}</b></div>
+        <div class="kcard-sub">{% if k.cuota %}Cuota: <b>{{ "{:,}".format(k.cuota) }}</b>{% else %}<span style="color:#f97316;">Sin cuota definida</span>{% endif %}</div>
         <div class="kcard-bar-wrap">
             <div class="kcard-bar" style="width:{{ [k.alcance,100]|min }}%; background:#10b981;"></div>
         </div>
         <i class="fa-solid fa-plug kcard-bg-icon"></i>
     </div>
-    <div class="kcard orange">
+    <div class="kcard {% if k.cuota %}orange{% else %}gray{% endif %}">
         <div class="kcard-label">Proyección Cierre</div>
-        <div class="kcard-main" style="color:#f97316;">{{ "{:,}".format(k.proyeccion) }}</div>
-        <div class="kcard-sub">{{ k.pct_proyeccion }}% de la cuota</div>
+        <div class="kcard-main" style="color:{% if k.cuota %}#f97316{% else %}#94a3b8{% endif %};">{{ "{:,}".format(k.proyeccion) }}</div>
+        <div class="kcard-sub">{% if k.cuota %}{{ k.pct_proyeccion }}% de la cuota{% else %}Sin cuota definida{% endif %}</div>
         <i class="fa-solid fa-chart-line kcard-bg-icon"></i>
     </div>
-    <div class="kcard {% if k.alcance >= k.alcance_ideal %}green{% else %}red{% endif %}">
+    <div class="kcard {% if not k.cuota %}gray{% elif k.alcance >= k.alcance_ideal %}green{% else %}red{% endif %}">
         <div class="kcard-label">Alcance Actual</div>
-        <div class="kcard-main" style="color:{% if k.alcance >= k.alcance_ideal %}#10b981{% else %}#ef4444{% endif %};">{{ k.alcance }}%</div>
-        <div class="kcard-sub">Ideal hoy: <b>{{ k.alcance_ideal }}%</b></div>
+        <div class="kcard-main" style="color:{% if not k.cuota %}#94a3b8{% elif k.alcance >= k.alcance_ideal %}#10b981{% else %}#ef4444{% endif %};">{% if k.cuota %}{{ k.alcance }}%{% else %}—{% endif %}</div>
+        <div class="kcard-sub">{% if k.cuota %}Ideal hoy: <b>{{ k.alcance_ideal }}%</b>{% else %}Sin cuota definida{% endif %}</div>
         <i class="fa-solid fa-gauge-high kcard-bg-icon"></i>
     </div>
     <div class="kcard {% if k.ritmo_actual >= k.ritmo_necesario %}green{% else %}orange{% endif %}">
         <div class="kcard-label">Ritmo Actual</div>
         <div class="kcard-main">{{ k.ritmo_actual }}</div>
-        <div class="kcard-sub">altas / día · nec. <b>{{ k.ritmo_necesario }}</b></div>
+        <div class="kcard-sub">altas / día{% if k.cuota %} · nec. <b>{{ k.ritmo_necesario }}</b>{% endif %}</div>
         <i class="fa-solid fa-bolt kcard-bg-icon"></i>
     </div>
-    <div class="kcard {% if k.faltantes == 0 %}green{% else %}red{% endif %}">
+    <div class="kcard {% if not k.cuota %}gray{% elif k.faltantes == 0 %}green{% else %}red{% endif %}">
         <div class="kcard-label">Altas Faltantes</div>
-        <div class="kcard-main" style="color:{% if k.faltantes == 0 %}#10b981{% else %}#ef4444{% endif %};">{{ "{:,}".format(k.faltantes) }}</div>
+        <div class="kcard-main" style="color:{% if not k.cuota %}#94a3b8{% elif k.faltantes == 0 %}#10b981{% else %}#ef4444{% endif %};">{% if k.cuota %}{{ "{:,}".format(k.faltantes) }}{% else %}—{% endif %}</div>
         <div class="kcard-sub">Días: <b>{{ k.dias_trans }}/{{ k.dias_tot }}</b></div>
         <i class="fa-solid fa-flag-checkered kcard-bg-icon"></i>
     </div>
@@ -392,6 +443,38 @@
     {% endif %}
 </div>
 
+<!-- Velocidad Planes -->
+{% if vel_planes %}
+{% set vel_max = vel_planes[0].altas %}
+{% set vel_tot = vel_planes | sum(attribute='altas') %}
+<div class="panel mb16">
+    <div class="panel-title"><i class="fa-solid fa-gauge-high"></i> Velocidad Planes — Altas Lima</div>
+    <p style="font-size:11px; color:var(--text-secondary); margin-top:-10px; margin-bottom:14px;">Distribución de instalaciones por velocidad de plan</p>
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+        <div>
+            {% for v in vel_planes %}
+            <div class="hbar-row">
+                <span class="hbar-label" style="min-width:56px; max-width:56px; font-weight:700;">{{ v.velocidad }}</span>
+                <div class="hbar-bg" style="flex:3;">
+                    <div class="hbar-fill" style="width:{{ (v.altas / vel_max * 100)|round }}%; background:#f97316;"></div>
+                </div>
+                <span class="hbar-val" style="min-width:44px;">{{ "{:,}".format(v.altas) }}</span>
+                <span style="font-size:11px; color:var(--text-secondary); min-width:52px; text-align:right;">{{ v.pct }}%</span>
+            </div>
+            {% endfor %}
+            <div style="margin-top:10px; padding-top:8px; border-top:2px solid var(--border); display:flex; justify-content:space-between; font-weight:800; font-size:13px;">
+                <span>Total</span>
+                <span>{{ "{:,}".format(vel_tot) }}</span>
+                <span style="color:var(--text-secondary);">100.00%</span>
+            </div>
+        </div>
+        <div style="display:flex; align-items:center; justify-content:center;">
+            <canvas id="chartVelocidad" style="max-height:220px;"></canvas>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- Planes vs Agencias (Ancho Completo) -->
 <div class="panel">
     <div class="panel-title"><i class="fa-solid fa-boxes-stacked"></i> Altas por Plan y Agencia</div>
@@ -427,8 +510,6 @@
             </table>
         </div>
     </div>
-    </div>
-</div>
 
 {% else %}
 <div class="panel" style="text-align:center; padding:40px; color:var(--text-light);">
@@ -565,48 +646,34 @@
 </div><!-- /tab-provincia -->
 
 
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
+
 <!-- ═══════════════════════════════════════════════════════════
      TAB 3 — LOCALIZACIÓN LIMA
 ════════════════════════════════════════════════════════════ -->
 <div id="tab-localizacion" class="tab-content">
-{% if loc_lima %}
-{% set lk = loc_lima.kpis %}
 
-<!-- KPIs Localización -->
-<div class="kpi-row cols-4">
-    <div class="kcard purple">
-        <div class="kcard-label">Score Mínimo KML Prom.</div>
-        <div class="kcard-main" style="color:#8b5cf6;">{{ lk.score_prom }}</div>
-        <div class="kcard-sub">Promedio score zona Lima</div>
-        <i class="fa-solid fa-star kcard-bg-icon"></i>
-    </div>
-    <div class="kcard orange">
-        <div class="kcard-label">Zona No Venta</div>
-        <div class="kcard-main" style="color:#f97316;">{{ "{:,}".format(lk.no_venta) }}</div>
-        <div class="kcard-sub">{{ lk.riesgo_pct }}% del total registrado</div>
-        <i class="fa-solid fa-ban kcard-bg-icon"></i>
-    </div>
-    <div class="kcard blue">
-        <div class="kcard-label">Total Registros</div>
-        <div class="kcard-main">{{ "{:,}".format(lk.total) }}</div>
-        <div class="kcard-sub">Preventas en el mes</div>
-        <i class="fa-solid fa-database kcard-bg-icon"></i>
-    </div>
-    <div class="kcard teal">
-        <div class="kcard-label">Zonas KML distintas</div>
-        <div class="kcard-main" style="color:#14b8a6;">{{ loc_lima.zonas | length }}</div>
-        <div class="kcard-sub">Clasificaciones geográficas</div>
-        <i class="fa-solid fa-layer-group kcard-bg-icon"></i>
+<!-- Mapa full-width -->
+<div class="panel mb16" style="padding:0; overflow:hidden; height:520px; position:relative;">
+    <div id="mapaLima" style="height:100%; width:100%; border-radius:11px;"></div>
+    <div class="mapa-hint" id="mapaHint">
+        <i class="fa-solid fa-hand-pointer" style="color:#0066CC;"></i>
+        Haz clic en un área coloreada para filtrar por distrito
     </div>
 </div>
 
-<!-- Zona KML + Comparativa P2 -->
+<!-- Zona KML + Altas por Distrito -->
 <div class="grid-1-1">
+
+    {% if loc_lima %}
+    {% set zonas = loc_lima.zonas %}
     <div class="panel">
         <div class="panel-title"><i class="fa-solid fa-layer-group"></i> Distribución por Zona KML</div>
-        {% set zonas = loc_lima.zonas %}
         {% if zonas %}
-        {% set max_zona = zonas[0].cnt if zonas else 1 %}
+        {% set max_zona = zonas[0].cnt %}
         <div class="zona-row">
             {% for z in zonas %}
             <div class="zona-item">
@@ -621,86 +688,61 @@
             </div>
             {% endfor %}
         </div>
-        <div style="margin-top:14px;">
-            <canvas id="zonaDonut" style="max-height:160px;"></canvas>
-        </div>
+        <div style="margin-top:14px;"><canvas id="zonaDonut" style="max-height:160px;"></canvas></div>
         {% endif %}
     </div>
+    {% else %}
+    <div class="panel"><p style="color:var(--text-light); text-align:center; padding:20px;">Sin datos de zona KML.</p></div>
+    {% endif %}
 
-    <div class="panel">
-        <div class="panel-title"><i class="fa-solid fa-code-compare"></i> Cambio Zona P2 — 15 Abril 2026</div>
-        {% set p2 = loc_lima.p2 %}
-        <div class="p2-compare">
-            <div class="p2-box antes">
-                <div class="p2-box-title">Antes 15 Abr</div>
-                <div class="p2-box-val" style="color:#1d4ed8;">{{ "{:,}".format(p2.antes_altas) }}</div>
-                <div class="p2-box-sub">Altas en P2</div>
-                <div style="font-size:12px; color:var(--text-secondary); margin-top:6px;">
-                    {{ "{:,}".format(p2.antes_ventas) }} ventas
-                </div>
-            </div>
-            <div class="p2-box despues">
-                <div class="p2-box-title">Después 15 Abr</div>
-                <div class="p2-box-val" style="color:#ea580c;">{{ "{:,}".format(p2.despues_altas) }}</div>
-                <div class="p2-box-sub">Altas en P2</div>
-                <div style="font-size:12px; color:var(--text-secondary); margin-top:6px;">
-                    {{ "{:,}".format(p2.despues_ventas) }} ventas
-                </div>
-            </div>
-        </div>
-        <div style="text-align:center; margin-top:12px;">
-            <span class="caida-badge {% if p2.caida_pct < 0 %}caida-neg{% else %}caida-pos{% endif %}">
-                {% if p2.caida_pct < 0 %}
-                    <i class="fa-solid fa-arrow-trend-down"></i> {{ p2.caida_pct }}% caída de altas
-                {% else %}
-                    <i class="fa-solid fa-arrow-trend-up"></i> +{{ p2.caida_pct }}% en altas
-                {% endif %}
-            </span>
-        </div>
-
-        <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--border);">
-            <div style="font-size:12px; font-weight:700; color:var(--text-secondary); margin-bottom:10px; text-transform:uppercase;">
-                % Zona No Venta (mes actual)
-            </div>
-            {% if lk.total > 0 %}
-            {% set nv_pct = lk.riesgo_pct %}
-            <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
-                <span>Zonas válidas</span>
-                <span style="font-weight:700; color:#10b981;">{{ (100 - nv_pct)|round(1) }}%</span>
-            </div>
-            <div style="background:#f1f5f9; border-radius:5px; height:8px; margin-bottom:8px;">
-                <div style="width:{{ 100 - nv_pct }}%; background:#10b981; height:8px; border-radius:5px;"></div>
-            </div>
-            <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
-                <span>Zona No Venta</span>
-                <span style="font-weight:700; color:#ef4444;">{{ nv_pct }}%</span>
-            </div>
-            <div style="background:#f1f5f9; border-radius:5px; height:8px;">
-                <div style="width:{{ nv_pct }}%; background:#ef4444; height:8px; border-radius:5px;"></div>
-            </div>
-            {% endif %}
-        </div>
+    <div class="panel" style="display:flex; flex-direction:column; max-height:380px;">
+        <div class="panel-title" style="flex-shrink:0;"><i class="fa-solid fa-ranking-star"></i> Altas por Distrito</div>
+        <div id="tablaDistritos" style="overflow-y:auto; flex:1; font-size:12px;"></div>
     </div>
+
 </div>
 
-{% else %}
-<div class="panel" style="text-align:center; padding:40px; color:var(--text-light);">
-    <i class="fa-solid fa-circle-exclamation" style="font-size:32px; margin-bottom:10px;"></i>
-    <p>No se pudieron cargar los datos de localización (columna Zona_KML no disponible).</p>
-</div>
-{% endif %}
 </div><!-- /tab-localizacion -->
 
 
 <!-- ════ SCRIPTS ════════════════════════════════════════════ -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script>
+let _mapaLima = null;
+window.filtrarMapa = function() {};
+
 function switchTab(name, btn) {
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.getElementById('tab-' + name).classList.add('active');
     btn.classList.add('active');
+    const isLima = name === 'lima';
+    const isLoc  = name === 'localizacion';
+    document.getElementById('areaLabel').style.display  = (isLima || isLoc) ? '' : 'none';
+    document.getElementById('areaSelect').style.display = (isLima || isLoc) ? '' : 'none';
+    const locBar = document.getElementById('locFiltrosBar');
+    locBar.style.display = isLoc ? 'flex' : 'none';
+    document.getElementById('tabInput').value = name;
+    if (isLoc) {
+        if (_mapaLima) {
+            setTimeout(() => _mapaLima.invalidateSize(), 120);
+        } else {
+            setTimeout(initMapaLima, 80);
+        }
+    }
 }
+
+// Restaurar tab activo desde URL al cargar
+(function() {
+    const tab = new URLSearchParams(window.location.search).get('tab') || 'lima';
+    if (tab !== 'lima') {
+        const btn = [...document.querySelectorAll('.tab-btn')]
+            .find(b => (b.getAttribute('onclick') || '').includes("'" + tab + "'"));
+        if (btn) switchTab(tab, btn);
+    }
+})();
 
 const ORANGE = '#f97316', BLUE = '#0066CC', GREEN = '#10b981', PURPLE = '#8b5cf6',
       ORANGE20 = '#f9731620', BLUE20 = '#0066CC20';
@@ -733,8 +775,6 @@ if (trendLima.length) {
     });
 }
 
-
-
 // ── Gráfica diaria Provincia ─────────────────────────────
 const trendProv = {{ trend_prov | tojson }};
 if (trendProv.length) {
@@ -754,16 +794,16 @@ if (trendProv.length) {
     });
 }
 
-// ── Donut Zona KML ───────────────────────────────────────
-const zonasData = {{ loc_zonas | tojson }};
-if (zonasData.length) {
-    const colors = ['#0066CC','#8b5cf6','#ef4444','#f97316','#10b981','#14b8a6','#f59e0b'];
-    new Chart(document.getElementById('zonaDonut'), {
+// ── Donut Velocidad Planes ───────────────────────────────
+const velData = {{ vel_planes | tojson }};
+if (velData.length) {
+    const velColors = ['#f97316','#0066CC','#10b981','#8b5cf6','#f59e0b','#14b8a6','#ef4444','#94a3b8','#64748b'];
+    new Chart(document.getElementById('chartVelocidad'), {
         type: 'doughnut',
         data: {
-            labels: zonasData.map(z => z.zona),
-            datasets: [{ data: zonasData.map(z => z.cnt),
-                         backgroundColor: colors, borderWidth: 2, borderColor: '#fff' }]
+            labels: velData.map(v => v.velocidad + ' Mbps'),
+            datasets: [{ data: velData.map(v => v.altas),
+                         backgroundColor: velColors, borderWidth: 2, borderColor: '#fff' }]
         },
         options: {
             maintainAspectRatio: false,
@@ -771,6 +811,259 @@ if (zonasData.length) {
                                  labels: { boxWidth: 10, font: { size: 10 } } } }
         }
     });
+}
+
+// ── Donut Zona KML ───────────────────────────────────────
+const zonasData = {{ loc_zonas | tojson }};
+if (zonasData.length) {
+    const colors = ['#0066CC','#8b5cf6','#ef4444','#f97316','#10b981','#14b8a6','#f59e0b'];
+    const zonaDonutEl = document.getElementById('zonaDonut');
+    if (zonaDonutEl) {
+        new Chart(zonaDonutEl, {
+            type: 'doughnut',
+            data: {
+                labels: zonasData.map(z => z.zona),
+                datasets: [{ data: zonasData.map(z => z.cnt),
+                             backgroundColor: colors, borderWidth: 2, borderColor: '#fff' }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                plugins: { legend: { display: true, position: 'bottom',
+                                     labels: { boxWidth: 10, font: { size: 10 } } } }
+            }
+        });
+    }
+}
+
+// ── Mapa Localización (lazy — se inicializa al abrir el tab) ─
+const puntosMapa = {{ puntos_mapa | tojson }};
+
+function initMapaLima() {
+    if (_mapaLima || !puntosMapa.length) return;
+    const el = document.getElementById('mapaLima');
+    if (!el) return;
+
+    _mapaLima = L.map('mapaLima').setView([-12.0464, -77.0428], 11);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        maxZoom: 19
+    }).addTo(_mapaLima);
+
+    function _clusterStyle(n) {
+        if (n < 20)  return { bg: '#ef4444', s: 32 };
+        if (n < 80)  return { bg: '#f97316', s: 36 };
+        if (n < 200) return { bg: '#eab308', s: 40 };
+        if (n < 500) return { bg: '#84cc16', s: 44 };
+        return                { bg: '#10b981', s: 48 };
+    }
+    const clusterGroup = L.markerClusterGroup({
+        chunkedLoading: true,
+        maxClusterRadius: 50,
+        iconCreateFunction: function(cluster) {
+            const n = cluster.getChildCount();
+            const { bg, s } = _clusterStyle(n);
+            return L.divIcon({
+                html: '<div style="background:' + bg + ';color:#fff;border-radius:50%;width:' + s + 'px;height:' + s + 'px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,.3);">' + n + '</div>',
+                className: '',
+                iconSize: [s, s],
+                iconAnchor: [s / 2, s / 2]
+            });
+        }
+    });
+
+    const distMap = {};
+    puntosMapa.forEach(p => {
+        if (!distMap[p.distrito]) distMap[p.distrito] = [];
+        distMap[p.distrito].push(p);
+    });
+    const distSorted = Object.keys(distMap).sort((a, b) => distMap[b].length - distMap[a].length);
+
+    const sel = document.getElementById('distritoFilter');
+    distSorted.forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d;
+        opt.textContent = d + ' (' + distMap[d].length + ')';
+        sel.appendChild(opt);
+    });
+
+    // ── Búsqueda por dirección (debounce 300ms) ──────────────
+    let _dirTimer;
+    document.getElementById('dirSearch').addEventListener('input', function() {
+        clearTimeout(_dirTimer);
+        _dirTimer = setTimeout(() => filtrarMapa(), 300);
+    });
+
+    // ── Límites distritales oficiales (GeoJSON GADM) ─────────
+    function _distHeatColor(rank, total) {
+        const p = rank / (total - 1 || 1);
+        if (p < 0.2) return '#10b981';
+        if (p < 0.4) return '#84cc16';
+        if (p < 0.6) return '#eab308';
+        if (p < 0.8) return '#f97316';
+        return '#ef4444';
+    }
+    function _normDist(s) {
+        return (s || '').toUpperCase()
+            .normalize('NFD').replace(/[̀-ͯ]/g, '')
+            .replace(/[^A-Z0-9]/g, '');
+    }
+
+    const _distGeoLayers = {};
+    const _distGeoGroup = L.layerGroup().addTo(_mapaLima);
+
+    fetch('/api/lima-distritos-geo')
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(geo) {
+            if (!geo || !geo.features || !geo.features.length) return;
+            const normToName = {};
+            distSorted.forEach(function(d) { normToName[_normDist(d)] = d; });
+            const total = distSorted.length;
+
+            L.geoJSON(geo, {
+                style: function(feat) {
+                    const dName = normToName[_normDist(feat.properties.NAME_3 || '')];
+                    const rank  = dName ? distSorted.indexOf(dName) : total - 1;
+                    const color = _distHeatColor(rank, total);
+                    return { color: color, weight: 1.5, opacity: 0.75,
+                             fillColor: color, fillOpacity: 0.18 };
+                },
+                onEachFeature: function(feat, layer) {
+                    const dName = normToName[_normDist(feat.properties.NAME_3 || '')];
+                    const cnt   = dName && distMap[dName] ? distMap[dName].length : 0;
+                    const label = dName || feat.properties.NAME_3 || '';
+                    if (label) {
+                        layer.bindTooltip(
+                            '<b>' + label + '</b>' +
+                            (cnt ? '<br><span style="color:#94a3b8;">Click para filtrar</span> · ' + cnt + ' altas' : ''),
+                            { sticky: false, className: 'dist-tooltip' }
+                        );
+                    }
+                    if (dName) {
+                        layer.on('click', function() { filtrarMapa(dName); });
+                        layer.on('mouseover', function() {
+                            if (sel.value !== dName)
+                                layer.setStyle({ fillOpacity: 0.35, opacity: 1, weight: 2.5 });
+                        });
+                        layer.on('mouseout', function() {
+                            if (sel.value !== dName)
+                                layer.setStyle({ fillOpacity: 0.18, opacity: 0.75, weight: 1.5 });
+                        });
+                        _distGeoLayers[dName] = layer;
+                    }
+                }
+            }).addTo(_distGeoGroup);
+
+            // Ocultar hint si GeoJSON no cargó
+            const hint = document.getElementById('mapaHint');
+            if (hint) hint.style.opacity = '1';
+        })
+        .catch(function(e) {
+            console.warn('GeoJSON distritos no disponible. Ejecuta generar_lima_geo.py', e);
+            const hint = document.getElementById('mapaHint');
+            if (hint) { hint.innerHTML = '<i class="fa-solid fa-triangle-exclamation" style="color:#f97316;"></i> Ejecuta generar_lima_geo.py para ver los límites distritales'; hint.style.display = 'flex'; }
+        });
+
+    function addMarkers(pts) {
+        clusterGroup.clearLayers();
+        pts.forEach(p => {
+            if (!p.lat || !p.lon) return;
+            const scoreColor = {
+                'Cumple':    '#10b981',
+                'No cumple': '#ef4444',
+                'Sin score': '#94a3b8',
+                'No Venta':  '#f97316'
+            }[p.score_zona] || '#64748b';
+            const m = L.marker([p.lat, p.lon]);
+            m.bindPopup(
+                `<div style="min-width:200px; font-size:12px; line-height:1.7;">
+                    <b style="font-size:13px; color:var(--primary);">${p.distrito}</b><br>
+                    ${p.geofinder ? `<span style="color:#0066CC; font-size:11px;"><i class="fa-solid fa-location-dot"></i> ${p.geofinder}</span><br>` : ''}
+                    ${p.direccion && p.direccion !== p.geofinder ? `<span style="color:#94a3b8; font-size:11px;">${p.direccion}</span><br>` : ''}
+                    <span style="color:#f97316; font-weight:700;">${p.plan || '—'}</span>
+                    <span style="color:#64748b; margin-left:6px; font-size:11px;">${p.tipo || ''}</span>
+                    ${p.score_zona ? `<br><span style="font-size:11px; font-weight:700; color:${scoreColor};">⬤ ${p.score_zona}</span>` : ''}
+                </div>`
+            );
+            clusterGroup.addLayer(m);
+        });
+        _mapaLima.addLayer(clusterGroup);
+    }
+
+    function buildTablaDistritos(activo) {
+        const max = distMap[distSorted[0]].length;
+        document.getElementById('tablaDistritos').innerHTML = distSorted.map((d, i) => {
+            const cnt = distMap[d].length;
+            const barW = (cnt / max * 100).toFixed(0);
+            const isActive = d === activo;
+            const esc = d.replace(/'/g, "\\'");
+            return `<div onclick="filtrarMapa('${esc}')"
+                         style="padding:6px 4px; cursor:pointer; border-radius:5px;
+                                background:${isActive ? '#eff6ff' : 'transparent'};
+                                border-left:3px solid ${isActive ? '#0066CC' : 'transparent'};
+                                margin-bottom:2px; padding-left:7px;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:3px;">
+                    <span style="font-weight:600; color:var(--text-primary);
+                                 white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+                                 max-width:170px;" title="${d}">${i+1}. ${d}</span>
+                    <span style="font-weight:700; color:#f97316; white-space:nowrap; margin-left:4px;">${cnt}</span>
+                </div>
+                <div style="background:#f1f5f9; border-radius:3px; height:4px;">
+                    <div style="width:${barW}%; background:#f97316; height:4px; border-radius:3px;"></div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    window.filtrarMapa = function(dist) {
+        // Leer todos los filtros actuales
+        if (dist !== undefined) sel.value = dist || '';
+        const filterDist = sel.value;
+        const filterDir  = (document.getElementById('dirSearch').value || '').toLowerCase().trim();
+        const hasFilter  = filterDist || filterDir;
+
+        // Resaltar polígono según distrito seleccionado
+        Object.keys(_distGeoLayers).forEach(function(name) {
+            const layer = _distGeoLayers[name];
+            if (filterDist && name === filterDist) {
+                layer.setStyle({ fillOpacity: 0.45, opacity: 1, weight: 3 });
+                layer.bringToFront();
+            } else if (filterDist) {
+                layer.setStyle({ fillOpacity: 0.07, opacity: 0.30, weight: 1 });
+            } else {
+                layer.setStyle({ fillOpacity: 0.18, opacity: 0.75, weight: 1.5 });
+            }
+        });
+
+        const hint = document.getElementById('mapaHint');
+        if (hint) hint.style.display = hasFilter ? 'none' : 'flex';
+
+        // Aplicar filtros combinados
+        let pts = puntosMapa;
+        if (filterDist) pts = pts.filter(p => p.distrito === filterDist);
+        if (filterDir)  pts = pts.filter(p =>
+            (p.direccion || '').toLowerCase().includes(filterDir) ||
+            (p.geofinder || '').toLowerCase().includes(filterDir));
+
+        addMarkers(pts);
+        buildTablaDistritos(filterDist);
+        document.getElementById('statPuntos').textContent = pts.length.toLocaleString();
+
+        if (hasFilter && pts.length) {
+            const validPts = pts.filter(p => p.lat && p.lon);
+            if (validPts.length && filterDist) {
+                _mapaLima.fitBounds(L.latLngBounds(validPts.map(p => [p.lat, p.lon])),
+                                    { padding: [40, 40] });
+            }
+        } else if (!hasFilter) {
+            _mapaLima.setView([-12.0464, -77.0428], 11);
+        }
+    };
+
+    addMarkers(puntosMapa);
+    buildTablaDistritos('');
+    document.getElementById('statPuntos').textContent = puntosMapa.length.toLocaleString();
+    document.getElementById('statDistritos').textContent = distSorted.length;
+    setTimeout(() => _mapaLima.invalidateSize(), 100);
 }
 </script>
 

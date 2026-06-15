@@ -353,14 +353,17 @@ def main():
     # NUEVO: Cargar a SQL Server después de zonificar
     try:
         print("\n  Iniciando carga a SQL Server (winforce_lima)...")
-        # El DataFrame 'df' ya contiene las nuevas columnas de zonificación
-        
+
         incremental = "--incremental" in sys.argv
         if incremental:
-            # En modo incremental, borramos los últimos 7 días y subimos lo nuevo
-            upload_incremental_to_sql(df, "winforce_lima", "Fecha de registro")
+            # Calcular el primer día del mes anterior (mismo rango que la descarga de Winforce)
+            hoy_dt = datetime.now()
+            if hoy_dt.month == 1:
+                start_date = hoy_dt.replace(year=hoy_dt.year - 1, month=12, day=1)
+            else:
+                start_date = hoy_dt.replace(month=hoy_dt.month - 1, day=1)
+            upload_incremental_to_sql(df, "winforce_lima", "Fecha de registro", start_date=start_date)
         else:
-            # En modo completo, reemplazamos toda la tabla
             upload_to_sql(df, "winforce_lima")
             
     except Exception as sql_e:

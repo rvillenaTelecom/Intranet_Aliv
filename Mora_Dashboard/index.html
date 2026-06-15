@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Morosidad — Aliv Telecom</title>
+<style>
+:root {
+  --bg:     #0f1117;
+  --card:   #1a1d27;
+  --card2:  #13161f;
+  --border: #2a2d3a;
+  --text:   #ffffff;
+  --muted:  #8b8fa8;
+  --green:  #4ade80;
+  --red:    #f87171;
+  --yellow: #f59e0b;
+  --blue:   #60a5fa;
+  --purple: #a78bfa;
+  --gold:   #d97706;
+  --gold-h: #b45309;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:'Segoe UI',-apple-system,sans-serif;
+  font-size:13px;padding:14px;min-width:1200px;
+}
+
+/* ── Header ──────────────────────────────────────────── */
+.page-header{
+  display:flex;align-items:center;gap:10px;
+  margin-bottom:12px;padding-bottom:10px;
+  border-bottom:1px solid var(--border);
+}
+.page-header h1{font-size:18px;font-weight:700;letter-spacing:.3px}
+.page-header .badge{
+  background:#1e2235;border:1px solid var(--border);
+  border-radius:4px;padding:2px 8px;
+  color:var(--muted);font-size:11px;
+}
+
+/* ── Filter bar ──────────────────────────────────────── */
+.filter-bar{
+  display:flex;gap:6px;align-items:center;flex-wrap:wrap;
+  background:var(--card);border:1px solid var(--border);
+  border-radius:8px;padding:10px 14px;margin-bottom:14px;
+}
+.filter-bar .fg{display:flex;align-items:center;gap:5px}
+.filter-bar label{color:var(--muted);font-size:11px;white-space:nowrap;font-weight:500}
+.filter-bar select{
+  background:#0f1117;color:var(--text);
+  border:1px solid var(--border);border-radius:4px;
+  padding:5px 8px;font-size:12px;cursor:pointer;min-width:110px;
+}
+.filter-bar select:focus{outline:none;border-color:var(--blue)}
+.filter-sep{width:1px;height:20px;background:var(--border);margin:0 4px}
+.btn-clear{
+  background:transparent;color:var(--muted);
+  border:1px solid var(--border);border-radius:4px;
+  padding:5px 12px;cursor:pointer;font-size:12px;
+  margin-left:auto;transition:.15s;
+}
+.btn-clear:hover{color:var(--text);border-color:var(--muted)}
+
+/* ── Main two-column layout ──────────────────────────── */
+.main-layout{
+  display:grid;grid-template-columns:56% 1fr;
+  gap:14px;margin-bottom:14px;
+}
+
+/* ── Table wrapper ───────────────────────────────────── */
+.card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:8px;padding:14px;
+}
+.section-lbl{
+  color:var(--muted);font-size:11px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;
+}
+.tbl-scroll{max-height:390px;overflow-y:auto;border-radius:4px}
+.tbl-scroll::-webkit-scrollbar{width:4px}
+.tbl-scroll::-webkit-scrollbar-track{background:var(--border)}
+.tbl-scroll::-webkit-scrollbar-thumb{background:#444;border-radius:2px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead{position:sticky;top:0;z-index:1}
+thead th{
+  background:var(--gold);color:#000;font-weight:700;
+  padding:7px 10px;text-align:right;white-space:nowrap;
+}
+thead th:first-child{text-align:left;border-radius:4px 0 0 0}
+thead th:last-child{border-radius:0 4px 0 0}
+tbody tr{border-bottom:1px solid rgba(255,255,255,.04)}
+tbody tr:hover{background:rgba(255,255,255,.03)}
+tbody td{padding:6px 10px;text-align:right;white-space:nowrap}
+tbody td:first-child{text-align:left;color:var(--muted)}
+.tr-total td{color:var(--gold) !important;font-weight:700;border-top:1px solid var(--border)}
+
+/* ── KPI column ──────────────────────────────────────── */
+.kpi-col{display:flex;flex-direction:column;gap:10px}
+.kpi-row{display:grid;gap:10px}
+.kpi-row-2{grid-template-columns:1fr 1fr}
+.kpi-row-3{grid-template-columns:repeat(3,1fr)}
+.kpi{
+  background:var(--card2);border:1px solid var(--border);
+  border-radius:8px;padding:12px 14px;
+}
+.kpi .lbl{
+  color:var(--muted);font-size:10px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;
+}
+.kpi .val{font-size:26px;font-weight:800;line-height:1;letter-spacing:-.5px}
+.kpi .sub{color:var(--muted);font-size:11px;margin-top:3px}
+.kpi.sm .val{font-size:20px}
+.kpi.lg .val{font-size:30px}
+
+/* colors */
+.cg{color:var(--green)} .cr{color:var(--red)}
+.cb{color:var(--blue)}  .cy{color:var(--yellow)}
+.cp{color:var(--purple)}.cm{color:var(--muted)}
+
+/* ── Embudo ──────────────────────────────────────────── */
+.embudo-wrap{
+  display:flex;align-items:stretch;gap:0;
+  background:var(--card);border:1px solid var(--border);
+  border-radius:8px;overflow:hidden;margin-bottom:14px;
+}
+.embudo-box{
+  flex:1;padding:18px 14px;text-align:center;
+  display:flex;flex-direction:column;justify-content:center;
+  border-right:1px solid var(--border);
+}
+.embudo-box:last-child{border-right:none}
+.embudo-box.e-dark{background:#16192a}
+.embudo-box.e-green{background:#0d1f16}
+.embudo-box .ev{font-size:30px;font-weight:800;line-height:1;margin-bottom:4px}
+.embudo-box .el{color:var(--muted);font-size:11px}
+.embudo-box .ep{color:var(--muted);font-size:10px;margin-top:2px}
+.embudo-box.dimmed{opacity:.3;filter:grayscale(.6)}
+.embudo-arrow{
+  display:flex;align-items:center;justify-content:center;
+  padding:0 2px;background:var(--card);
+  color:var(--muted);font-size:20px;
+}
+
+/* ── WIN tables ──────────────────────────────────────── */
+.win-section{margin-bottom:14px}
+
+/* Semáforo dot */
+.dot{
+  display:inline-block;width:9px;height:9px;
+  border-radius:50%;margin-right:5px;vertical-align:middle;
+}
+.d-ok{background:var(--green)}
+.d-alerta{background:var(--yellow)}
+.d-critico{background:var(--red)}
+.d-none{background:#555}
+
+/* ── Gauges ──────────────────────────────────────────── */
+.gauges-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.gauge-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:8px;padding:16px;text-align:center;
+}
+.gauge-title{color:var(--muted);font-size:12px;font-weight:500;margin-bottom:6px}
+canvas.gauge{display:block;margin:0 auto}
+.gauge-scale{
+  display:flex;justify-content:space-between;
+  color:var(--muted);font-size:10px;margin-top:-4px;
+  padding:0 10px;
+}
+
+/* loading */
+.spin{color:var(--muted);text-align:center;padding:16px;font-size:12px}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="page-header">
+  <h1>Morosidad</h1>
+  <span class="badge">Aliv Telecom</span>
+  <span class="badge" id="badgeTotal" style="margin-left:auto">—</span>
+</div>
+
+<!-- Filters -->
+<div class="filter-bar">
+  <div class="fg">
+    <label>Mes</label>
+    <select id="fMes" onchange="loadAll()"><option value="">Todos</option></select>
+  </div>
+  <div class="filter-sep"></div>
+  <div class="fg">
+    <label>Grupo</label>
+    <select id="fGrupo" onchange="loadAll()"><option value="">Todos</option></select>
+  </div>
+  <div class="filter-sep"></div>
+  <div class="fg">
+    <label>Departamento</label>
+    <select id="fDept" onchange="loadAll()"><option value="">Todos</option></select>
+  </div>
+  <div class="filter-sep"></div>
+  <div class="fg">
+    <label>Recibo</label>
+    <select id="fRecibo" onchange="loadAll()">
+      <option value="">Todos</option>
+      <option value="M1">M1 — Primer Recibo</option>
+      <option value="M2">M2 — Segundo Recibo</option>
+      <option value="M3">M3 — Tercer Recibo</option>
+    </select>
+  </div>
+  <div class="filter-sep"></div>
+  <div class="fg">
+    <label>Supervisor</label>
+    <select id="fSup" onchange="loadAll()"><option value="">Todos</option></select>
+  </div>
+  <div class="filter-sep"></div>
+  <div class="fg">
+    <label>Tipo Domicilio</label>
+    <select id="fTipo" onchange="loadAll()"><option value="">Todos</option></select>
+  </div>
+  <button class="btn-clear" onclick="clearAll()">✕ Limpiar</button>
+</div>
+
+<!-- Main layout: supervisor table | KPI stack -->
+<div class="main-layout">
+  <!-- Supervisor table -->
+  <div class="card">
+    <div class="section-lbl">Supervisores</div>
+    <div class="tbl-scroll" id="supTable"><div class="spin">Cargando…</div></div>
+  </div>
+  <!-- KPI stack -->
+  <div class="kpi-col" id="kpiCol"><div class="spin">Cargando…</div></div>
+</div>
+
+<!-- Embudo -->
+<div class="embudo-wrap" id="embudo">
+  <div class="spin">Cargando…</div>
+</div>
+
+<!-- WIN tables -->
+<div class="win-section card">
+  <div class="section-lbl">Cálculo de pérdidas por corte WIN</div>
+  <div class="tbl-scroll" id="winTable"><div class="spin">Cargando…</div></div>
+</div>
+
+<!-- Pérdidas por recibo -->
+<div class="win-section card">
+  <div class="section-lbl">Pérdidas por Recibo Actual</div>
+  <div class="tbl-scroll" id="reciboTable"><div class="spin">Cargando…</div></div>
+</div>
+
+<!-- Gauges -->
+<div class="gauges-row" style="margin-top:14px">
+  <div class="gauge-card">
+    <div class="gauge-title" id="gTitle1">NPNF — No pagaron R1</div>
+    <canvas id="g1" class="gauge" width="270" height="155"></canvas>
+    <div class="gauge-scale"><span>0.00%</span><span id="gMid1">4.50%</span><span>100.00%</span></div>
+  </div>
+  <div class="gauge-card">
+    <div class="gauge-title" id="gTitle2">Extorno 2 — No pagaron R2</div>
+    <canvas id="g2" class="gauge" width="270" height="155"></canvas>
+    <div class="gauge-scale"><span>0.00%</span><span id="gMid2">3.50%</span><span>100.00%</span></div>
+  </div>
+  <div class="gauge-card">
+    <div class="gauge-title" id="gTitle3">Extorno 3 — No pagaron R3</div>
+    <canvas id="g3" class="gauge" width="270" height="155"></canvas>
+    <div class="gauge-scale"><span>0.00%</span><span id="gMid3">2.50%</span><span>100.00%</span></div>
+  </div>
+</div>
+
+<script>
+// ── Helpers ───────────────────────────────────────────────
+const $  = id => document.getElementById(id);
+const fn = n  => (n == null || n === '') ? '--' : Number(n).toLocaleString('en-US');
+const fp = n  => (n == null || n === '') ? '--' : Number(n).toFixed(2) + '%';
+const fm = n  => (n == null || n === '') ? '--' : 'S/ ' + Number(n).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+const fz = n  => !n ? '' : fn(n);  // blank if zero
+
+function getFilters() {
+  return {
+    mes:            $('fMes').value,
+    grupo:          $('fGrupo').value,
+    departamento:   $('fDept').value,
+    recibo:         $('fRecibo').value,
+    supervisor:     $('fSup').value,
+    tipo_domicilio: $('fTipo').value,
+  };
+}
+
+function clearAll() {
+  ['fMes','fGrupo','fDept','fRecibo','fSup','fTipo'].forEach(id => $(id).value = '');
+  loadAll();
+}
+
+function buildQS(overrides = {}) {
+  const f = {...getFilters(), ...overrides};
+  const p = new URLSearchParams();
+  Object.entries(f).forEach(([k,v]) => { if (v) p.set(k, v); });
+  const s = p.toString();
+  return s ? '?' + s : '';
+}
+
+// ── Init filtros ──────────────────────────────────────────
+async function initFiltros() {
+  try {
+    const d = await fetch('/api/filtros').then(r => r.json());
+    const add = (selId, items, valFn, lblFn) => {
+      const sel = $(selId);
+      items?.forEach(item => {
+        const o = document.createElement('option');
+        o.value = valFn(item); o.textContent = lblFn(item);
+        sel.appendChild(o);
+      });
+    };
+    add('fMes',   d.meses,           m => m.value, m => m.label);
+    add('fGrupo', d.grupos,          g => g,        g => g);
+    add('fDept',  d.departamentos,   d => d,        d => d);
+    add('fSup',   d.supervisores,    s => s,        s => s);
+    add('fTipo',  d.tipos_domicilio, t => t,        t => t);
+  } catch(e) { console.error('initFiltros:', e); }
+}
+
+// ── Render KPIs ───────────────────────────────────────────
+function renderKPIs(d) {
+  const rec = getFilters().recibo;
+  let total, histPct, histLabel;
+  let r1lbl, r1val, r1pct, r1cls;
+  let r2lbl, r2val, r2pct, r2cls;
+  let r3lbl, r3val, r3pct, r3cls;
+  let r4lbl, r4val, r4pct, r4cls;
+  let r5lbl, r5val, r5pct, r5cls;
+  let r6lbl, r6val, r6pct, r6cls;
+  let wBase, wUmb, wMor, wDif, wSub;
+
+  if (!rec || rec === 'M1') {
+    total   = d.total;         histPct = d.m1_historial_pct; histLabel = '% cumplimiento';
+    r1lbl='Cliente Pago';      r1val=d.m1_cli_pago;      r1pct=d.m1_pct_cli_pago;  r1cls='cg';
+    r2lbl='Tercero Pago';      r2val=d.m1_tercero_pago;  r2pct=d.m1_pct_tercero;   r2cls='cg';
+    r3lbl='Nuevo Total - Activos'; r3val=d.m1_activos; r3pct=d.m1_historial_pct;   r3cls='cg';
+    r4lbl='Churn';             r4val=d.m1_churn;         r4pct=d.m1_pct_churn;     r4cls='cr';
+    r5lbl='Cliente de Baja';   r5val=d.m1_baja;          r5pct=d.m1_pct_baja;      r5cls='cr';
+    r6lbl='Total sin Pagar';   r6val=d.m1_npnf;          r6pct=d.m1_pct_npnf;      r6cls='cr';
+    wBase=d.total; wUmb=d.m1_umbral; wMor=d.m1_npnf; wDif=d.m1_diferencia; wSub='Total × 4.5%';
+  } else if (rec === 'M2') {
+    total   = d.pag_r1;        histPct = d.m2_historial_pct; histLabel = '% retención R2';
+    r1lbl='Pagaron R2';        r1val=d.pag_r2;           r1pct=d.m2_historial_pct; r1cls='cg';
+    r2lbl='Sin pagar R2';      r2val=d.no_r2;            r2pct=d.m2_pct_morosos;   r2cls='cr';
+    r3lbl='Base (pagaron R1)'; r3val=d.pag_r1;           r3pct=100;                r3cls='cb';
+    r4lbl='Exceso R2';         r4val=d.m2_exceso;        r4pct=null;               r4cls='cy';
+    r5lbl='Costo Extorno 2';   r5val=null;               r5pct=null;               r5cls='cm';
+    r6lbl='Morosos R2';        r6val=d.no_r2;            r6pct=d.m2_pct_morosos;   r6cls='cr';
+    wBase=d.pag_r1; wUmb=d.m2_umbral; wMor=d.no_r2; wDif=d.m2_diferencia; wSub='Base R1 × 3.5%';
+  } else {
+    total   = d.pag_r2;        histPct = d.m3_historial_pct; histLabel = '% retención R3';
+    r1lbl='Pagaron R3';        r1val=d.pag_r3;           r1pct=d.m3_historial_pct; r1cls='cg';
+    r2lbl='Sin pagar R3';      r2val=d.no_r3;            r2pct=d.m3_pct_morosos;   r2cls='cr';
+    r3lbl='Base (pagaron R2)'; r3val=d.pag_r2;           r3pct=100;                r3cls='cb';
+    r4lbl='Exceso R3';         r4val=d.m3_exceso;        r4pct=null;               r4cls='cy';
+    r5lbl='Costo Extorno 3';   r5val=null;               r5pct=null;               r5cls='cm';
+    r6lbl='Morosos R3';        r6val=d.no_r3;            r6pct=d.m3_pct_morosos;   r6cls='cr';
+    wBase=d.pag_r2; wUmb=d.m3_umbral; wMor=d.no_r3; wDif=d.m3_diferencia; wSub='Base R2 × 2.5%';
+  }
+
+  const difCls = wDif < 0 ? 'cm' : 'cr';
+  const difSign = wDif > 0 ? '+' : '';
+
+  const sub = (v, p) => p != null ? `<div class="sub">${fp(p)}</div>` : '';
+
+  $('kpiCol').innerHTML = `
+    <div class="kpi-row kpi-row-2">
+      <div class="kpi lg"><div class="lbl">Total Clientes</div><div class="val">${fn(total)}</div></div>
+      <div class="kpi lg"><div class="lbl">Historial</div><div class="val cp">${fp(histPct)}</div><div class="sub">${histLabel}</div></div>
+    </div>
+    <div class="kpi-row kpi-row-3">
+      <div class="kpi"><div class="lbl">${r1lbl}</div><div class="val ${r1cls}">${fn(r1val)}</div>${sub(r1val,r1pct)}</div>
+      <div class="kpi"><div class="lbl">${r2lbl}</div><div class="val ${r2cls}">${fn(r2val)}</div>${sub(r2val,r2pct)}</div>
+      <div class="kpi"><div class="lbl">${r3lbl}</div><div class="val ${r3cls}">${fn(r3val)}</div>${sub(r3val,r3pct)}</div>
+    </div>
+    <div class="kpi-row kpi-row-3">
+      <div class="kpi"><div class="lbl">${r4lbl}</div><div class="val ${r4cls}">${r4val!=null?fn(r4val):'--'}</div>${sub(r4val,r4pct)}</div>
+      <div class="kpi"><div class="lbl">${r5lbl}</div><div class="val ${r5cls}">${r5val!=null?fn(r5val):'--'}</div>${sub(r5val,r5pct)}</div>
+      <div class="kpi"><div class="lbl">${r6lbl}</div><div class="val ${r6cls}">${fn(r6val)}</div>${sub(r6val,r6pct)}</div>
+    </div>
+    <div class="kpi-row kpi-row-3">
+      <div class="kpi sm"><div class="lbl">Total Clientes</div><div class="val cb">${fn(wBase)}</div></div>
+      <div class="kpi sm"><div class="lbl">Umbral WIN</div><div class="val cr">${fn(wUmb)}</div><div class="sub">${wSub}</div></div>
+      <div class="kpi sm"><div class="lbl">Diferencia</div><div class="val ${difCls}">${difSign}${fn(wDif)}</div><div class="sub">Morosos − Umbral</div></div>
+    </div>
+  `;
+
+  // badge
+  $('badgeTotal').textContent = `Total: ${fn(d.total)} clientes`;
+}
+
+// ── Render Supervisores ───────────────────────────────────
+function renderSupervisores(rows) {
+  const rec = getFilters().recibo;
+  if (!rows.length) {
+    $('supTable').innerHTML = '<div class="spin">Sin datos</div>';
+    return;
+  }
+
+  let hdr, buildRow, buildTotRow;
+
+  if (!rec || rec === 'M1') {
+    const tot = {cp:0,ch:0,bj:0,t:0};
+    rows.forEach(r => { tot.cp+=r.cli_pago; tot.ch+=r.churn; tot.bj+=r.baja; tot.t+=r.total; });
+    hdr = `<th>Supervisor</th><th>A_D Cliente Pago</th><th>A_D Churn</th><th>A_D Baja</th><th>A_Total Clientes</th>`;
+    buildRow = r => `<tr>
+      <td>${r.supervisor}</td>
+      <td class="cg">${fz(r.cli_pago)}</td>
+      <td class="cr">${fz(r.churn)}</td>
+      <td>${fz(r.baja)}</td>
+      <td>${fn(r.total)}</td>
+    </tr>`;
+    buildTotRow = () => `<tr class="tr-total">
+      <td>Total</td>
+      <td>${fn(tot.cp)}</td>
+      <td>${fn(tot.ch)}</td>
+      <td>${fn(tot.bj)}</td>
+      <td>${fn(tot.t)}</td>
+    </tr>`;
+  } else if (rec === 'M2') {
+    const tot = {r1:0,r2:0,t:0};
+    rows.forEach(r => { tot.r1+=r.pag_r1; tot.r2+=r.no_r2; tot.t+=r.total; });
+    hdr = `<th>Supervisor</th><th>Pagaron R1</th><th>Sin R2</th><th>A_Total</th>`;
+    buildRow = r => `<tr>
+      <td>${r.supervisor}</td>
+      <td class="cg">${fz(r.pag_r1)}</td>
+      <td class="cr">${fz(r.no_r2)}</td>
+      <td>${fn(r.total)}</td>
+    </tr>`;
+    buildTotRow = () => `<tr class="tr-total">
+      <td>Total</td><td>${fn(tot.r1)}</td><td>${fn(tot.r2)}</td><td>${fn(tot.t)}</td>
+    </tr>`;
+  } else {
+    const tot = {r2:0,r3:0,t:0};
+    rows.forEach(r => { tot.r2+=r.pag_r2; tot.r3+=r.no_r3; tot.t+=r.total; });
+    hdr = `<th>Supervisor</th><th>Pagaron R2</th><th>Sin R3</th><th>A_Total</th>`;
+    buildRow = r => `<tr>
+      <td>${r.supervisor}</td>
+      <td class="cg">${fz(r.pag_r2)}</td>
+      <td class="cr">${fz(r.no_r3)}</td>
+      <td>${fn(r.total)}</td>
+    </tr>`;
+    buildTotRow = () => `<tr class="tr-total">
+      <td>Total</td><td>${fn(tot.r2)}</td><td>${fn(tot.r3)}</td><td>${fn(tot.t)}</td>
+    </tr>`;
+  }
+
+  $('supTable').innerHTML = `
+    <table>
+      <thead><tr>${hdr}</tr></thead>
+      <tbody>${rows.map(buildRow).join('')}${buildTotRow()}</tbody>
+    </table>`;
+}
+
+// ── Render Embudo ─────────────────────────────────────────
+function renderEmbudo(d) {
+  const rec = getFilters().recibo;
+  const dimR2 = rec === 'M1';
+  const dimR3 = rec === 'M1' || rec === 'M2';
+
+  const box = (cls, val, lbl, pctVal, extra='') => `
+    <div class="embudo-box ${cls} ${extra}">
+      <div class="ev">${val === null ? '--' : fn(val)}</div>
+      <div class="el">${lbl}</div>
+      ${pctVal != null ? `<div class="ep">${fp(pctVal)}</div>` : ''}
+    </div>`;
+
+  $('embudo').innerHTML =
+    box('e-dark',  d.total,  'Lima — activos 2026', null) +
+    `<div class="embudo-arrow">›</div>` +
+    box('e-green', d.pag_r1, 'Pagaron R1', d.pct_r1) +
+    `<div class="embudo-arrow ${dimR2?'dimmed':''}">›</div>` +
+    box('e-green', d.pag_r2 || null, 'Pagaron R2', d.pct_r2, dimR2?'dimmed':'') +
+    `<div class="embudo-arrow ${dimR3?'dimmed':''}">›</div>` +
+    box('e-green', d.pag_r3 || null, 'Pagaron R3', d.pct_r3, dimR3?'dimmed':'');
+}
+
+// ── WIN tables ────────────────────────────────────────────
+function dot(s) {
+  const cls = {ok:'d-ok',alerta:'d-alerta',critico:'d-critico'}[s] || 'd-none';
+  const lbl = {ok:'Bajo control',alerta:'En alerta',critico:'Sobre umbral'}[s] || 'Sin data';
+  return `<span class="dot ${cls}"></span>${lbl}`;
+}
+
+const WIN_HDR = `<th>Concepto</th><th>Base</th><th>Umbral</th><th>Umbral %</th>
+  <th>Morosos</th><th>Mora %</th><th>Exceso</th><th>Costo</th><th>Semáforo</th>`;
+
+function renderWIN(rows) {
+  $('winTable').innerHTML = `<table>
+    <thead><tr>${WIN_HDR}</tr></thead>
+    <tbody>${rows.map(r => `<tr>
+      <td>${r.concepto}</td>
+      <td>${fn(r.base)}</td>
+      <td>${fn(r.umbral)}</td>
+      <td>${r.umbral_pct}%</td>
+      <td>${fn(r.morosos)}</td>
+      <td>${fp(r.pct_mora)}</td>
+      <td>${fn(r.exceso)}</td>
+      <td>${fm(r.costo)}</td>
+      <td>${dot(r.semaforo)}</td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+function renderReciboTable(rows) {
+  const REC_HDR = `<th>Recibo_Actual</th><th>Base</th><th>Umbral</th><th>Umbral %</th>
+    <th>Morosos</th><th>Mora %</th><th>Exceso</th><th>Costo</th><th>Semáforo</th>`;
+  const body = rows.length
+    ? rows.map(r => `<tr>
+        <td>${r.recibo}</td>
+        <td>${fn(r.base)}</td>
+        <td>${fn(r.umbral)}</td>
+        <td>${r.umbral_pct}%</td>
+        <td>${fn(r.morosos)}</td>
+        <td>${fp(r.pct_mora)}</td>
+        <td>${fn(r.exceso)}</td>
+        <td>${fm(r.costo)}</td>
+        <td>${dot(r.semaforo)}</td>
+      </tr>`).join('')
+    : `<tr><td colspan="9" style="text-align:center;color:#555;padding:12px">Sin data</td></tr>`;
+  $('reciboTable').innerHTML = `<table><thead><tr>${REC_HDR}</tr></thead><tbody>${body}</tbody></table>`;
+}
+
+// ── Canvas Gauges ─────────────────────────────────────────
+function drawGauge(id, valuePct, umbralPct, midId) {
+  const canvas = $(id);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const cx   = W / 2;
+  const cy   = H * 0.84;
+  const R    = Math.min(W * 0.38, H * 0.76);
+  const lw   = 16;
+  const vPct = Math.min(Math.max(valuePct, 0), 100);
+  const uPct = Math.min(Math.max(umbralPct, 0), 100);
+
+  // background arc
+  ctx.beginPath();
+  ctx.arc(cx, cy, R, Math.PI, 2 * Math.PI);
+  ctx.strokeStyle = '#2a2d3a';
+  ctx.lineWidth = lw;
+  ctx.lineCap = 'butt';
+  ctx.stroke();
+
+  // value arc
+  if (vPct > 0) {
+    const endA = Math.PI + (vPct / 100) * Math.PI;
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, Math.PI, endA);
+    ctx.strokeStyle = vPct > uPct ? '#f59e0b' : '#4ade80';
+    ctx.lineWidth = lw;
+    ctx.lineCap = 'butt';
+    ctx.stroke();
+  }
+
+  // umbral marker
+  if (uPct > 0 && uPct < 100) {
+    const ua  = Math.PI + (uPct / 100) * Math.PI;
+    const iR  = R - lw * 0.7;
+    const oR  = R + lw * 0.7;
+    ctx.beginPath();
+    ctx.moveTo(cx + iR * Math.cos(ua), cy + iR * Math.sin(ua));
+    ctx.lineTo(cx + oR * Math.cos(ua), cy + oR * Math.sin(ua));
+    ctx.strokeStyle = '#3b82f6';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+  }
+
+  // center value text
+  const color = vPct > uPct ? '#f59e0b' : '#4ade80';
+  ctx.fillStyle = color;
+  ctx.font = `800 ${Math.round(R * 0.27)}px 'Segoe UI', sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(valuePct.toFixed(2) + '%', cx, cy - R * 0.28);
+
+  if (midId) $(midId).textContent = umbralPct.toFixed(2) + '%';
+}
+
+function renderGauges(d) {
+  drawGauge('g1', d.m1_pct_npnf,     4.5, 'gMid1');
+  drawGauge('g2', d.m2_pct_morosos,  3.5, 'gMid2');
+  drawGauge('g3', d.m3_pct_morosos,  2.5, 'gMid3');
+}
+
+// ── Load All ──────────────────────────────────────────────
+let _loading = false;
+async function loadAll() {
+  if (_loading) return;
+  _loading = true;
+  const qs       = buildQS();
+  const qsNoRec  = buildQS({recibo: ''});  // embudo ignores recibo
+
+  try {
+    const [kpisD, supD, embudoD, winD, recD] = await Promise.all([
+      fetch('/api/kpis'           + qs).then(r => r.json()),
+      fetch('/api/supervisores'   + qs).then(r => r.json()),
+      fetch('/api/embudo'         + qsNoRec).then(r => r.json()),
+      fetch('/api/perdidas'       + qs).then(r => r.json()),
+      fetch('/api/perdidas-recibo'+ qsNoRec).then(r => r.json()),
+    ]);
+
+    if (kpisD && !kpisD.error)        { renderKPIs(kpisD); renderGauges(kpisD); }
+    if (Array.isArray(supD))           renderSupervisores(supD);
+    if (embudoD && !embudoD.error)     renderEmbudo(embudoD);
+    if (Array.isArray(winD))           renderWIN(winD);
+    if (Array.isArray(recD))           renderReciboTable(recD);
+  } catch(e) {
+    console.error('loadAll error:', e);
+  } finally {
+    _loading = false;
+  }
+}
+
+// ── Boot ──────────────────────────────────────────────────
+initFiltros().then(loadAll);
+</script>
+</body>
+</html>

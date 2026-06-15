@@ -78,6 +78,7 @@ def consolidar_ventas():
         ascending=[False, False]
     )
     df_consolidado = df_consolidado.drop_duplicates(subset=['contrato'], keep='first')
+    df_consolidado = df_consolidado.drop_duplicates(subset=['codigo_pedido'], keep='first')
     df_consolidado = df_consolidado.drop(columns=['_orden_archivo'])
 
     print(f"Registros finales (un registro por contrato): {len(df_consolidado)}")

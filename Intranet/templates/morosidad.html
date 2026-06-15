@@ -1,0 +1,1006 @@
+{% extends "base.html" %}
+{% block title %}Morosidad y Cobros — AlivTelecom{% endblock %}
+{% block page_title %}Morosidad y Cobros{% endblock %}
+
+{% block content %}
+<style>
+/* ── Loading overlay ─────────────────────────────────────────── */
+#loadingOverlay{position:fixed;inset:0;background:rgba(255,255,255,.6);z-index:999;display:none;align-items:center;justify-content:center}
+.spinner{width:40px;height:40px;border:3px solid #e2e8f0;border-top-color:var(--primary);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Tabs ─────────────────────────────────────────────────────── */
+.tab-nav{display:flex;gap:4px;background:#f1f5f9;padding:5px;border-radius:10px;width:fit-content;margin-bottom:20px}
+.tab-btn{padding:8px 22px;border:none;border-radius:7px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-secondary);background:transparent;transition:all .2s}
+.tab-btn.active{background:#fff;color:var(--primary);box-shadow:0 1px 4px #0001}
+.tab-content{display:none}
+.tab-content.active{display:block}
+
+/* ── Filter bar ──────────────────────────────────────────────── */
+.filter-bar{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    background:#fff;border:1px solid var(--border);border-radius:11px;
+    padding:12px 16px;box-shadow:0 1px 4px #0001;margin-bottom:20px;
+}
+.filter-left{display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex:1}
+.filter-right{display:flex;align-items:center;gap:8px}
+.filter-label{font-size:12px;font-weight:700;color:var(--text-secondary);white-space:nowrap}
+.fsel{
+    padding:6px 10px;border:1px solid var(--border);border-radius:7px;
+    font-size:12px;background:#fff;color:var(--text-primary);cursor:pointer;outline:none;
+}
+.fsel:focus{border-color:var(--primary)}
+.btn-apply{
+    padding:7px 14px;background:var(--primary);color:#fff;
+    border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;
+}
+.btn-apply:hover{background:#0055aa}
+.btn-clear-f{
+    padding:7px 12px;background:transparent;color:var(--text-secondary);
+    border:1px solid var(--border);border-radius:7px;font-size:12px;cursor:pointer;
+}
+.btn-clear-f:hover{border-color:#dc2626;color:#dc2626}
+
+/* ── KPI row ─────────────────────────────────────────────────── */
+.mora-kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.mora-kcard{
+    background:#fff;border-radius:11px;padding:16px 18px;
+    border-left:4px solid #e2e8f0;box-shadow:0 1px 4px #0001;
+    border-top:1px solid var(--border);border-right:1px solid var(--border);border-bottom:1px solid var(--border);
+}
+.mora-kcard.red   {border-left-color:#E24B4A}
+.mora-kcard.blue  {border-left-color:var(--primary)}
+.mora-kcard.green {border-left-color:#10b981}
+.mora-kcard.orange{border-left-color:#f97316}
+.kpi-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text-secondary);margin-bottom:6px}
+.kpi-value{font-size:26px;font-weight:800;line-height:1.1;color:var(--text-primary)}
+.kpi-sub{font-size:11px;color:var(--text-secondary);margin-top:4px}
+.c-red{color:#E24B4A!important}.c-green{color:#10b981!important}.c-blue{color:var(--primary)!important}
+.c-yellow{color:#d97706!important}.c-orange{color:#f97316!important}
+
+/* ── Funnel ──────────────────────────────────────────────────── */
+.funnel-wrap{
+    background:#fff;border:1px solid var(--border);border-radius:11px;
+    padding:20px;box-shadow:0 1px 4px #0001;margin-bottom:20px;
+}
+.funnel{display:flex;align-items:stretch;gap:0;overflow-x:auto}
+.funnel-box{
+    flex:1;min-width:140px;background:#f8fafc;border:1px solid var(--border);
+    border-radius:8px;padding:14px 16px;text-align:center;
+}
+.funnel-box.green{border-color:#bbf7d0;background:#f0fdf4}
+.funnel-name{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text-secondary);margin-bottom:6px}
+.funnel-num{font-size:22px;font-weight:700;margin-bottom:2px;color:var(--text-primary)}
+.funnel-pct{font-size:13px;color:#10b981;font-weight:600}
+.funnel-arrow{display:flex;align-items:center;padding:0 8px;color:var(--text-light);font-size:20px;flex-shrink:0}
+.funnel-box.dimmed,.funnel-arrow.dimmed{opacity:.3;filter:grayscale(.6);pointer-events:none}
+
+/* ── Tabla pérdidas ──────────────────────────────────────────── */
+.perdidas-wrap{
+    background:#fff;border:1px solid var(--border);border-radius:11px;
+    padding:16px;box-shadow:0 1px 4px #0001;margin-bottom:20px;
+}
+.perdidas-tab-nav{display:flex;gap:4px;background:#f1f5f9;padding:4px;border-radius:8px;width:fit-content;margin-bottom:16px}
+.perdidas-tab-btn{padding:6px 16px;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;color:var(--text-secondary);background:transparent;transition:all .2s}
+.perdidas-tab-btn.active{background:#fff;color:var(--primary);box-shadow:0 1px 4px #0001}
+.perdidas-tab-content{display:none}
+.perdidas-tab-content.active{display:block}
+.grupo-block{margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)}
+.grupo-block:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
+.grupo-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.grupo-title{font-size:13px;font-weight:700;color:var(--text-primary)}
+.grupo-clientes{font-size:12px;color:var(--text-secondary)}
+.grupo-summary{display:flex;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--text-secondary);padding:8px 4px 0}
+.grupo-summary strong{color:var(--text-primary)}
+.m-table{width:100%;border-collapse:collapse}
+.m-table th{
+    background:#f8fafc;color:var(--text-secondary);font-size:11px;
+    text-transform:uppercase;letter-spacing:.7px;padding:10px 14px;
+    text-align:right;border-bottom:1px solid var(--border);font-weight:700;
+}
+.m-table th:first-child{text-align:left}
+.m-table td{
+    padding:11px 14px;border-bottom:1px solid #f1f5f9;
+    text-align:right;font-variant-numeric:tabular-nums;
+    color:var(--text-primary);font-size:13px;
+}
+.m-table td:first-child{text-align:left;font-weight:600}
+.m-table tr:last-child td{border-bottom:none}
+.m-table tr.total-row{background:#f0f9ff;font-weight:700}
+.m-table tr.total-row td{border-top:1px solid var(--border)}
+.badge-ok{color:#10b981}.badge-alerta{color:#d97706}.badge-critico{color:#E24B4A}
+.pct-critico{color:#E24B4A;font-weight:700}.pct-alerta{color:#d97706}.pct-ok{color:#10b981}
+
+/* ── Semáforos ───────────────────────────────────────────────── */
+.sem-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}
+.sem-card{
+    background:#fff;border:1px solid var(--border);border-radius:11px;
+    padding:18px 20px;box-shadow:0 1px 4px #0001;
+}
+.sem-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-secondary);margin-bottom:10px}
+.sem-pct{font-size:28px;font-weight:800;margin-bottom:4px}
+.sem-bar-wrap{position:relative;background:#f1f5f9;border-radius:4px;height:8px;margin-bottom:6px;overflow:visible}
+.sem-fill{height:100%;border-radius:4px;transition:width .4s ease}
+.sem-threshold{position:absolute;top:-4px;bottom:-4px;width:2px;background:#64748b;border-radius:1px;opacity:.7}
+.sem-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--text-light);margin-bottom:8px}
+.sem-meta{font-size:11px;color:var(--text-secondary)}
+.sem-estado{font-size:12px;font-weight:700;margin-top:6px}
+
+/* ── Grid layouts ────────────────────────────────────────────── */
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}
+.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:20px}
+.table-card{
+    background:#fff;border:1px solid var(--border);border-radius:11px;
+    overflow:hidden;box-shadow:0 1px 4px #0001;
+}
+.table-card-title{
+    padding:12px 16px;font-size:11px;font-weight:700;text-transform:uppercase;
+    letter-spacing:1px;color:var(--text-secondary);border-bottom:1px solid var(--border);
+    background:#f8fafc;
+}
+.table-scroll{overflow-x:auto}
+
+/* ── Barra distritos ─────────────────────────────────────────── */
+.bar-wrap{width:70px;background:#f1f5f9;border-radius:3px;height:6px;display:inline-block;vertical-align:middle}
+.bar-fill{height:100%;border-radius:3px;background:#E24B4A}
+
+/* ── Tabla con scroll vertical (altura fija) ─────────────────── */
+.tbl-scroll-v{overflow-x:auto;overflow-y:auto}
+.tbl-scroll-v thead th{position:sticky;top:0;z-index:2;background:#f8fafc;box-shadow:0 1px 0 var(--border)}
+.finput{
+    padding:6px 10px;border:1px solid var(--border);border-radius:7px;
+    font-size:12px;background:#fff;color:var(--text-primary);outline:none;
+}
+.finput:focus{border-color:var(--primary)}
+
+/* ── Caso dot ────────────────────────────────────────────────── */
+.caso-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+
+@media(max-width:900px){
+    .mora-kpi-row{grid-template-columns:repeat(2,1fr)}
+    .sem-row,.grid3{grid-template-columns:1fr}
+    .grid2{grid-template-columns:1fr}
+    .funnel{flex-direction:column}
+}
+</style>
+
+<!-- Loading overlay -->
+<div id="loadingOverlay"><div class="spinner"></div></div>
+
+<!-- Banner -->
+<div class="welcome-banner" style="background:linear-gradient(135deg,#7c1d1d 0%,#991b1b 50%,#b91c1c 100%);margin-bottom:20px;">
+    <div class="welcome-title"><i class="fa-solid fa-file-invoice-dollar" style="margin-right:10px;"></i>Morosidad y Cobros</div>
+    <div class="welcome-sub">Estado de mora WIN, umbrales por tramo y estimación de costos clawback para Lima.</div>
+</div>
+
+<!-- Filtros -->
+<div class="filter-bar">
+    <div class="filter-left">
+        <span class="filter-label"><i class="fa-solid fa-filter"></i> Filtros:</span>
+        <input type="text" class="finput" id="fDni" placeholder="DNI / Carnet..." style="width:130px"
+               oninput="clearTimeout(window._dniTimer);window._dniTimer=setTimeout(applyFilters,500)">
+        <select class="fsel" id="fMes">
+            <option value="">Todos los meses</option>
+            <option value="1">Enero</option><option value="2">Febrero</option>
+            <option value="3">Marzo</option><option value="4">Abril</option>
+            <option value="5">Mayo</option><option value="6">Junio</option>
+            <option value="7">Julio</option><option value="8">Agosto</option>
+            <option value="9">Septiembre</option><option value="10">Octubre</option>
+            <option value="11">Noviembre</option><option value="12">Diciembre</option>
+        </select>
+        <select class="fsel" id="fDepartamento"><option value="">Todos los depart.</option></select>
+        <select class="fsel" id="fGrupo"><option value="">Todos los grupos</option></select>
+        <select class="fsel" id="fTramo" onchange="applyFilters()">
+            <option value="">Todos los tramos</option>
+            <option value="M1">M1 / R1 — NPNF</option>
+            <option value="M2">M2 / R2 — Extorno 2</option>
+            <option value="M3">M3 / R3 — Extorno 3</option>
+        </select>
+        <select class="fsel" id="fRecibo"><option value="">Todos los recibos</option></select>
+        <select class="fsel" id="fSupervisor"><option value="">Todos los supervisores</option></select>
+        <select class="fsel" id="fDistrito"><option value="">Todos los distritos</option></select>
+        <select class="fsel" id="fRiesgo"><option value="">Todos los riesgos</option></select>
+        <select class="fsel" id="fCaso"><option value="">Todos los casos</option></select>
+        <select class="fsel" id="fTramo" onchange="applyFilters()">
+            <option value="">Todos los tramos</option>
+            <option value="M1">M1 — R1 (Primer mes)</option>
+            <option value="M2">M2 — R2 (Segundo mes)</option>
+            <option value="M3">M3 — R3 (Tercer mes)</option>
+        </select>
+    </div>
+    <div class="filter-right">
+        <button class="btn-apply" onclick="applyFilters()"><i class="fa-solid fa-magnifying-glass"></i> Aplicar</button>
+        <button class="btn-clear-f" onclick="clearFilters()"><i class="fa-solid fa-xmark"></i> Limpiar</button>
+    </div>
+</div>
+
+<!-- Tab nav -->
+<div class="tab-nav">
+    <button class="tab-btn active" id="tabBtnResumen" onclick="switchTab('resumen', this)">
+        <i class="fa-solid fa-gauge-high"></i> Resumen General
+    </button>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     TAB 1 — Resumen General
+     ══════════════════════════════════════════════════════════════ -->
+<div id="tabResumen" class="tab-content active">
+
+<!-- KPIs -->
+<div class="section-header" style="margin-bottom:12px;">
+    <div class="section-title"><i class="fa-solid fa-gauge-high"></i> Resumen Ejecutivo</div>
+</div>
+<div class="mora-kpi-row">
+    <div class="mora-kcard blue">
+        <div class="kpi-label">Total Clientes</div>
+        <div class="kpi-value c-blue" id="kTotal">—</div>
+        <div class="kpi-sub" id="kArpu">ARPU promedio: —</div>
+    </div>
+    <div class="mora-kcard green">
+        <div class="kpi-label">Comisión Bruta</div>
+        <div class="kpi-value c-green" id="kComBruta">—</div>
+        <div class="kpi-sub">Comisión total generada</div>
+    </div>
+    <div class="mora-kcard red">
+        <div class="kpi-label">Comisión Neta</div>
+        <div class="kpi-value" id="kComNeta">—</div>
+        <div class="kpi-sub" id="kDescuento">Descuento clawback: —</div>
+    </div>
+    <div class="mora-kcard orange">
+        <div class="kpi-label">Días para el Corte</div>
+        <div class="kpi-value" id="kDias">—</div>
+        <div class="kpi-sub" id="kCorte">Corte del 18</div>
+    </div>
+</div>
+
+<!-- Embudo -->
+<div class="section-header" style="margin-bottom:12px;">
+    <div class="section-title"><i class="fa-solid fa-filter-circle-dollar"></i> Embudo de Retención</div>
+</div>
+<div class="funnel-wrap">
+    <div class="funnel">
+        <div class="funnel-box">
+            <div class="funnel-name">Total Clientes</div>
+            <div class="funnel-num" id="eTotal">—</div>
+            <div class="funnel-pct" style="color:var(--text-secondary)">100%</div>
+            <div class="funnel-falta" style="margin-top:6px;font-size:11px;color:var(--text-light)"> </div>
+        </div>
+        <div class="funnel-arrow">›</div>
+        <div class="funnel-box green">
+            <div class="funnel-name">Pagaron R1</div>
+            <div class="funnel-num" id="eR1">—</div>
+            <div class="funnel-pct" id="ePctR1">—</div>
+            <div id="eFaltaR1" style="margin-top:6px;font-size:11px;color:#E24B4A;font-weight:600"> </div>
+        </div>
+        <div class="funnel-arrow" id="funnelArrowR2">›</div>
+        <div class="funnel-box green" id="funnelBoxR2">
+            <div class="funnel-name">Pagaron R2</div>
+            <div class="funnel-num" id="eR2">—</div>
+            <div class="funnel-pct" id="ePctR2">—</div>
+            <div id="eFaltaR2" style="margin-top:6px;font-size:11px;color:#E24B4A;font-weight:600"> </div>
+        </div>
+        <div class="funnel-arrow" id="funnelArrowR3">›</div>
+        <div class="funnel-box green" id="funnelBoxR3">
+            <div class="funnel-name">Pagaron R3</div>
+            <div class="funnel-num" id="eR3">—</div>
+            <div class="funnel-pct" id="ePctR3">—</div>
+            <div id="eFaltaR3" style="margin-top:6px;font-size:11px;color:#E24B4A;font-weight:600"> </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabla Pérdidas (Por Grupo / Consolidado) -->
+<div class="section-header" style="margin-bottom:12px;">
+    <div class="section-title"><i class="fa-solid fa-triangle-exclamation"></i> Tabla de Pérdidas por Corte WIN</div>
+</div>
+<div class="perdidas-wrap">
+    <div class="perdidas-tab-nav">
+        <button class="perdidas-tab-btn active" id="pTabBtnGrupo" onclick="switchPerdidasTab('grupo',this)">
+            <i class="fa-solid fa-layer-group"></i> Por Grupo
+        </button>
+        <button class="perdidas-tab-btn" id="pTabBtnConsolidado" onclick="switchPerdidasTab('consolidado',this)">
+            <i class="fa-solid fa-list"></i> Consolidado
+        </button>
+    </div>
+    <div id="perdidasTabGrupo" class="perdidas-tab-content active">
+        <div id="perdidasGrupoContainer">
+            <p style="color:var(--text-light);padding:12px">Cargando...</p>
+        </div>
+    </div>
+    <div id="perdidasTabConsolidado" class="perdidas-tab-content">
+        <div class="table-scroll">
+            <table class="m-table">
+                <thead>
+                    <tr>
+                        <th style="text-align:left">Concepto</th>
+                        <th>Base</th><th>Umbral %</th><th>Umbral Clientes</th>
+                        <th>Morosos</th><th>Exceso</th><th>% Mora</th>
+                        <th>Costo S/.</th><th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody id="perdidasConsolidadoBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Semáforos -->
+<div class="section-header" style="margin-bottom:12px;">
+    <div class="section-title"><i class="fa-solid fa-traffic-light"></i> Semáforos WIN</div>
+</div>
+<div class="sem-row">
+    <div class="sem-card" id="sem0"></div>
+    <div class="sem-card" id="sem1"></div>
+    <div class="sem-card" id="sem2"></div>
+</div>
+
+<!-- Supervisores full-width -->
+<div class="section-header" style="margin-bottom:12px;">
+    <div class="section-title"><i class="fa-solid fa-users"></i> Detalle por Supervisor · Tipo de Caso · Distrito</div>
+</div>
+<div class="table-card" style="margin-bottom:14px;overflow:visible;">
+    <div class="table-card-title"><i class="fa-solid fa-ranking-star"></i> Ranking Supervisores</div>
+    <div class="tbl-scroll-v" style="max-height:460px;">
+        <table class="m-table">
+            <thead><tr>
+                <th style="text-align:left">Supervisor</th>
+                <th>Total</th><th>NPNF</th><th>Sin R2</th><th>Sin R3</th>
+                <th id="supHdrMora">% Mora</th><th id="supHdrCosto">Costo S/.</th>
+            </tr></thead>
+            <tbody id="supervisoresBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Casos + Distritos -->
+<div class="grid2" style="margin-bottom:20px;">
+    <div class="table-card">
+        <div class="table-card-title"><i class="fa-solid fa-chart-pie"></i> Distribución por Caso</div>
+        <div id="casosBody" style="padding:12px 16px"></div>
+    </div>
+    <div class="table-card">
+        <div class="table-card-title"><i class="fa-solid fa-map-location-dot"></i> Top Distritos con NPNF</div>
+        <div class="table-scroll">
+            <table class="m-table">
+                <thead><tr><th style="text-align:left">Distrito</th><th>Total</th><th id="distHdrMorosos">NPNF</th><th id="distHdrMora">% Mora</th></tr></thead>
+                <tbody id="distritosBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Riesgos / Paquetes -->
+<div class="section-header" style="margin-bottom:12px;">
+    <div class="section-title"><i class="fa-solid fa-shield-exclamation"></i> Deuda por Riesgo · Top Paquetes con Mora</div>
+</div>
+<div class="grid2">
+    <div class="table-card">
+        <div class="table-card-title"><i class="fa-solid fa-circle-exclamation"></i> Deuda por Tipo de Riesgo</div>
+        <div class="table-scroll">
+            <table class="m-table">
+                <thead><tr><th style="text-align:left">Riesgo</th><th>Clientes</th><th>Deuda S/.</th><th>Costo WIN S/.</th></tr></thead>
+                <tbody id="riesgosBody"></tbody>
+            </table>
+        </div>
+    </div>
+    <div class="table-card">
+        <div class="table-card-title"><i class="fa-solid fa-box"></i> Top Paquetes con Mayor Mora</div>
+        <div class="table-scroll">
+            <table class="m-table">
+                <thead><tr><th style="text-align:left">Paquete</th><th>Total</th><th id="paqHdrMorosos">NPNF</th><th id="paqHdrMora">% Mora</th><th>Deuda S/.</th></tr></thead>
+                <tbody id="paquetesBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Detalle individual -->
+<div class="section-header" style="margin-bottom:12px;">
+    <div class="section-title"><i class="fa-solid fa-table-list"></i> Detalle por Cliente</div>
+    <span style="font-size:12px;color:var(--text-secondary);" id="detalleConteo"></span>
+</div>
+<div class="table-card" style="margin-bottom:20px;overflow:visible;">
+    <div class="table-card-title">
+        <span style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <span><i class="fa-solid fa-list"></i> Registros individuales
+            <span style="font-weight:400;font-size:11px;margin-left:8px;color:var(--text-secondary)">máx. 2 000 filas · usa filtros para acotar</span></span>
+            <button onclick="downloadDetalleExcel()" style="margin-left:auto;padding:5px 12px;background:#1d6f42;color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;">
+                <i class="fa-solid fa-file-excel"></i> Descargar Excel
+            </button>
+        </span>
+    </div>
+    <div class="tbl-scroll-v" style="max-height:520px;">
+        <table class="m-table" id="tblDetalle" style="white-space:nowrap;font-size:12px;">
+            <thead>
+                <tr>
+                    <th style="text-align:left">DNI / Carnet</th>
+                    <th style="text-align:left">Paquete</th>
+                    <th>Precio Paq.</th>
+                    <th style="text-align:left">Adicional</th>
+                    <th>Precio Adic.</th>
+                    <th>Total S/.</th>
+                    <th>F. Activación</th>
+                    <th>F. Pago</th>
+                    <th>Venc. M1</th><th>Pago M1</th><th>Deuda M1</th><th>Estado M1</th>
+                    <th>Venc. M2</th><th>Pago M2</th><th>Deuda M2</th><th>Estado M2</th>
+                    <th>Venc. M3</th><th>Pago M3</th><th>Deuda M3</th><th>Estado M3</th>
+                    <th>Recibo</th>
+                    <th>Último Estado</th>
+                    <th>Caso</th>
+                    <th>Riesgo</th>
+                </tr>
+            </thead>
+            <tbody id="detalleBody">
+                <tr><td colspan="24" style="text-align:center;color:var(--text-light);padding:20px">Cargando...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+</div><!-- /tabResumen -->
+
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── FORMATTERS ─────────────────────────────────────────────────────────────────
+const fN = n  => (n == null || n === '') ? '—' : Number(n).toLocaleString('es-PE');
+const fS = n  => (n == null || n === '') ? '—' : 'S/. ' + Number(n).toLocaleString('es-PE',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fP = n  => (n == null || n === '') ? '—' : Number(n).toFixed(2) + '%';
+
+// ── TABS ───────────────────────────────────────────────────────────────────────
+function switchTab(name, btn) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    const tabEl = document.getElementById('tab' + name.charAt(0).toUpperCase() + name.slice(1));
+    if (tabEl) tabEl.classList.add('active');
+}
+
+// ── FILTERS ────────────────────────────────────────────────────────────────────
+function getFilters() {
+    return {
+        mes:          document.getElementById('fMes').value,
+        departamento: document.getElementById('fDepartamento').value,
+        grupo:        document.getElementById('fGrupo').value,
+        recibo:       document.getElementById('fRecibo').value,
+        supervisor:   document.getElementById('fSupervisor').value,
+        distrito:     document.getElementById('fDistrito').value,
+        riesgo:       document.getElementById('fRiesgo').value,
+        caso:         document.getElementById('fCaso').value,
+        dni:          document.getElementById('fDni').value.trim(),
+        tramo:        document.getElementById('fTramo').value,
+    };
+}
+
+function buildQS(f) {
+    const p = new URLSearchParams();
+    Object.entries(f).forEach(([k,v]) => { if(v) p.append(k,v); });
+    const s = p.toString();
+    return s ? '?'+s : '';
+}
+
+function clearFilters() {
+    ['fMes','fDepartamento','fGrupo','fRecibo','fSupervisor','fDistrito','fRiesgo','fCaso','fDni','fTramo']
+        .forEach(id => { document.getElementById(id).value=''; });
+    loadAll();
+}
+
+function applyFilters() { loadAll(); }
+
+// ── LOADING ────────────────────────────────────────────────────────────────────
+function setLoading(on) {
+    document.getElementById('loadingOverlay').style.display = on ? 'flex' : 'none';
+}
+
+// ── POPULATE DROPDOWNS ─────────────────────────────────────────────────────────
+function _populateSel(id, vals) {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const first = sel.options[0];
+    sel.innerHTML = '';
+    sel.appendChild(first);
+    (vals || []).forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = opt.textContent = v;
+        sel.appendChild(opt);
+    });
+}
+
+async function loadFiltros() {
+    try {
+        const [filtros, depts] = await Promise.all([
+            fetch('/api/mora/filtros').then(r => r.json()),
+            fetch('/api/departamentos').then(r => r.json()),
+        ]);
+        _populateSel('fDepartamento', depts);
+        _populateSel('fGrupo',       filtros.grupos);
+        _populateSel('fRecibo',      filtros.recibos);
+        _populateSel('fSupervisor',  filtros.supervisores);
+        _populateSel('fDistrito',    filtros.distritos);
+        _populateSel('fRiesgo',      filtros.riesgos);
+        _populateSel('fCaso',        filtros.casos);
+    } catch(e) { console.warn('filtros:', e); }
+}
+
+// ── KPIs ───────────────────────────────────────────────────────────────────────
+function renderKPIs(d) {
+    if(!d || d.error) return;
+    window._totalClientes = d.total_clientes || 0;
+    document.getElementById('kTotal').textContent    = fN(d.total_clientes);
+    document.getElementById('kArpu').textContent     = 'ARPU promedio: ' + fS(d.arpu_promedio);
+    document.getElementById('kComBruta').textContent = fS(d.comision_bruta);
+
+    const neta = document.getElementById('kComNeta');
+    neta.textContent = fS(d.comision_neta);
+    neta.className   = 'kpi-value ' + (d.impacto_pct > 10 ? 'c-red' : 'c-green');
+    document.getElementById('kDescuento').innerHTML =
+        'Descuento clawback: <strong class="c-red">' + fS(d.total_descuentos) + '</strong>' +
+        ' <span class="' + (d.impacto_pct > 10 ? 'c-red':'c-green') + '">(' + fP(d.impacto_pct) + ')</span>';
+
+    const dias = d.dias_para_corte;
+    const kDias = document.getElementById('kDias');
+    kDias.textContent = dias != null ? dias + ' días' : '—';
+    kDias.className   = 'kpi-value ' + (dias <= 7 ? 'c-red' : dias <= 15 ? 'c-yellow' : 'c-green');
+    document.getElementById('kCorte').textContent = 'Corte del 18 de ' + (d.mes_corte || '');
+}
+
+// ── EMBUDO ─────────────────────────────────────────────────────────────────────
+function renderEmbudo(d) {
+    if(!d || d.error) return;
+    const total  = d.total   || 0;
+    const pag_r1 = d.pag_r1 || 0;
+    const pag_r2 = d.pag_r2 || 0;
+    const pag_r3 = d.pag_r3 || 0;
+    const tramo  = getFilters().tramo;
+
+    document.getElementById('eTotal').textContent  = fN(total);
+    document.getElementById('eR1').textContent     = fN(pag_r1);
+    document.getElementById('ePctR1').textContent  = fP(d.pct_r1);
+    document.getElementById('eR2').textContent     = fN(pag_r2);
+    document.getElementById('ePctR2').textContent  = fP(d.pct_r2);
+    document.getElementById('eR3').textContent     = fN(pag_r3);
+    document.getElementById('ePctR3').textContent  = fP(d.pct_r3);
+
+    const falta1 = total  - pag_r1;
+    const falta2 = pag_r1 - pag_r2;
+    const falta3 = pag_r2 - pag_r3;
+
+    const fmt = (n) => n > 0 ? `↓ ${fN(n)} sin pagar` : '';
+    document.getElementById('eFaltaR1').textContent = fmt(falta1);
+    document.getElementById('eFaltaR2').textContent = fmt(falta2);
+    document.getElementById('eFaltaR3').textContent = fmt(falta3);
+
+    // Dim R2/R3 funnel cards when a tramo is selected that hasn't reached them
+    const r2active = !tramo || tramo === 'M2' || tramo === 'M3';
+    const r3active = !tramo || tramo === 'M3';
+    document.getElementById('funnelBoxR2')?.classList.toggle('dimmed', !r2active);
+    document.getElementById('funnelBoxR3')?.classList.toggle('dimmed', !r3active);
+    document.getElementById('funnelArrowR2')?.classList.toggle('dimmed', !r2active);
+    document.getElementById('funnelArrowR3')?.classList.toggle('dimmed', !r3active);
+}
+
+// ── PERDIDAS ───────────────────────────────────────────────────────────────────
+function switchPerdidasTab(name, btn) {
+    document.querySelectorAll('.perdidas-tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.perdidas-tab-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('perdidasTab' + name.charAt(0).toUpperCase() + name.slice(1)).classList.add('active');
+}
+
+const _icon  = e => e==='ok' ? '<span class="badge-ok">✓ OK</span>' : e==='alerta' ? '<span class="badge-alerta">⚠ Alerta</span>' : '<span class="badge-critico">✕ Crítico</span>';
+const _pcls  = e => e==='critico' ? 'pct-critico' : e==='alerta' ? 'pct-alerta' : 'pct-ok';
+const _est   = (pct, umb) => { if(!umb) return 'ok'; const r=pct/umb; return r<=0.7?'ok':r<=1.0?'alerta':'critico'; };
+
+function _grupoTableRows(concepto, base, tramo) {
+    return `<tr>
+        <td>${concepto}</td>
+        <td>${fN(base)}</td>
+        <td>${tramo.umbral_pct}%</td>
+        <td>${fN(tramo.umbral)}</td>
+        <td>${fN(tramo.morosos)}</td>
+        <td>${fN(tramo.exceso)}</td>
+        <td class="${_pcls(tramo.estado)}">${fP(tramo.pct_mora)}</td>
+        <td class="${_pcls(tramo.estado)}">${fS(tramo.costo)}</td>
+        <td>${_icon(tramo.estado)}</td>
+    </tr>`;
+}
+
+function renderGrupoTable(g) {
+    const tramo  = getFilters().tramo;
+    const showM1 = !tramo || tramo === 'M1';
+    const showM2 = !tramo || tramo === 'M2' || tramo === 'M3';
+    const showM3 = !tramo || tramo === 'M3';
+
+    const activeMorosos = tramo === 'M2' ? g.extorno2.morosos
+                        : tramo === 'M3' ? g.extorno3.morosos
+                        : g.npnf.morosos + g.extorno2.morosos + g.extorno3.morosos;
+    const activeExceso  = tramo === 'M2' ? g.extorno2.exceso
+                        : tramo === 'M3' ? g.extorno3.exceso
+                        : g.npnf.exceso  + g.extorno2.exceso  + g.extorno3.exceso;
+    const totalMor = activeMorosos;
+    const totalExc = activeExceso;
+    const dvsPColor = g.deuda_vs_penalidad >= 0 ? '#10b981' : '#E24B4A';
+    const rows = [
+        showM1 ? _grupoTableRows('NPNF — No pag. R1',     g.clientes,      g.npnf)     : '',
+        showM2 ? _grupoTableRows('Extorno 2 — No pag. R2', g.extorno2.base, g.extorno2) : '',
+        showM3 ? _grupoTableRows('Extorno 3 — No pag. R3', g.extorno3.base, g.extorno3) : '',
+        `<tr class="total-row">
+            <td>TOTAL</td><td colspan="3"></td>
+            <td>${fN(totalMor)}</td>
+            <td>${fN(totalExc)}</td><td></td>
+            <td>${fS(g.total_penalidades)}</td><td></td>
+        </tr>`,
+    ].join('');
+    return `<div class="grupo-block">
+        <div class="grupo-header">
+            <span class="grupo-title">${g.grupo}</span>
+            <span class="grupo-clientes">${fN(g.clientes)} clientes</span>
+        </div>
+        <div class="table-scroll" style="margin-bottom:8px;">
+            <table class="m-table">
+                <thead><tr>
+                    <th style="text-align:left">Concepto</th>
+                    <th>Base</th><th>Umbral %</th><th>Umbral Clientes</th>
+                    <th>Morosos</th><th>Exceso</th><th>% Mora</th>
+                    <th>Costo S/.</th><th>Estado</th>
+                </tr></thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>
+        <div class="grupo-summary">
+            <span>Deuda M1: <strong>${fS(g.deuda_m1)}</strong></span>
+            <span style="color:var(--text-light)">|</span>
+            <span>Deuda M2: <strong>${fS(g.deuda_m2)}</strong></span>
+            <span style="color:var(--text-light)">|</span>
+            <span>Deuda M3: <strong>${fS(g.deuda_m3)}</strong></span>
+            <span style="color:var(--text-light)">|</span>
+            <span>Deuda total: <strong>${fS(g.deuda_total)}</strong></span>
+            <span style="color:var(--text-light)">|</span>
+            <span>Penalidades WIN: <strong class="c-red">${fS(g.total_penalidades)}</strong></span>
+            <span style="color:var(--text-light)">|</span>
+            <span>Diferencia: <strong style="color:${dvsPColor}">${fS(g.deuda_vs_penalidad)}</strong></span>
+        </div>
+    </div>`;
+}
+
+function renderPerdidasConsolidado(grupos) {
+    const body = document.getElementById('perdidasConsolidadoBody');
+    if (!grupos || !grupos.length) {
+        body.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-light);padding:20px">Sin datos</td></tr>';
+        return;
+    }
+    const tramo  = getFilters().tramo;
+    const showM1 = !tramo || tramo === 'M1';
+    const showM2 = !tramo || tramo === 'M2' || tramo === 'M3';
+    const showM3 = !tramo || tramo === 'M3';
+
+    let tCli=0, tNpnf=0, tPagR1=0, tNoR2=0, tPagR2=0, tNoR3=0;
+    let tUmbN=0, tUmbR2=0, tUmbR3=0, tExcN=0, tExcR2=0, tExcR3=0;
+    let tCN=0, tC2=0, tC3=0;
+    grupos.forEach(g => {
+        tCli   += g.clientes;
+        tNpnf  += g.npnf.morosos;
+        tPagR1 += g.extorno2.base;
+        tNoR2  += g.extorno2.morosos;
+        tPagR2 += g.extorno3.base;
+        tNoR3  += g.extorno3.morosos;
+        tUmbN  += g.npnf.umbral;
+        tUmbR2 += g.extorno2.umbral;
+        tUmbR3 += g.extorno3.umbral;
+        tExcN  += g.npnf.exceso;
+        tExcR2 += g.extorno2.exceso;
+        tExcR3 += g.extorno3.exceso;
+        tCN    += g.npnf.costo;
+        tC2    += g.extorno2.costo;
+        tC3    += g.extorno3.costo;
+    });
+    const pctN = tCli   ? tNpnf / tCli   * 100 : 0;
+    const pct2 = tPagR1 ? tNoR2 / tPagR1 * 100 : 0;
+    const pct3 = tPagR2 ? tNoR3 / tPagR2 * 100 : 0;
+    const allFilas = [
+        {show: showM1, concepto:'NPNF — No pag. R1',      base:tCli,   umbral_pct:4.5, umbral:tUmbN,  morosos:tNpnf, exceso:tExcN,  costo:tCN, pct_mora:pctN, estado:_est(pctN,4.5)},
+        {show: showM2, concepto:'Extorno 2 — No pag. R2',  base:tPagR1, umbral_pct:3.5, umbral:tUmbR2, morosos:tNoR2,  exceso:tExcR2, costo:tC2, pct_mora:pct2, estado:_est(pct2,3.5)},
+        {show: showM3, concepto:'Extorno 3 — No pag. R3',  base:tPagR2, umbral_pct:2.5, umbral:tUmbR3, morosos:tNoR3,  exceso:tExcR3, costo:tC3, pct_mora:pct3, estado:_est(pct3,2.5)},
+    ];
+    const filas = allFilas.filter(f => f.show);
+    const totalCosto   = filas.reduce((a,f) => a+f.costo, 0);
+    const totalMorosos = filas.reduce((a,f) => a+f.morosos, 0);
+    const totalExceso  = filas.reduce((a,f) => a+f.exceso, 0);
+    let html = filas.map(f => `<tr>
+        <td>${f.concepto}</td>
+        <td>${fN(f.base)}</td><td>${f.umbral_pct}%</td><td>${fN(f.umbral)}</td>
+        <td>${fN(f.morosos)}</td><td>${fN(f.exceso)}</td>
+        <td class="${_pcls(f.estado)}">${fP(f.pct_mora)}</td>
+        <td class="${_pcls(f.estado)}">${fS(f.costo)}</td>
+        <td>${_icon(f.estado)}</td>
+    </tr>`).join('');
+    html += `<tr class="total-row">
+        <td>TOTAL</td><td colspan="3"></td>
+        <td>${fN(totalMorosos)}</td>
+        <td>${totalExceso>0?fN(Math.round(totalExceso*10)/10):''}</td><td></td>
+        <td>${fS(totalCosto)}</td><td></td>
+    </tr>`;
+    body.innerHTML = html;
+}
+
+function renderPerdidas(d) {
+    if (!d || d.error) return;
+    const grupos = d.grupos || [];
+    document.getElementById('perdidasGrupoContainer').innerHTML =
+        grupos.length ? grupos.map(renderGrupoTable).join('') :
+        '<p style="color:var(--text-light);padding:12px">Sin datos</p>';
+    renderPerdidasConsolidado(grupos);
+    _perdidasGrupos = grupos;
+}
+
+// ── SEMÁFOROS ──────────────────────────────────────────────────────────────────
+let _perdidasGrupos = [];
+function renderSemaforos(d) {
+    if (!d || !d.grupos) return;
+    const grupos = d.grupos;
+    if (!grupos.length) return;
+    let tCli=0, tNpnf=0, tPagR1=0, tNoR2=0, tPagR2=0, tNoR3=0;
+    let tUmbN=0, tUmbR2=0, tUmbR3=0, tExcN=0, tExcR2=0, tExcR3=0;
+    grupos.forEach(g => {
+        tCli   += g.clientes;    tNpnf  += g.npnf.morosos;
+        tPagR1 += g.extorno2.base; tNoR2  += g.extorno2.morosos;
+        tPagR2 += g.extorno3.base; tNoR3  += g.extorno3.morosos;
+        tUmbN  += g.npnf.umbral; tUmbR2 += g.extorno2.umbral; tUmbR3 += g.extorno3.umbral;
+        tExcN  += g.npnf.exceso; tExcR2 += g.extorno2.exceso; tExcR3 += g.extorno3.exceso;
+    });
+    const pctN = tCli   ? tNpnf / tCli   * 100 : 0;
+    const pct2 = tPagR1 ? tNoR2 / tPagR1 * 100 : 0;
+    const pct3 = tPagR2 ? tNoR3 / tPagR2 * 100 : 0;
+    const tramo = getFilters().tramo;
+    const allFilas = [
+        {key:'M1', concepto:'NPNF — No pag. R1',      pct_mora:pctN, umbral_pct:4.5, base:tCli,   morosos:tNpnf, exceso:tExcN,  estado:_est(pctN,4.5)},
+        {key:'M2', concepto:'Extorno 2 — No pag. R2',  pct_mora:pct2, umbral_pct:3.5, base:tPagR1, morosos:tNoR2, exceso:tExcR2, estado:_est(pct2,3.5)},
+        {key:'M3', concepto:'Extorno 3 — No pag. R3',  pct_mora:pct3, umbral_pct:2.5, base:tPagR2, morosos:tNoR3, exceso:tExcR3, estado:_est(pct3,2.5)},
+    ];
+    const filas = tramo ? allFilas.filter(f => f.key === tramo) : allFilas;
+    // Show only semáforos for the active tramo(s); update grid columns accordingly
+    for(let i=0;i<3;i++) {
+        const el = document.getElementById('sem'+i);
+        if(el) el.style.display = tramo ? (i < filas.length ? '' : 'none') : '';
+    }
+    const semRow = document.querySelector('.sem-row');
+    if (semRow) semRow.style.gridTemplateColumns = `repeat(${tramo ? filas.length : 3}, 1fr)`;
+    const MAX_SCALE = 15;
+    filas.forEach((f, i) => {
+        const el    = document.getElementById('sem' + i);
+        if (!el) return;
+        const color = f.estado==='critico' ? '#E24B4A' : f.estado==='alerta' ? '#d97706' : '#10b981';
+        const fillW = Math.min(f.pct_mora / MAX_SCALE * 100, 100).toFixed(1);
+        const umbW  = Math.min(f.umbral_pct / MAX_SCALE * 100, 100).toFixed(1);
+        const label = f.estado==='critico' ? '✕ Sobre umbral' : f.estado==='alerta' ? '⚠ En límite' : '✓ Bajo umbral';
+        el.innerHTML = `
+            <div class="sem-title">${f.concepto}</div>
+            <div class="sem-pct" style="color:${color}">${fP(f.pct_mora)}</div>
+            <div class="sem-bar-wrap">
+                <div class="sem-fill" style="width:${fillW}%;background:${color}"></div>
+                <div class="sem-threshold" style="left:${umbW}%"></div>
+            </div>
+            <div class="sem-labels"><span>0%</span><span>Umbral ${f.umbral_pct}%</span><span>${MAX_SCALE}%</span></div>
+            <div class="sem-meta">Base: ${fN(f.base)} · Morosos: ${fN(f.morosos)} · Exceso: ${fN(f.exceso)}</div>
+            <div class="sem-estado" style="color:${color}">${label}</div>
+        `;
+    });
+}
+
+// ── SUPERVISORES ───────────────────────────────────────────────────────────────
+function renderSupervisores(rows) {
+    const body = document.getElementById('supervisoresBody');
+    if(!rows||!rows.length) {
+        body.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text-light);padding:20px">Sin datos</td></tr>';
+        return;
+    }
+    const tramo = getFilters().tramo;
+    const umbralAlerta = tramo === 'M2' ? 3.5 : tramo === 'M3' ? 2.5 : 4.5;
+    body.innerHTML = rows.map(r => `
+        <tr>
+            <td style="text-align:left;min-width:160px">${r.supervisor}</td>
+            <td>${fN(r.total)}</td>
+            <td>${fN(r.npnf)}</td>
+            <td>${fN(r.no_r2)}</td>
+            <td>${fN(r.no_r3)}</td>
+            <td class="${r.pct_mora>umbralAlerta?'pct-critico':r.pct_mora>umbralAlerta*0.7?'pct-alerta':'pct-ok'}">${fP(r.pct_mora)}</td>
+            <td class="${r.costo_npnf>0?'c-red':''}">${fS(r.costo_npnf)}</td>
+        </tr>`).join('');
+}
+
+// ── CASOS ──────────────────────────────────────────────────────────────────────
+const CASO_COLOR = {
+    'NPNF':'#E24B4A','Extorno 2':'#f97316','Extorno 3':'#d97706',
+    'Perfecto':'#10b981','Al dia':'var(--primary)','Sin clasificar':'#94a3b8'
+};
+function renderCasos(rows) {
+    const wrap = document.getElementById('casosBody');
+    if(!rows||!rows.length) { wrap.innerHTML='<p style="color:var(--text-light);padding:8px">Sin datos</p>'; return; }
+    wrap.innerHTML = rows.map(r => {
+        const color = CASO_COLOR[r.caso]||'#94a3b8';
+        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9">
+            <div style="display:flex;align-items:center;gap:8px">
+                <span class="caso-dot" style="background:${color}"></span>
+                <span style="font-size:13px;color:var(--text-primary)">${r.caso}</span>
+            </div>
+            <div style="text-align:right">
+                <span style="font-weight:700;color:var(--text-primary)">${fN(r.clientes)}</span>
+                <span style="color:var(--text-secondary);font-size:11px;margin-left:6px">${fP(r.pct)}</span>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// ── DISTRITOS ──────────────────────────────────────────────────────────────────
+function renderDistritos(rows) {
+    const body = document.getElementById('distritosBody');
+    if(!rows||!rows.length) { body.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--text-light);padding:20px">Sin datos</td></tr>'; return; }
+    const maxPct = Math.max(...rows.map(r=>r.pct_mora), 0.1);
+    body.innerHTML = rows.map(r => `
+        <tr>
+            <td style="text-align:left">${r.distrito}</td>
+            <td>${fN(r.total)}</td>
+            <td>${fN(r.npnf)}</td>
+            <td>
+                <span class="${r.pct_mora>4.5?'pct-critico':r.pct_mora>3?'pct-alerta':'pct-ok'}">${fP(r.pct_mora)}</span>
+                <span class="bar-wrap" style="margin-left:4px">
+                    <span class="bar-fill" style="width:${Math.min(r.pct_mora/maxPct*100,100).toFixed(0)}%;display:block"></span>
+                </span>
+            </td>
+        </tr>`).join('');
+}
+
+// ── RIESGOS ────────────────────────────────────────────────────────────────────
+function renderRiesgos(rows) {
+    const body = document.getElementById('riesgosBody');
+    if(!rows||!rows.length) { body.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--text-light);padding:20px">Sin datos</td></tr>'; return; }
+    body.innerHTML = rows.map(r => `
+        <tr>
+            <td style="text-align:left">${r.riesgo}</td>
+            <td>${fN(r.clientes)}</td>
+            <td>${fS(r.deuda)}</td>
+            <td class="${r.costo_win>0?'c-red':''}">${fS(r.costo_win)}</td>
+        </tr>`).join('');
+}
+
+// ── PAQUETES ───────────────────────────────────────────────────────────────────
+function renderPaquetes(rows) {
+    const body = document.getElementById('paquetesBody');
+    if(!rows||!rows.length) { body.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text-light);padding:20px">Sin datos</td></tr>'; return; }
+    body.innerHTML = rows.map(r => `
+        <tr>
+            <td style="text-align:left">${r.paquete}</td>
+            <td>${fN(r.total)}</td>
+            <td>${fN(r.npnf)}</td>
+            <td class="${r.pct_mora>4.5?'pct-critico':r.pct_mora>3?'pct-alerta':'pct-ok'}">${fP(r.pct_mora)}</td>
+            <td>${fS(r.deuda_total)}</td>
+        </tr>`).join('');
+}
+
+// ── DETALLE ────────────────────────────────────────────────────────────────────
+const ESTADO_COLOR = {
+    'Cliente Pago':  '#10b981', 'Tercero Pago': '#10b981',
+    'Churn':         '#E24B4A', 'Cliente De Baja': '#E24B4A',
+};
+function estadoBadge(v) {
+    if(!v) return '<span style="color:var(--text-light)">—</span>';
+    const c = ESTADO_COLOR[v] || 'var(--text-secondary)';
+    return `<span style="color:${c};font-weight:600">${v}</span>`;
+}
+function riesgoBadge(v) {
+    if(!v || v==='Sin riesgo') return '<span style="color:var(--text-light)">Sin riesgo</span>';
+    const c = v.toLowerCase().includes('alto') ? '#E24B4A' : v.toLowerCase().includes('medio') ? '#d97706' : '#10b981';
+    return `<span style="color:${c};font-weight:600">${v}</span>`;
+}
+
+function renderDetalle(rows) {
+    const body  = document.getElementById('detalleBody');
+    const body2 = document.getElementById('detalleBody2');
+    const conteo  = document.getElementById('detalleConteo');
+    const conteo2 = document.getElementById('detalleConteo2');
+    const empty = '<tr><td colspan="24" style="text-align:center;color:var(--text-light);padding:20px">Sin datos</td></tr>';
+    if(!rows||!rows.length) {
+        if(body)  body.innerHTML  = empty;
+        if(body2) body2.innerHTML = empty;
+        if(conteo)  conteo.textContent  = '';
+        if(conteo2) conteo2.textContent = '';
+        return;
+    }
+    const label = fN(rows.length) + ' registros';
+    if(conteo)  conteo.textContent  = label;
+    if(conteo2) conteo2.textContent = label;
+    const d = v => v||'—';
+    const deuda = v => (!v||v==='0'||v==='0.00') ? '<span style="color:var(--text-light)">—</span>' : `<span class="c-red">${v}</span>`;
+    const html = rows.map(r => `
+        <tr>
+            <td style="text-align:left;font-family:monospace;font-weight:600">${d(r.dni)}</td>
+            <td style="text-align:left;max-width:180px;overflow:hidden;text-overflow:ellipsis" title="${r.paquete||''}">${d(r.paquete)}</td>
+            <td style="text-align:right">${d(r.precio_paquete)}</td>
+            <td style="text-align:left;max-width:130px;overflow:hidden;text-overflow:ellipsis" title="${r.adicional||''}">${d(r.adicional)}</td>
+            <td style="text-align:right">${d(r.precio_adicional)}</td>
+            <td style="text-align:right;font-weight:700">${d(r.total_precio)}</td>
+            <td>${d(r.fecha_activacion)}</td>
+            <td>${d(r.fecha_pago)}</td>
+            <td>${d(r.fecha_venc_m1)}</td>
+            <td>${d(r.fecha_pago_1)}</td>
+            <td style="text-align:right">${deuda(r.deuda_m1)}</td>
+            <td>${estadoBadge(r.estado_m1)}</td>
+            <td>${d(r.fecha_venc_m2)}</td>
+            <td>${d(r.fecha_pago_2)}</td>
+            <td style="text-align:right">${deuda(r.deuda_m2)}</td>
+            <td>${estadoBadge(r.estado_m2)}</td>
+            <td>${d(r.fecha_venc_m3)}</td>
+            <td>${d(r.fecha_pago_3)}</td>
+            <td style="text-align:right">${deuda(r.deuda_m3)}</td>
+            <td>${estadoBadge(r.estado_m3)}</td>
+            <td style="font-weight:600">${d(r.recibo)}</td>
+            <td>${estadoBadge(r.ultimo_estado)}</td>
+            <td>${d(r.caso)}</td>
+            <td>${riesgoBadge(r.riesgo)}</td>
+        </tr>`).join('');
+    if(body)  body.innerHTML  = html;
+    if(body2) body2.innerHTML = html;
+}
+
+// ── ENCABEZADOS DINÁMICOS ──────────────────────────────────────────────────────
+function updateTableHeaders() {
+    const tramo = getFilters().tramo;
+    const morLbl   = tramo === 'M2' ? 'Sin R2' : tramo === 'M3' ? 'Sin R3' : 'NPNF';
+    const moraPct  = tramo === 'M2' ? '% Mora M2' : tramo === 'M3' ? '% Mora M3' : '% Mora';
+    const costLbl  = tramo === 'M2' ? 'Costo Ext.2' : tramo === 'M3' ? 'Costo Ext.3' : 'Costo S/.';
+    const _h = (id, txt) => { const e = document.getElementById(id); if(e) e.textContent = txt; };
+    _h('supHdrMora',     moraPct);
+    _h('supHdrCosto',    costLbl);
+    _h('distHdrMorosos', morLbl);
+    _h('distHdrMora',    moraPct);
+    _h('paqHdrMorosos',  morLbl);
+    _h('paqHdrMora',     moraPct);
+}
+
+// ── DESCARGA EXCEL ─────────────────────────────────────────────────────────────
+function downloadDetalleExcel() {
+    const qs = buildQS(getFilters());
+    window.location.href = '/api/mora/detalle/excel' + qs;
+}
+
+// ── FETCH ALL ──────────────────────────────────────────────────────────────────
+async function loadAll() {
+    setLoading(true);
+    const qs = buildQS(getFilters());
+    try {
+        const [resumen,embudo,perdidas,supervisores,casos,distritos,paquetes,riesgos,detalle] =
+            await Promise.all([
+                fetch('/api/mora/resumen'      + qs).then(r => r.json()),
+                fetch('/api/mora/embudo'       + qs).then(r => r.json()),
+                fetch('/api/mora/perdidas'     + qs).then(r => r.json()),
+                fetch('/api/mora/supervisores' + qs).then(r => r.json()),
+                fetch('/api/mora/casos'        + qs).then(r => r.json()),
+                fetch('/api/mora/distritos'    + qs).then(r => r.json()),
+                fetch('/api/mora/paquetes'     + qs).then(r => r.json()),
+                fetch('/api/mora/riesgos'      + qs).then(r => r.json()),
+                fetch('/api/mora/detalle'      + qs).then(r => r.json()),
+            ]);
+        updateTableHeaders();
+        renderKPIs(resumen);
+        renderEmbudo(embudo);
+        renderPerdidas(perdidas);
+        renderSemaforos(perdidas);
+        renderSupervisores(supervisores);
+        renderCasos(casos);
+        renderDistritos(distritos);
+        renderRiesgos(riesgos);
+        renderPaquetes(paquetes);
+        renderDetalle(detalle);
+    } catch(e) { console.error('loadAll:', e); }
+    setLoading(false);
+}
+
+// ── INIT ───────────────────────────────────────────────────────────────────────
+(async () => {
+    await loadFiltros();
+    await loadAll();
+})();
+</script>
+{% endblock %}
