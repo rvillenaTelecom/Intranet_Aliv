@@ -21,9 +21,9 @@ app.secret_key = os.environ.get('SECRET_KEY', 'AlivIntranet2026!')
 
 # --- PIPELINE: paths y estado global ---
 _INTRANET_DIR  = os.path.dirname(os.path.abspath(__file__))
-_PIPELINE_DIR  = os.path.join(os.path.dirname(_INTRANET_DIR), 'Descargas_Rápidas')
+_PIPELINE_DIR  = os.path.join(os.path.dirname(_INTRANET_DIR), 'Pipeline')
 _PIPELINE_SCRIPT = os.path.join(_PIPELINE_DIR, 'run_pipeline.py')
-_FASES_VALIDAS = {'bd', 'daily', 'consolidar', 'subida_aliv', 'reporte_diario'}
+_FASES_VALIDAS = {'bd', 'daily', 'consolidar', 'subida_aliv', 'reporte_diario', 'reporte_gerente', 'reporte_nocturno'}
 
 _pipeline_running = False
 _pipeline_proc    = None
@@ -162,11 +162,13 @@ def dashboards():
 @app.route('/dashboard-ventas')
 @login_required
 def dashboard_ventas():
-    mes  = request.args.get('mes',  datetime.now().month, type=int)
-    anio = request.args.get('anio', datetime.now().year,  type=int)
-    area = request.args.get('area', '')
-    _dia = request.args.get('dia', 0, type=int)
-    dia  = _dia if _dia and 1 <= _dia <= 31 else None
+    mes       = request.args.get('mes',  datetime.now().month, type=int)
+    anio      = request.args.get('anio', datetime.now().year,  type=int)
+    area      = request.args.get('area', '')
+    _dia      = request.args.get('dia', 0, type=int)
+    dia       = _dia if _dia and 1 <= _dia <= 31 else None
+    _base     = request.args.get('base', 30, type=int)
+    base_dias = _base if _base in (25, 26, 28, 30) else 30
 
     meses = [
         {'id': 1, 'nombre': 'Enero'},    {'id': 2, 'nombre': 'Febrero'},
@@ -178,7 +180,7 @@ def dashboard_ventas():
     ]
     mes_nombre = next((m['nombre'] for m in meses if m['id'] == mes), '')
 
-    kpi_lima   = db_helper.get_kpi_lima(mes, anio, area=area, dia=dia)
+    kpi_lima   = db_helper.get_kpi_lima(mes, anio, area=area, dia=dia, base_dias=base_dias)
     kpi_prov   = db_helper.get_kpi_provincia(mes, anio)
     trend_lima = db_helper.get_daily_trend_lima(mes, anio, area=area)
     trend_prov = db_helper.get_daily_trend_provincia(mes, anio)
@@ -187,7 +189,10 @@ def dashboard_ventas():
     dist_estados = db_helper.get_distribucion_estados_lima(mes, anio, area=area, dia=dia)
     pivot_planes  = db_helper.get_pivot_planes_agencia(mes, anio, area=area, dia=dia)
     vel_planes    = db_helper.get_velocidad_planes_lima(mes, anio, area=area, dia=dia)
-    tabla_prov = db_helper.get_tabla_provincia(mes, anio)
+    tabla_prov   = db_helper.get_tabla_provincia(mes, anio)
+    resumen_nac     = db_helper.get_resumen_lima(mes, anio, dia=dia, base_dias=base_dias)
+    tabla_agencias  = db_helper.get_tabla_agencias_lima(mes, anio, dia=dia)
+    pivot_agencias  = db_helper.get_pivot_planes_agencias_lima(mes, anio, dia=dia)
     loc_lima    = db_helper.get_localizacion_lima(mes, anio, area=area)
     puntos_mapa = db_helper.get_puntos_mapa_lima(mes, anio, area=area)
 
@@ -197,7 +202,7 @@ def dashboard_ventas():
                            user=session['name'], role=session['role'],
                            mes_actual=mes, anio_actual=anio,
                            mes_nombre=mes_nombre, meses=meses, anios=anios,
-                           area=area, dia_actual=dia or 0,
+                           area=area, dia_actual=dia or 0, base_dias=base_dias,
                            kpi_lima=kpi_lima, kpi_prov=kpi_prov,
                            trend_lima=trend_lima,
                            trend_prov=trend_prov,
@@ -207,6 +212,9 @@ def dashboard_ventas():
                            pivot_planes=pivot_planes,
                            vel_planes=vel_planes,
                            tabla_prov=tabla_prov,
+                           resumen_nac=resumen_nac,
+                           tabla_agencias=tabla_agencias,
+                           pivot_agencias=pivot_agencias,
                            loc_lima=loc_lima,
                            loc_zonas=loc_lima['zonas'] if loc_lima else [],
                            puntos_mapa=puntos_mapa)
@@ -440,15 +448,27 @@ def api_whatsapp_mensaje():
     tiempo = request.args.get('tiempo', 'manana').lower()
     if tiempo not in ('manana', 'tarde', 'noche'):
         return jsonify({'ok': False, 'error': 'Tiempo inválido (debe ser manana, tarde o noche)'}), 400
+    _base     = request.args.get('base', 30, type=int)
+    base_dias = _base if _base in (25, 26, 28, 30) else 30
 
+    import calendar as _cal
     now = datetime.now()
     mes = now.month
     anio = now.year
+    hoy_dia = now.day
+
+    # Calcular día/mes/año de ayer (puede cruzar mes)
+    if hoy_dia == 1:
+        mes_ayer = mes - 1 if mes > 1 else 12
+        anio_ayer = anio if mes > 1 else anio - 1
+        ayer_dia = _cal.monthrange(anio_ayer, mes_ayer)[1]
+    else:
+        mes_ayer, anio_ayer, ayer_dia = mes, anio, hoy_dia - 1
 
     try:
-        # 1. Obtener KPIs
-        kpi_v = db_helper.get_kpi_lima(mes, anio, area='Vertical')
-        kpi_h = db_helper.get_kpi_lima(mes, anio, area='Horizontal')
+        # KPIs acumulados del mes
+        kpi_v = db_helper.get_kpi_lima(mes, anio, area='Vertical',   base_dias=base_dias)
+        kpi_h = db_helper.get_kpi_lima(mes, anio, area='Horizontal', base_dias=base_dias)
 
         if not kpi_v or not kpi_h:
             return jsonify({'ok': False, 'error': 'No se pudieron recuperar las métricas de la base de datos'}), 500
@@ -471,87 +491,167 @@ def api_whatsapp_mensaje():
         ritmo_h = kpi_h['ritmo_actual']
         ritmo_req_h = kpi_h['ritmo_necesario']
 
-        # 2. Formateador de velocidades
-        def format_speed(vel):
-            return f"{vel} Mbps" if vel.isdigit() else vel
+        # Helpers de formato — tablas monoespaciadas (WhatsApp renderiza ``` como bloque fijo)
+        def _vel(v):
+            return f"{v} Mbps" if str(v).isdigit() else str(v)
 
-        def format_planes(planes_list):
+        def fmt_tabla_area(vv, av, vh, ah):
+            tv, ta = vv + vh, av + ah
+            s = "─" * 11 + " " + "─" * 6 + " " + "─" * 5
+            return "\n".join([
+                "```",
+                f"{'ÁREA':<11} {'VENTAS':>6} {'ALTAS':>5}",
+                s,
+                f"{'Vertical':<11} {vv:>6} {av:>5}",
+                f"{'Horizontal':<11} {vh:>6} {ah:>5}",
+                s,
+                f"{'TOTAL':<11} {tv:>6} {ta:>5}",
+                "```",
+            ])
+
+        def fmt_agencias(ag_list, max_items=6):
+            if not ag_list:
+                return "Sin datos aún"
+            rows = sorted(ag_list, key=lambda x: x.get('ventas', 0), reverse=True)[:max_items]
+            s = "─" * 3 + " " + "─" * 11 + " " + "─" * 6
+            lines = ["```", f"{'#':<3} {'AGENCIA':<11} {'VENTAS':>6}", s]
+            for i, ag in enumerate(rows, 1):
+                lines.append(f"{i:<3} {str(ag['agencia']):<11} {ag['ventas']:>6}")
+            lines.append("```")
+            return "\n".join(lines)
+
+        def fmt_planes(planes_list):
             if not planes_list:
                 return "Sin datos de planes"
-            medals = ["🥇", "🥈", "🥉"]
-            top_3 = planes_list[:3]
-            others = planes_list[3:]
-            total_altas = sum(item['altas'] for item in planes_list)
-            
-            lines = []
-            for idx, item in enumerate(top_3):
-                medal = medals[idx] if idx < len(medals) else "•"
-                vel = format_speed(item['velocidad'])
-                lines.append(f"{medal} {vel} → 📦 {item['altas']} ({item['pct']:.2f}%)")
-            
+            cnt_key = 'ventas' if 'ventas' in planes_list[0] else 'altas'
+            total = sum(p[cnt_key] for p in planes_list) or 1
+            top = planes_list[:4]
+            others = planes_list[4:]
+            s = "─" * 11 + " " + "─" * 5 + " " + "─" * 6
+            lines = ["```", f"{'PLAN':<11} {'CNT':>5} {'%':>6}", s]
+            for p in top:
+                lines.append(f"{_vel(p['velocidad']):<11} {p[cnt_key]:>5} {p['pct']:>5.1f}%")
             if others:
-                others_count = sum(item['altas'] for item in others)
-                others_pct = (others_count / total_altas * 100) if total_altas > 0 else 0
-                lines.append(f"Otros → 📦 {others_count} ({others_pct:.2f}%)")
+                oc = sum(p[cnt_key] for p in others)
+                lines.append(f"{'Otros':<11} {oc:>5} {oc/total*100:>5.1f}%")
+            lines += [s, f"{'TOTAL':<11} {total:>5} {'100.0%':>6}", "```"]
             return "\n".join(lines)
+
+        def fmt_acumulado(av, cv, pv, ppv, ah, ch, ph, pph):
+            s = "─" * 11 + " " + "─" * 5 + " " + "─" * 5 + " " + "─" * 6 + " " + "─" * 5
+            return "\n".join([
+                "```",
+                f"{'ÁREA':<11} {'ALTAS':>5} {'META':>5} {'PROY.':>6} {'AVZ':>5}",
+                s,
+                f"{'Vertical':<11} {str(av):>5} {str(cv):>5} {str(pv):>6} {str(ppv):>4}%",
+                f"{'Horizontal':<11} {str(ah):>5} {str(ch):>5} {str(ph):>6} {str(pph):>4}%",
+                "```",
+            ])
+
+        def fmt_ritmo(rv, rrv, rh, rrh):
+            s = "─" * 11 + " " + "─" * 7 + " " + "─" * 8
+            return "\n".join([
+                "```",
+                f"{'ÁREA':<11} {'ACTUAL':>7} {'REQUER.':>8}",
+                s,
+                f"{'Vertical':<11} {str(rv):>7} {str(rrv):>8}",
+                f"{'Horizontal':<11} {str(rh):>7} {str(rrh):>8}",
+                "```",
+            ])
 
         # Build message depending on time
         if tiempo == 'manana':
-            titulo = "Mensaje de la Mañana (Inicio)"
+            # Exacto del día de ayer (para tabla de cierre)
+            kpi_v_ay = db_helper.get_kpi_lima(mes_ayer, anio_ayer, area='Vertical',   dia=ayer_dia, base_dias=base_dias) or {}
+            kpi_h_ay = db_helper.get_kpi_lima(mes_ayer, anio_ayer, area='Horizontal', dia=ayer_dia, base_dias=base_dias) or {}
+            # Acumulado hasta ayer (días 1–ayer_dia) para proyección: (altas/ayer_dia)*base_dias
+            kpi_v_acum = db_helper.get_kpi_lima(mes_ayer, anio_ayer, area='Vertical',   dia=ayer_dia, cumul=True, base_dias=base_dias) or {}
+            kpi_h_acum = db_helper.get_kpi_lima(mes_ayer, anio_ayer, area='Horizontal', dia=ayer_dia, cumul=True, base_dias=base_dias) or {}
+            agencias_ay = db_helper.get_ranking_agencias_lima(mes_ayer, anio_ayer, dia=ayer_dia)
+
+            ventas_v_ay = kpi_v_ay.get('ventas', 0)
+            altas_v_ay  = kpi_v_ay.get('altas', 0)
+            ventas_h_ay = kpi_h_ay.get('ventas', 0)
+            altas_h_ay  = kpi_h_ay.get('altas', 0)
+
+            # Valores acumulados para la tabla de proyección
+            _av   = kpi_v_acum.get('altas', 0)
+            _cv   = kpi_v_acum.get('cuota', cuota_v)
+            _pv   = kpi_v_acum.get('proyeccion', 0)
+            _ppv  = kpi_v_acum.get('pct_proyeccion', 0)
+            _ah   = kpi_h_acum.get('altas', 0)
+            _ch   = kpi_h_acum.get('cuota', cuota_h)
+            _ph   = kpi_h_acum.get('proyeccion', 0)
+            _pph  = kpi_h_acum.get('pct_proyeccion', 0)
+            _dtr  = kpi_v_acum.get('dias_trans', ayer_dia)
+            _dtot = kpi_v_acum.get('dias_tot', dias_tot)
+
+            titulo = f"Mensaje de la Mañana · Base {base_dias}d"
             mensaje = (
                 f"🌅 *WIN · REPORTE MATUTINO*\n"
-                f"📅 _Día {dias_trans} de {dias_tot}_\n\n"
-                f"🔵 *Altas registradas (al cierre de ayer):*\n"
-                f"- Vertical: {altas_v}\n"
-                f"- Horizontal: {altas_h}\n\n"
-                f"📈 *Proyección al cierre del mes:*\n"
-                f"- Vertical: {proy_v} ({pct_proy_v}%)\n"
-                f"- Horizontal: {proy_h} ({pct_proy_h}%)\n\n"
-                f"🎯 *Faltan para la meta:*\n"
-                f"- Vertical: {faltan_v} altas (Cuota: {cuota_v})\n"
-                f"- Horizontal: {faltan_h} altas (Cuota: {cuota_h})\n\n"
+                f"📅 _Día {_dtr} de {_dtot}_\n\n"
+                f"📊 *Cierre de ayer (día {ayer_dia}):*\n"
+                f"{fmt_tabla_area(ventas_v_ay, altas_v_ay, ventas_h_ay, altas_h_ay)}\n\n"
+                f"🏆 *Top agencias de ayer:*\n"
+                f"{fmt_agencias(agencias_ay)}\n\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"📈 *Acumulado hasta ayer (días 1–{ayer_dia}):*\n"
+                f"{fmt_acumulado(_av, _cv, _pv, _ppv, _ah, _ch, _ph, _pph)}\n\n"
                 f"¡Que tengan un excelente y productivo día! 💪🔥"
             )
+
         elif tiempo == 'tarde':
-            titulo = "Mensaje de la Tarde (Ritmo)"
+            kpi_v_hoy = db_helper.get_kpi_lima(mes, anio, area='Vertical',   dia=hoy_dia, base_dias=base_dias) or {}
+            kpi_h_hoy = db_helper.get_kpi_lima(mes, anio, area='Horizontal', dia=hoy_dia, base_dias=base_dias) or {}
+            agencias_hoy = db_helper.get_ranking_agencias_lima(mes, anio, dia=hoy_dia)
+
+            ventas_v_hoy = kpi_v_hoy.get('ventas', 0)
+            altas_v_hoy  = kpi_v_hoy.get('altas', 0)
+            ventas_h_hoy = kpi_h_hoy.get('ventas', 0)
+            altas_h_hoy  = kpi_h_hoy.get('altas', 0)
+
+            titulo = f"Mensaje de la Tarde · Base {base_dias}d"
             mensaje = (
                 f"☀️ *WIN · AVANCE DE LA TARDE*\n"
-                f"📅 _Avance al mediodía_\n\n"
-                f"🔵 *Altas registradas:*\n"
-                f"- Vertical: {altas_v} (Cuota: {cuota_v})\n"
-                f"- Horizontal: {altas_h} (Cuota: {cuota_h})\n\n"
-                f"📈 *Proyección actual:*\n"
-                f"- Vertical: {proy_v} ({pct_proy_v}%)\n"
-                f"- Horizontal: {proy_h} ({pct_proy_h}%)\n\n"
-                f"⚡ *Ritmo de instalación diario:*\n"
-                f"- Vertical: {ritmo_v} altas/día (Requerido: {ritmo_req_v}/día)\n"
-                f"- Horizontal: {ritmo_h} altas/día (Requerido: {ritmo_req_h}/día)\n\n"
+                f"📅 _Hoy día {hoy_dia} · Día {dias_trans} de {dias_tot}_\n\n"
+                f"📊 *Lo que va del día de hoy:*\n"
+                f"{fmt_tabla_area(ventas_v_hoy, altas_v_hoy, ventas_h_hoy, altas_h_hoy)}\n\n"
+                f"🏆 *Top agencias de hoy:*\n"
+                f"{fmt_agencias(agencias_hoy)}\n\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"⚡ *Ritmo vs. Requerido (/día):*\n"
+                f"{fmt_ritmo(ritmo_v, ritmo_req_v, ritmo_h, ritmo_req_h)}\n\n"
+                f"📈 *Acumulado del mes:*\n"
+                f"{fmt_acumulado(altas_v, cuota_v, proy_v, pct_proy_v, altas_h, cuota_h, proy_h, pct_proy_h)}\n\n"
                 f"¡A seguir empujando! 🚀"
             )
-        else: # noche
-            titulo = "Mensaje de la Noche (Cierre)"
-            
-            planes_v_list = db_helper.get_velocidad_planes_lima(mes, anio, area='Vertical')
-            planes_h_list = db_helper.get_velocidad_planes_lima(mes, anio, area='Horizontal')
-            
-            planes_v = format_planes(planes_v_list)
-            planes_h = format_planes(planes_h_list)
 
+        else:  # noche
+            kpi_v_hoy = db_helper.get_kpi_lima(mes, anio, area='Vertical',   dia=hoy_dia, base_dias=base_dias) or {}
+            kpi_h_hoy = db_helper.get_kpi_lima(mes, anio, area='Horizontal', dia=hoy_dia, base_dias=base_dias) or {}
+            agencias_hoy_n = db_helper.get_ranking_agencias_lima(mes, anio, dia=hoy_dia)
+            planes_v_list = db_helper.get_velocidad_planes_ventas_lima(mes, anio, area='Vertical')
+            planes_h_list = db_helper.get_velocidad_planes_ventas_lima(mes, anio, area='Horizontal')
+
+            ventas_v_hoy = kpi_v_hoy.get('ventas', 0)
+            altas_v_hoy  = kpi_v_hoy.get('altas', 0)
+            ventas_h_hoy = kpi_h_hoy.get('ventas', 0)
+            altas_h_hoy  = kpi_h_hoy.get('altas', 0)
+
+            titulo = f"Mensaje de la Noche · Base {base_dias}d"
             mensaje = (
                 f"🌙 *WIN · CIERRE DE JORNADA*\n"
-                f"📅 _Balance final del día_\n\n"
-                f"🔵 *Altas registradas:*\n"
-                f"- Vertical: {altas_v}\n"
-                f"- Horizontal: {altas_h}\n\n"
-                f"📈 *Proyección al cierre del mes:*\n"
-                f"- Vertical: {proy_v} ({pct_proy_v}%)\n"
-                f"- Horizontal: {proy_h} ({pct_proy_h}%)\n"
+                f"📅 _Balance del día {hoy_dia} · Día {dias_trans} de {dias_tot}_\n\n"
+                f"📊 *Ventas e instalaciones del día:*\n"
+                f"{fmt_tabla_area(ventas_v_hoy, altas_v_hoy, ventas_h_hoy, altas_h_hoy)}\n\n"
+                f"🏆 *Top agencias del día:*\n"
+                f"{fmt_agencias(agencias_hoy_n)}\n\n"
+                f"📡 *Planes más vendidos del mes:*\n"
+                f"*Vertical:*\n{fmt_planes(planes_v_list)}\n"
+                f"*Horizontal:*\n{fmt_planes(planes_h_list)}\n\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                f"📡 *PLANES MÁS VENDIDOS (Top 3)*\n\n"
-                f"*Vertical:*\n"
-                f"{planes_v}\n\n"
-                f"*Horizontal:*\n"
-                f"{planes_h}\n\n"
+                f"📈 *Acumulado del mes:*\n"
+                f"{fmt_acumulado(altas_v, cuota_v, proy_v, pct_proy_v, altas_h, cuota_h, proy_h, pct_proy_h)}\n\n"
                 f"¡Gracias por el esfuerzo de hoy! A descansar. 💤🙌"
             )
 
@@ -562,6 +662,116 @@ def api_whatsapp_mensaje():
         print(f"[api_whatsapp_mensaje] Error: {e}")
         traceback.print_exc()
         return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route('/api/prediccion-dia')
+@login_required
+def api_prediccion_dia():
+    result = db_helper.get_prediccion_dia()
+    if result is None:
+        return jsonify({'ok': False, 'error': 'No se pudo calcular la predicción'}), 500
+    return jsonify({'ok': True, **result})
+
+
+@app.route('/api/resumen-tabla')
+@login_required
+def api_resumen_tabla():
+    from datetime import timedelta
+    hoy  = datetime.now()
+    _base = request.args.get('base', 25, type=int)
+    base_dias = _base if _base in (25, 26, 28, 30) else 25
+    ref = request.args.get('ref', 'hoy')  # 'hoy' o 'ayer'
+
+    if ref == 'ayer':
+        fecha_ref = hoy - timedelta(days=1)
+        mes_q, anio_q, dia_q = fecha_ref.month, fecha_ref.year, fecha_ref.day
+        def _kpi(area):
+            return db_helper.get_kpi_lima(mes_q, anio_q, area=area, base_dias=base_dias, dia=dia_q, cumul=True) or {}
+    else:
+        mes_q, anio_q = request.args.get('mes', hoy.month, type=int), request.args.get('anio', hoy.year, type=int)
+        def _kpi(area):
+            return db_helper.get_kpi_lima(mes_q, anio_q, area=area, base_dias=base_dias) or {}
+
+    filas = []
+    for area, label in [('Vertical', 'Vertical'), ('Horizontal', 'Horizontal'), ('', 'TOTAL')]:
+        kpi = _kpi(area)
+        filas.append({
+            'area':            label,
+            'altas':           kpi.get('altas', 0),
+            'meta':            kpi.get('cuota', 0),
+            'proyeccion':      kpi.get('proyeccion', 0),
+            'avz':             kpi.get('pct_proyeccion', 0.0),
+            'alcance':         kpi.get('alcance', 0.0),
+            'ritmo_actual':    kpi.get('ritmo_actual', 0.0),
+            'ritmo_necesario': kpi.get('ritmo_necesario', 0.0),
+            'faltantes':       kpi.get('faltantes', 0),
+        })
+    return jsonify({'ok': True, 'mes': mes_q, 'anio': anio_q, 'base': base_dias, 'ref': ref, 'filas': filas})
+
+
+@app.route('/reporte-gerente')
+@login_required
+def reporte_gerente():
+    mes  = request.args.get('mes',  datetime.now().month, type=int)
+    anio = request.args.get('anio', datetime.now().year,  type=int)
+    _dia = request.args.get('dia', 0, type=int)
+    dia  = _dia if _dia and 1 <= _dia <= 31 else None
+    _base     = request.args.get('base', 30, type=int)
+    base_dias = _base if _base in (25, 26, 28, 30) else 30
+
+    meses = [
+        {'id': 1, 'nombre': 'Enero'},    {'id': 2, 'nombre': 'Febrero'},
+        {'id': 3, 'nombre': 'Marzo'},    {'id': 4, 'nombre': 'Abril'},
+        {'id': 5, 'nombre': 'Mayo'},     {'id': 6, 'nombre': 'Junio'},
+        {'id': 7, 'nombre': 'Julio'},    {'id': 8, 'nombre': 'Agosto'},
+        {'id': 9, 'nombre': 'Septiembre'}, {'id': 10, 'nombre': 'Octubre'},
+        {'id': 11, 'nombre': 'Noviembre'}, {'id': 12, 'nombre': 'Diciembre'},
+    ]
+    mes_nombre = next((m['nombre'] for m in meses if m['id'] == mes), '')
+
+    _cumul = bool(dia)
+    kpi_t = db_helper.get_kpi_lima(mes, anio, area='',           dia=dia, cumul=_cumul, base_dias=base_dias) or {}
+    kpi_v = db_helper.get_kpi_lima(mes, anio, area='Vertical',   dia=dia, cumul=_cumul, base_dias=base_dias) or {}
+    kpi_h = db_helper.get_kpi_lima(mes, anio, area='Horizontal', dia=dia, cumul=_cumul, base_dias=base_dias) or {}
+
+    tabla_agencias = db_helper.get_tabla_agencias_lima(mes, anio, dia=dia)
+    top_vendedores = db_helper.get_top_vendedores_lima(mes, anio, top=10, dia=dia)
+
+    planes_v_raw = db_helper.get_velocidad_planes_lima(mes, anio, area='Vertical',   dia=dia)
+    planes_h_raw = db_helper.get_velocidad_planes_lima(mes, anio, area='Horizontal', dia=dia)
+    _pm = {}
+    for p in planes_v_raw:
+        _pm[p['velocidad']] = {'velocidad': p['velocidad'], 'v_altas': p['altas'], 'v_pct': p['pct'], 'h_altas': 0, 'h_pct': 0.0}
+    for p in planes_h_raw:
+        if p['velocidad'] in _pm:
+            _pm[p['velocidad']]['h_altas'] = p['altas']
+            _pm[p['velocidad']]['h_pct']   = p['pct']
+        else:
+            _pm[p['velocidad']] = {'velocidad': p['velocidad'], 'v_altas': 0, 'v_pct': 0.0, 'h_altas': p['altas'], 'h_pct': p['pct']}
+    planes_merged = sorted(_pm.values(), key=lambda x: x['v_altas'] + x['h_altas'], reverse=True)
+    for p in planes_merged:
+        p['total'] = p['v_altas'] + p['h_altas']
+
+    top_distritos = db_helper.get_top_distritos_lima(mes, anio, top=10, dia=dia)
+    dist_estados  = db_helper.get_distribucion_estados_lima(mes, anio, dia=dia)
+    tramos        = db_helper.get_tramo_dias_lima(mes, anio)
+    anios = list(range(2024, datetime.now().year + 2))
+
+    return render_template(
+        'reporte_gerente.html',
+        user=session['name'], role=session['role'],
+        mes_actual=mes, anio_actual=anio,
+        mes_nombre=mes_nombre, meses=meses, anios=anios,
+        dia_actual=dia or 0, base_dias=base_dias,
+        kpi_t=kpi_t, kpi_v=kpi_v, kpi_h=kpi_h,
+        tabla_agencias=tabla_agencias,
+        top_vendedores=top_vendedores,
+        planes_merged=planes_merged,
+        top_distritos=top_distritos,
+        dist_estados=dist_estados,
+        tramos=tramos,
+        generado=datetime.now().strftime('%d/%m/%Y %H:%M'),
+    )
 
 
 # ── MOROSIDAD / CLAWBACK ────────────────────────────────────────────────────

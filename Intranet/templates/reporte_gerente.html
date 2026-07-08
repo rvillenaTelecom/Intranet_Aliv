@@ -1,0 +1,504 @@
+{% extends "base.html" %}
+{% block title %}Reporte Gerencial — AlivTelecom{% endblock %}
+{% block page_title %}Reporte Gerencial{% endblock %}
+
+{% block content %}
+<style>
+/* ── Variables ── */
+:root {
+  --rg-border: #c8cfd8;
+  --rg-head-bg: #1a2535;
+  --rg-head2-bg: #2d3f56;
+  --rg-head-fg: #ffffff;
+  --rg-alt: #f5f7fa;
+  --rg-green: #155724;
+  --rg-green-bg: #d4edda;
+  --rg-amber: #856404;
+  --rg-amber-bg: #fff3cd;
+  --rg-red: #721c24;
+  --rg-red-bg: #f8d7da;
+  --rg-total-bg: #e9ecef;
+  --rg-radius: 6px;
+}
+
+/* ── Layout ── */
+.rg-wrap { max-width: 1200px; margin: 0 auto; }
+
+/* ── Controls bar ── */
+.rg-controls {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+  background: #fff; border: 1px solid var(--rg-border); border-radius: var(--rg-radius);
+  padding: 10px 14px; margin-bottom: 18px;
+}
+.rg-controls select, .rg-controls input {
+  padding: 5px 9px; border: 1px solid var(--rg-border); border-radius: 4px;
+  font-size: 13px; background: #fff; color: #333;
+}
+.rg-controls label { font-size: 12px; color: #666; font-weight: 600; }
+.rg-controls .sep { flex: 1; }
+.btn-rg {
+  padding: 6px 14px; border-radius: 4px; border: none; cursor: pointer;
+  font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;
+}
+.btn-apply  { background: #1a2535; color: #fff; }
+.btn-print  { background: #0d6efd; color: #fff; }
+.btn-28d, .btn-30d { min-width: 42px; }
+.btn-base-active { box-shadow: inset 0 0 0 2px #fff; }
+
+/* ── Report header ── */
+.rg-header {
+  background: var(--rg-head-bg); color: #fff; border-radius: var(--rg-radius);
+  padding: 16px 20px; margin-bottom: 18px; display: flex; align-items: center;
+  justify-content: space-between; flex-wrap: wrap; gap: 8px;
+}
+.rg-header h2 { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: .4px; }
+.rg-header-meta { font-size: 12px; opacity: .8; text-align: right; }
+
+/* ── Sections ── */
+.rg-section { margin-bottom: 22px; }
+.rg-section-title {
+  font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+  color: var(--rg-head2-bg); border-bottom: 2px solid var(--rg-head2-bg);
+  padding-bottom: 4px; margin-bottom: 8px;
+}
+
+/* ── Tables ── */
+.rg-table-wrap { overflow-x: auto; }
+.rg-table {
+  width: 100%; border-collapse: collapse; font-size: 13px;
+  border: 1px solid var(--rg-border); border-radius: var(--rg-radius); overflow: hidden;
+}
+.rg-table th {
+  background: var(--rg-head-bg); color: #fff;
+  padding: 8px 10px; text-align: right; font-size: 12px; font-weight: 600;
+  white-space: nowrap;
+}
+.rg-table th.left { text-align: left; }
+.rg-table td {
+  padding: 7px 10px; border-bottom: 1px solid var(--rg-border);
+  text-align: right; white-space: nowrap; color: #333;
+}
+.rg-table td.left { text-align: left; }
+.rg-table tr:nth-child(even) td { background: var(--rg-alt); }
+.rg-table tr:last-child td { border-bottom: none; }
+.rg-table tr.row-sub td { color: #555; font-size: 12px; padding-left: 22px; }
+.rg-table tr.row-total td {
+  background: var(--rg-total-bg) !important;
+  font-weight: 700; border-top: 2px solid var(--rg-border);
+}
+
+/* ── Color badges ── */
+.cell-green { background: var(--rg-green-bg) !important; color: var(--rg-green); font-weight: 700; }
+.cell-amber { background: var(--rg-amber-bg) !important; color: var(--rg-amber); font-weight: 700; }
+.cell-red   { background: var(--rg-red-bg)   !important; color: var(--rg-red);   font-weight: 700; }
+.num-red    { color: #dc3545; font-weight: 700; }
+.num-green  { color: #198754; font-weight: 700; }
+
+/* ── Rank badge ── */
+.rank-badge {
+  display: inline-block; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--rg-head-bg); color: #fff; font-size: 11px; font-weight: 700;
+  text-align: center; line-height: 22px;
+}
+.rank-badge.gold   { background: #c8960c; }
+.rank-badge.silver { background: #7d8b9a; }
+.rank-badge.bronze { background: #a0522d; }
+
+/* ── Two-column grid ── */
+.rg-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+/* ── Print styles ── */
+@media print {
+  .sidebar, .topbar, .rg-controls, .no-print { display: none !important; }
+  .main-content { margin: 0 !important; padding: 0 !important; }
+  .content-area { padding: 0 !important; }
+  body, .rg-table { font-size: 11px; }
+  .rg-section { break-inside: avoid; }
+  .rg-grid-2 { grid-template-columns: 1fr 1fr; }
+  .rg-header { background: #1a2535 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .rg-table th { background: #1a2535 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .cell-green { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .cell-amber { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .cell-red   { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+
+@media (max-width: 700px) {
+  .rg-grid-2 { grid-template-columns: 1fr; }
+}
+</style>
+
+<div class="rg-wrap">
+
+  <!-- ── Controls ── -->
+  <form class="rg-controls no-print" method="get" action="{{ url_for('reporte_gerente') }}">
+    <label>Mes</label>
+    <select name="mes">
+      {% for m in meses %}
+      <option value="{{ m.id }}" {% if m.id == mes_actual %}selected{% endif %}>{{ m.nombre }}</option>
+      {% endfor %}
+    </select>
+
+    <label>Año</label>
+    <select name="anio">
+      {% for a in anios %}
+      <option value="{{ a }}" {% if a == anio_actual %}selected{% endif %}>{{ a }}</option>
+      {% endfor %}
+    </select>
+
+    <label>Día (acum. hasta)</label>
+    <input type="number" name="dia" min="0" max="31" value="{{ dia_actual or '' }}" placeholder="todo el mes" style="width:110px;">
+
+    <label>Base</label>
+    <select name="base">
+      <option value="30" {% if base_dias == 30 %}selected{% endif %}>30d</option>
+      <option value="28" {% if base_dias == 28 %}selected{% endif %}>28d</option>
+    </select>
+
+    <button type="submit" class="btn-rg btn-apply"><i class="fa-solid fa-rotate"></i> Actualizar</button>
+    <span class="sep"></span>
+    <button type="button" class="btn-rg btn-print" onclick="window.print()">
+      <i class="fa-solid fa-print"></i> Imprimir / PDF
+    </button>
+  </form>
+
+  <!-- ── Report header ── -->
+  <div class="rg-header">
+    <div>
+      <h2><i class="fa-solid fa-file-lines"></i> WIN · REPORTE GERENCIAL</h2>
+      <div style="font-size:13px; opacity:.85; margin-top:3px;">
+        {{ mes_nombre }} {{ anio_actual }}
+        {% if dia_actual %} · Acumulado al día {{ dia_actual }}{% endif %}
+        · Proyección base {{ base_dias }}d
+      </div>
+    </div>
+    <div class="rg-header-meta">
+      Generado: {{ generado }}<br>
+      {% set dt = kpi_t.get('dias_trans', 0) %}
+      {% set dtot = kpi_t.get('dias_tot', 30) %}
+      Día {{ dt }} de {{ dtot }}
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════ -->
+  <!-- 1. RESUMEN POR ÁREA                               -->
+  <!-- ══════════════════════════════════════════════════ -->
+  <div class="rg-section">
+    <div class="rg-section-title">1. Resumen por Área</div>
+    <div class="rg-table-wrap">
+      <table class="rg-table">
+        <thead>
+          <tr>
+            <th class="left">ÁREA</th>
+            <th>VENTAS</th>
+            <th>ALTAS</th>
+            <th>META</th>
+            <th>PROY. ({{ base_dias }}d)</th>
+            <th>AVANCE %</th>
+            <th>FALTAN</th>
+            <th>RITMO/DÍA</th>
+            <th>REQ./DÍA</th>
+            <th>CONV. %</th>
+            <th>ANULAC.</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for kpi, label, cls in [
+              (kpi_t, 'LIMA TOTAL', ''),
+              (kpi_h, 'Horizontal', 'row-sub'),
+              (kpi_v, 'Vertical',   'row-sub'),
+          ] %}
+          {% set alc = kpi.get('alcance', 0) %}
+          <tr class="{{ cls }}">
+            <td class="left" style="font-weight:{% if not cls %}700{% else %}500{% endif %};">
+              {% if cls %}›{% endif %} {{ label }}
+            </td>
+            <td>{{ "{:,}".format(kpi.get('ventas', 0)) }}</td>
+            <td style="font-weight:600;">{{ "{:,}".format(kpi.get('altas', 0)) }}</td>
+            <td>{{ "{:,}".format(kpi.get('cuota', 0)) }}</td>
+            <td>{{ "{:,}".format(kpi.get('proyeccion', 0)) }}</td>
+            <td class="{% if alc >= 100 %}cell-green{% elif alc >= 80 %}cell-amber{% else %}cell-red{% endif %}">
+              {{ alc }}%
+            </td>
+            <td class="{% if kpi.get('faltantes', 0) == 0 %}num-green{% else %}num-red{% endif %}">
+              {{ "{:,}".format(kpi.get('faltantes', 0)) }}
+            </td>
+            <td>{{ kpi.get('ritmo_actual', 0) }}</td>
+            <td>{{ kpi.get('ritmo_necesario', 0) }}</td>
+            <td>{{ kpi.get('conversion', 0) }}%</td>
+            <td>{{ "{:,}".format(kpi.get('anulaciones', 0)) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════ -->
+  <!-- 2. ALTAS POR AGENCIA                              -->
+  <!-- ══════════════════════════════════════════════════ -->
+  {% if tabla_agencias and tabla_agencias.rows %}
+  <div class="rg-section">
+    <div class="rg-section-title">2. Altas por Agencia</div>
+    <div class="rg-table-wrap">
+      <table class="rg-table">
+        <thead>
+          <tr>
+            <th class="left">ÁREA</th>
+            <th>ALIV</th>
+            <th>DEZANET</th>
+            <th>GYA</th>
+            <th>SIPION</th>
+            <th>LOTTUS</th>
+            <th>SUB-AG.</th>
+            <th>TOTAL</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in tabla_agencias.rows %}
+          <tr class="{% if row.nivel == 'lima_sub' %}row-sub{% endif %}">
+            <td class="left" style="font-weight:{% if row.nivel == 'lima' %}700{% else %}500{% endif %};">
+              {% if row.nivel == 'lima_sub' %}›{% endif %} {{ row.label }}
+            </td>
+            <td>{{ row.aliv }}</td>
+            <td>{{ row.dezanet }}</td>
+            <td>{{ row.gya }}</td>
+            <td>{{ row.sipion }}</td>
+            <td>{{ row.lottus }}</td>
+            <td>{{ row.sub_ag }}</td>
+            <td style="font-weight:700;">{{ row.total }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td class="left" style="font-size:11px; color:#888; font-style:italic;">
+              Proyecciones ({{ base_dias }}d):
+              ALIV={{ tabla_agencias.proy_aliv }} ·
+              DEZANET+GYA+SIP+LOTTUS={{ tabla_agencias.proy_dezanet }} ·
+              SUB-AG={{ tabla_agencias.proy_sub }}
+            </td>
+            <td colspan="7"></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ══════════════════════════════════════════════════ -->
+  <!-- 3 & 4 — TOP VENDEDORES + DISTRITOS (lado a lado)  -->
+  <!-- ══════════════════════════════════════════════════ -->
+  <div class="rg-grid-2">
+
+    <!-- 3. TOP VENDEDORES -->
+    <div class="rg-section">
+      <div class="rg-section-title">3. Top 10 Vendedores</div>
+      <div class="rg-table-wrap">
+        <table class="rg-table">
+          <thead>
+            <tr>
+              <th class="left">#</th>
+              <th class="left">VENDEDOR</th>
+              <th class="left">AGENCIA</th>
+              <th>ALTAS</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if top_vendedores %}
+            {% for v in top_vendedores %}
+            <tr>
+              <td class="left">
+                <span class="rank-badge {% if loop.index == 1 %}gold{% elif loop.index == 2 %}silver{% elif loop.index == 3 %}bronze{% endif %}">
+                  {{ loop.index }}
+                </span>
+              </td>
+              <td class="left" style="font-size:12px; max-width:160px; overflow:hidden; text-overflow:ellipsis;">{{ v.vendedor }}</td>
+              <td class="left" style="font-size:12px; color:#555;">{{ v.agencia or '—' }}</td>
+              <td style="font-weight:700;">{{ v.altas }}</td>
+            </tr>
+            {% endfor %}
+            {% else %}
+            <tr><td colspan="4" class="left" style="color:#888;">Sin datos</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 4. TOP DISTRITOS -->
+    <div class="rg-section">
+      <div class="rg-section-title">4. Top 10 Distritos</div>
+      <div class="rg-table-wrap">
+        <table class="rg-table">
+          <thead>
+            <tr>
+              <th class="left">#</th>
+              <th class="left">DISTRITO</th>
+              <th>ALTAS</th>
+              <th>%</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if top_distritos %}
+            {% set total_dist = top_distritos | sum(attribute='altas') %}
+            {% for d in top_distritos %}
+            <tr>
+              <td class="left">
+                <span class="rank-badge {% if loop.index == 1 %}gold{% elif loop.index == 2 %}silver{% elif loop.index == 3 %}bronze{% endif %}">
+                  {{ loop.index }}
+                </span>
+              </td>
+              <td class="left" style="font-size:12px;">{{ d.Distrito }}</td>
+              <td style="font-weight:700;">{{ d.altas }}</td>
+              <td style="color:#666;">{{ "%.1f"|format(d.altas / total_dist * 100 if total_dist else 0) }}%</td>
+            </tr>
+            {% endfor %}
+            {% else %}
+            <tr><td colspan="4" class="left" style="color:#888;">Sin datos</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /rg-grid-2 -->
+
+  <!-- ══════════════════════════════════════════════════ -->
+  <!-- 5. PLANES INSTALADOS (ALTAS)                      -->
+  <!-- ══════════════════════════════════════════════════ -->
+  <div class="rg-section">
+    <div class="rg-section-title">5. Planes Instalados (Altas)</div>
+    <div class="rg-table-wrap">
+      <table class="rg-table">
+        <thead>
+          <tr>
+            <th class="left">PLAN</th>
+            <th>VERT. ALTAS</th>
+            <th>VERT. %</th>
+            <th>HORIZ. ALTAS</th>
+            <th>HORIZ. %</th>
+            <th>TOTAL</th>
+            <th>TOTAL %</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if planes_merged %}
+          {% set grand_total = planes_merged | sum(attribute='total') %}
+          {% for p in planes_merged %}
+          <tr>
+            <td class="left" style="font-weight:600;">
+              {{ p.velocidad }}{% if p.velocidad and (p.velocidad | string).isdigit() %} Mbps{% endif %}
+            </td>
+            <td>{{ p.v_altas }}</td>
+            <td style="color:#666;">{{ "%.1f"|format(p.v_pct) }}%</td>
+            <td>{{ p.h_altas }}</td>
+            <td style="color:#666;">{{ "%.1f"|format(p.h_pct) }}%</td>
+            <td style="font-weight:700;">{{ p.total }}</td>
+            <td style="color:#555;">{{ "%.1f"|format(p.total / grand_total * 100 if grand_total else 0) }}%</td>
+          </tr>
+          {% endfor %}
+          <tr class="row-total">
+            <td class="left">TOTAL</td>
+            <td>{{ planes_merged | sum(attribute='v_altas') }}</td>
+            <td>—</td>
+            <td>{{ planes_merged | sum(attribute='h_altas') }}</td>
+            <td>—</td>
+            <td>{{ grand_total }}</td>
+            <td>100.0%</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="7" class="left" style="color:#888;">Sin datos de planes</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════ -->
+  <!-- 6 & 7 — ESTADOS + TRAMO INSTALACIÓN (lado a lado) -->
+  <!-- ══════════════════════════════════════════════════ -->
+  <div class="rg-grid-2">
+
+    <!-- 6. ESTADO DE ÓRDENES -->
+    <div class="rg-section">
+      <div class="rg-section-title">6. Estado de Órdenes</div>
+      <div class="rg-table-wrap">
+        <table class="rg-table">
+          <thead>
+            <tr>
+              <th class="left">ESTADO</th>
+              <th>CANTIDAD</th>
+              <th>%</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if dist_estados %}
+            {% set total_est = dist_estados | sum(attribute='registro') %}
+            {% for e in dist_estados | sort(attribute='registro', reverse=True) %}
+            <tr>
+              <td class="left">{{ e.estado or '(Sin estado)' }}</td>
+              <td style="font-weight:{% if e.estado == 'Ejecutada' %}700{% else %}400{% endif %};">
+                {{ "{:,}".format(e.registro) }}
+              </td>
+              <td style="color:#555;">{{ "%.1f"|format(e.pct_registro) }}%</td>
+            </tr>
+            {% endfor %}
+            <tr class="row-total">
+              <td class="left">TOTAL</td>
+              <td>{{ "{:,}".format(total_est) }}</td>
+              <td>100.0%</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="3" class="left" style="color:#888;">Sin datos</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 7. TRAMO DE INSTALACIÓN -->
+    <div class="rg-section">
+      <div class="rg-section-title">7. Tiempo de Instalación</div>
+      <div class="rg-table-wrap">
+        <table class="rg-table">
+          <thead>
+            <tr>
+              <th class="left">TRAMO</th>
+              <th>ALTAS</th>
+              <th>%</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if tramos %}
+            {% set total_tram = tramos | sum(attribute='cnt') %}
+            {% for t in tramos %}
+            <tr>
+              <td class="left">{{ t.tramo }}</td>
+              <td style="font-weight:{% if t.tramo == 'Mismo día' %}700{% else %}400{% endif %};">
+                {{ "{:,}".format(t.cnt) }}
+              </td>
+              <td style="color:#555;">{{ "%.1f"|format(t.cnt / total_tram * 100 if total_tram else 0) }}%</td>
+            </tr>
+            {% endfor %}
+            <tr class="row-total">
+              <td class="left">TOTAL</td>
+              <td>{{ "{:,}".format(total_tram) }}</td>
+              <td>100.0%</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="3" class="left" style="color:#888;">Sin datos</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /rg-grid-2 -->
+
+  <!-- Pie de página -->
+  <div style="text-align:center; font-size:11px; color:#999; padding: 10px 0 4px; margin-top:8px;" class="no-print">
+    AlivTelecom · Sistema de Reportes · {{ generado }}
+  </div>
+
+</div><!-- /rg-wrap -->
+{% endblock %}

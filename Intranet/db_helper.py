@@ -14,6 +14,7 @@ _CUOTA_LIMA = {
     (4, ''):  1838,  (4, 'Horizontal'): 1528,  (4, 'Vertical'):  310,
     (5, ''):  2332,  (5, 'Horizontal'): 2012,  (5, 'Vertical'):  320,
     (6, ''):  2500,  (6, 'Horizontal'): 2186,  (6, 'Vertical'):  314,
+    (7, ''):  2250,  (7, 'Horizontal'): 1980,  (7, 'Vertical'):  270,
 }
 
 
@@ -54,12 +55,16 @@ def _dept_lima(alias=''):
     return f"AND {p}[Departamento] IN ('Lima', 'Callao')"
 
 
-def get_kpi_lima(mes, anio, area='', dia=None):
-    """KPIs completos para Lima. dia(1-31): filtra ventas/altas de ese día."""
+def get_kpi_lima(mes, anio, area='', dia=None, cumul=False, base_dias=30):
+    """KPIs completos para Lima. dia(1-31): filtra ventas/altas.
+    cumul=False → exactamente ese día (para columna ALTAS DD.MM).
+    cumul=True  → acumulado del 1 al día (para ALTAS ACUM y proyección).
+    base_dias   → base de días para proyección (30 agentes, 28 jefe)."""
     dias_trans, dias_tot, dias_rest = _dias_mes(mes, anio)
     _ac = _area_clause(area)
-    _dr = "AND DAY([Fecha de registro]) = :dia" if dia else ""
-    _da = f"AND DAY({_FP}) = :dia" if dia else ""
+    _op = "<=" if cumul else "="
+    _dr = f"AND DAY([Fecha de registro]) {_op} :dia" if dia else ""
+    _da = f"AND DAY({_FP}) {_op} :dia" if dia else ""
     p   = {'mes': mes, 'anio': anio}
     if dia:
         p['dia'] = int(dia)
@@ -95,13 +100,15 @@ def get_kpi_lima(mes, anio, area='', dia=None):
         anulaciones = _safe_int(r['anulaciones'])
         conversion  = round(altas / ventas * 100, 1) if ventas > 0 else 0
 
-        # Para el mes actual, usar el último día con datos en BD (no el día de hoy si hay delay).
-        # Para meses cerrados, siempre usar dias_tot — el mes ya terminó.
-        hoy = datetime.now()
-        if hoy.month == mes and hoy.year == anio:
-            dias_trans_db = _safe_int(r['dias_trans_db'], default=dias_trans)
-            if dias_trans_db > 0:
-                dias_trans = dias_trans_db
+        # Si el usuario filtró por un día específico, ese día es la base de proyección.
+        if dia:
+            dias_trans = int(dia)
+        else:
+            hoy = datetime.now()
+            if hoy.month == mes and hoy.year == anio:
+                dias_trans_db = _safe_int(r['dias_trans_db'], default=dias_trans)
+                if dias_trans_db > 0:
+                    dias_trans = dias_trans_db
         dias_rest = max(dias_tot - dias_trans, 1)
 
         # Instalados el mismo día (Fecha de registro = Fecha programación)
@@ -134,17 +141,19 @@ def get_kpi_lima(mes, anio, area='', dia=None):
         except:
             pass
 
-        # En modo día, las proyecciones mensuales no aplican
-        if dia:
+        # Modo exacto (dia sin cumul): proyecciones no aplican
+        # Modo acumulado (dia+cumul) o sin dia: calcular proyección con base dias_trans
+        if dia and not cumul:
             cuota = proyeccion = pct_proyeccion = alcance = alcance_ideal = 0
             ritmo_actual = ritmo_necesario = faltantes = 0
         else:
             cuota = _CUOTA_LIMA.get((mes, area), 0)
-            proyeccion      = round(altas / dias_trans * 30) if dias_trans > 0 else 0
+            proyeccion      = round(altas / dias_trans * base_dias) if dias_trans > 0 else 0
             alcance         = round(altas / cuota * 100, 1) if cuota > 0 else 0
             alcance_ideal   = round(dias_trans / dias_tot * 100, 1)
-            ritmo_actual    = round(altas / dias_trans, 1) if dias_trans > 0 else 0
-            ritmo_necesario = round(max(cuota - altas, 0) / dias_rest, 1)
+            ritmo_actual      = round(altas / dias_trans, 1) if dias_trans > 0 else 0
+            dias_base_rest    = max(base_dias - dias_trans, 1)
+            ritmo_necesario   = round(max(cuota - altas, 0) / dias_base_rest, 1)
             faltantes       = max(cuota - altas, 0)
             pct_proyeccion  = round(proyeccion / cuota * 100, 1) if cuota > 0 else 0
 
@@ -286,7 +295,7 @@ def get_distribucion_estados_lima(mes, anio, area='', dia=None):
     """Distribución de estados actuales basados en la Fecha de Registro."""
     _ac = _area_clause(area)
     _dl = _dept_lima()
-    _dr = "AND DAY([Fecha de registro]) = :dia" if dia else ""
+    _dr = "AND DAY([Fecha de registro]) <= :dia" if dia else ""
     p   = {'mes': mes, 'anio': anio}
     if dia:
         p['dia'] = int(dia)
@@ -319,7 +328,7 @@ def get_top_distritos_lima(mes, anio, top=10, area='', dia=None):
     """Top N distritos por altas en Lima."""
     _ac = _area_clause(area)
     _dl = _dept_lima()
-    _da = f"AND DAY({_FP}) = :dia" if dia else ""
+    _da = f"AND DAY({_FP}) <= :dia" if dia else ""
     p   = {'mes': mes, 'anio': anio}
     if dia:
         p['dia'] = int(dia)
@@ -346,7 +355,7 @@ def get_velocidad_planes_lima(mes, anio, area='', dia=None):
     _ac = _area_clause(area)
     _dl = _dept_lima()
     _vel = "LEFT([Plan], CHARINDEX(' ', [Plan] + ' ') - 1)"
-    _da = f"AND DAY({_FP}) = :dia" if dia else ""
+    _da = f"AND DAY({_FP}) <= :dia" if dia else ""
     p   = {'mes': mes, 'anio': anio}
     if dia:
         p['dia'] = int(dia)
@@ -371,12 +380,40 @@ def get_velocidad_planes_lima(mes, anio, area='', dia=None):
         return []
 
 
+def get_velocidad_planes_ventas_lima(mes, anio, area='', dia=None):
+    """Distribución de ventas (registros) de Lima por velocidad de plan (Mbps)."""
+    _ac = _area_clause(area)
+    _dl = _dept_lima()
+    _vel = "LEFT([Plan], CHARINDEX(' ', [Plan] + ' ') - 1)"
+    _dr = "AND DAY([Fecha de registro]) <= :dia" if dia else ""
+    p   = {'mes': mes, 'anio': anio}
+    if dia:
+        p['dia'] = int(dia)
+    try:
+        df = get_data(f"""
+            SELECT
+                {_vel} AS velocidad,
+                COUNT(*) AS ventas,
+                ROUND(100.0 * COUNT(*) / SUM(COUNT(*)) OVER (), 2) AS pct
+            FROM dbo.winforce_lima
+            WHERE MONTH([Fecha de registro]) = :mes AND YEAR([Fecha de registro]) = :anio
+              AND [Plan] IS NOT NULL AND [Plan] <> ''
+              {_dl} {_ac} {_dr}
+            GROUP BY {_vel}
+            ORDER BY ventas DESC
+        """, params=p)
+        return df.to_dict(orient='records')
+    except Exception as e:
+        print(f"Error get_velocidad_planes_ventas_lima: {e}")
+        return []
+
+
 def get_top_vendedores_lima(mes, anio, top=10, dia=None):
     """Top N vendedores por altas en Lima, con supervisor y agencia.
     dia (1-31): filtra altas instaladas en ese día (Fecha programación)."""
     _fpa = "TRY_CONVERT(DATE, LEFT(wl.[Fecha programación], 10), 105)"
     _dlw = _dept_lima('wl')
-    _da  = f"AND DAY({_fpa}) = :dia" if dia else ""
+    _da  = f"AND DAY({_fpa}) <= :dia" if dia else ""
     params = {'mes': mes, 'anio': anio}
     if dia:
         params['dia'] = int(dia)
@@ -410,8 +447,8 @@ def get_tipo_vivienda_lima(mes, anio, area='', dia=None):
     _acw = _area_clause(area, col='wl.[Tipo de domicilio]')
     _dl  = _dept_lima()
     _dlw = _dept_lima('wl')
-    _dr  = "AND DAY([Fecha de registro]) = :dia" if dia else ""
-    _da  = f"AND DAY({_fpa}) = :dia" if dia else ""
+    _dr  = "AND DAY([Fecha de registro]) <= :dia" if dia else ""
+    _da  = f"AND DAY({_fpa}) <= :dia" if dia else ""
     p    = {'mes': mes, 'anio': anio}
     if dia:
         p['dia'] = int(dia)
@@ -480,34 +517,34 @@ def get_tipo_vivienda_lima(mes, anio, area='', dia=None):
 
 
 def get_pivot_planes_agencia(mes, anio, area='', dia=None):
-    """Pivot: altas instaladas por Plan × Agencia (Usuarios_win) — Lima."""
+    """Pivot: altas instaladas por Plan × Agencia (dim_usuarios_Aliv) — Lima."""
     import pandas as pd
     _fpa = "TRY_CONVERT(DATE, LEFT(wl.[Fecha programación], 10), 105)"
     _dlw = _dept_lima('wl')
     _acw = _area_clause(area, col='wl.[Tipo de domicilio]')
-    _da  = f"AND DAY({_fpa}) = :dia" if dia else ""
+    _da  = f"AND DAY({_fpa}) <= :dia" if dia else ""
     p    = {'mes': mes, 'anio': anio}
     if dia:
         p['dia'] = int(dia)
     try:
         df = get_data(f"""
             SELECT
-                wl.[Plan]                        AS [plan],
-                ISNULL(u.AGENCIA, 'Sin Agencia') AS agencia,
-                COUNT(*)                         AS altas
+                wl.[Plan]                              AS nombre_plan,
+                ISNULL(d.agencia, wl.[Agencia])        AS agencia,
+                COUNT(*)                               AS altas
             FROM dbo.winforce_lima wl
-            LEFT JOIN dbo.Usuarios_win u ON wl.[Vendedor real] = u.VENDEDOR
+            LEFT JOIN dbo.dim_usuarios_Aliv d ON wl.[Vendedor real] = d.vendedor
             WHERE wl.[Estado orden] = 'Ejecutada'
               AND MONTH({_fpa}) = :mes AND YEAR({_fpa}) = :anio
               AND {_fpa} IS NOT NULL
               AND wl.[Plan] IS NOT NULL AND wl.[Plan] <> ''
               {_dlw} {_acw} {_da}
-            GROUP BY wl.[Plan], ISNULL(u.AGENCIA, 'Sin Agencia')
+            GROUP BY wl.[Plan], ISNULL(d.agencia, wl.[Agencia])
         """, params=p)
         if df.empty:
             return {'columns': ['PLAN', 'TOTAL'], 'rows': [], 'totals': {'TOTAL': 0}}
 
-        pivot = df.pivot_table(index='plan', columns='agencia', values='altas',
+        pivot = df.pivot_table(index='nombre_plan', columns='agencia', values='altas',
                                aggfunc='sum', fill_value=0)
         pivot['TOTAL'] = pivot.sum(axis=1)
         pivot = pivot.sort_values('TOTAL', ascending=False)
@@ -622,6 +659,184 @@ def get_tabla_provincia(mes, anio):
     except Exception as e:
         print(f"Error get_tabla_provincia: {e}")
         return []
+
+
+def get_resumen_lima(mes, anio, dia=None, base_dias=30):
+    """Resumen Lima: total + Horizontal + Vertical.
+    'altas_dia' usa el día seleccionado o el día de hoy si no se especifica."""
+    from datetime import datetime as _dt
+    hoy = _dt.now()
+    _, dias_tot, _ = _dias_mes(mes, anio)
+    dia_col = dia if dia else (hoy.day if (hoy.month == mes and hoy.year == anio) else dias_tot)
+
+    rows = []
+    for area, label, nivel in [
+        ('',           'LIMA',       'lima'),
+        ('Horizontal', 'HORIZONTAL', 'lima_sub'),
+        ('Vertical',   'VERTICAL',   'lima_sub'),
+    ]:
+        kpi_d = get_kpi_lima(mes, anio, area=area, dia=dia_col, base_dias=base_dias) or {}
+        kpi   = (get_kpi_lima(mes, anio, area=area, dia=dia_col, cumul=True, base_dias=base_dias) or {}) if dia else (get_kpi_lima(mes, anio, area=area, base_dias=base_dias) or {})
+        rows.append({
+            'departamento': label,
+            'nivel':        nivel,
+            'altas_dia':    kpi_d.get('altas', 0),
+            'altas_acum':   kpi.get('altas', 0),
+            'proyeccion':   kpi.get('proyeccion', 0),
+            'cuota':        kpi.get('cuota', 0),
+            'alcance':      kpi.get('alcance', 0.0),
+            'faltantes':    kpi.get('faltantes', 0),
+        })
+
+    return {'rows': rows, 'dia_col': dia_col}
+
+
+def _normalizar_agencia(raw):
+    """Normaliza un nombre de agencia raw a uno de los 6 buckets.
+    Prioriza dim_usuarios_Aliv → Usuarios_win → wl.[Agencia]."""
+    ag = str(raw).upper().strip() if raw else 'ALIV'
+    if 'ALIV'    in ag: return 'ALIV'
+    if 'DEZANET' in ag: return 'DEZANET'
+    if 'GYA'     in ag: return 'GYA'
+    if 'SIPION'  in ag or 'SIPIÓN' in ag: return 'SIPION'
+    if 'LOTTUS'  in ag or 'LOTUS'  in ag: return 'LOTTUS'
+    if '2TRATO'  in ag or 'LLAMA'  in ag: return 'SUB-AGENCIAS'
+    if ag == '' or ag == 'ALIV':           return 'ALIV'
+    return 'SUB-AGENCIAS'
+
+
+def get_tabla_agencias_lima(mes, anio, dia=None):
+    """Altas por agencia comercial en Lima (Lima/Horizontal/Vertical).
+    SUB-AGENCIAS agrupa Llama Peru + 2Tratos. Normalización en Python para evitar LIKE en GROUP BY."""
+    _fpa = "TRY_CONVERT(DATE, LEFT(wl.[Fecha programación], 10), 105)"
+    _dlw = _dept_lima('wl')
+    _da  = f"AND DAY({_fpa}) <= :dia" if dia else ""
+    dias_trans, _, _ = _dias_mes(mes, anio)
+    if dia:
+        dias_trans = int(dia)
+    p = {'mes': mes, 'anio': anio}
+    if dia:
+        p['dia'] = int(dia)
+
+    try:
+        df = get_data(f"""
+            SELECT
+                ISNULL(d.agencia, wl.[Agencia]) AS raw_agencia,
+                CASE
+                    WHEN wl.[Tipo de domicilio] IN ('Condominio/Edificio', 'C/E Habilitado') THEN 'VERTICAL'
+                    ELSE 'HORIZONTAL'
+                END AS area,
+                COUNT(*) AS altas
+            FROM dbo.winforce_lima wl
+            LEFT JOIN dbo.dim_usuarios_Aliv d ON wl.[Vendedor real] = d.vendedor
+            WHERE wl.[Estado orden] = 'Ejecutada'
+              AND MONTH({_fpa}) = :mes AND YEAR({_fpa}) = :anio
+              AND {_fpa} IS NOT NULL
+              {_dlw} {_da}
+            GROUP BY ISNULL(d.agencia, wl.[Agencia]),
+                CASE
+                    WHEN wl.[Tipo de domicilio] IN ('Condominio/Edificio', 'C/E Habilitado') THEN 'VERTICAL'
+                    ELSE 'HORIZONTAL'
+                END
+        """, params=p)
+
+        if df.empty:
+            return None
+
+        df['agencia'] = df['raw_agencia'].apply(_normalizar_agencia)
+        df['altas']   = df['altas'].astype(int)
+        df = df.groupby(['agencia', 'area'], as_index=False)['altas'].sum()
+
+        def _make_row(label, nivel, subset):
+            def s(ag): return int(subset[subset['agencia'] == ag]['altas'].sum())
+            aliv  = s('ALIV')
+            total = int(subset['altas'].sum())
+            return {
+                'label': label, 'nivel': nivel,
+                'aliv': aliv, 'dezanet': s('DEZANET'), 'gya': s('GYA'),
+                'sipion': s('SIPION'), 'lottus': s('LOTTUS'),
+                'sub_ag': s('SUB-AGENCIAS'),
+                'total': total, 'sub_total': total - aliv,
+            }
+
+        h_df = df[df['area'] == 'HORIZONTAL']
+        v_df = df[df['area'] == 'VERTICAL']
+
+        rows = [
+            _make_row('LIMA',       'lima',     df),
+            _make_row('HORIZONTAL', 'lima_sub', h_df),
+            _make_row('VERTICAL',   'lima_sub', v_df),
+        ]
+
+        def proy(n): return round(n / dias_trans * 30) if dias_trans > 0 else 0
+        lima = rows[0]
+
+        return {
+            'rows':         rows,
+            'proy_aliv':    proy(lima['aliv']),
+            'proy_dezanet': proy(lima['dezanet']),
+            'proy_sub':     proy(lima['sub_total']),
+        }
+    except Exception as e:
+        print(f"Error get_tabla_agencias_lima: {e}")
+        return None
+
+
+def get_pivot_planes_agencias_lima(mes, anio, dia=None):
+    """Pivot Plan × Agencia normalizada — Lima. Devuelve altas y ventas por separado.
+    Normalización de agencia en Python con _normalizar_agencia para evitar LIKE en GROUP BY."""
+    _fpa  = "TRY_CONVERT(DATE, LEFT(wl.[Fecha programación], 10), 105)"
+    _dlw  = _dept_lima('wl')
+    _da   = f"AND DAY({_fpa}) <= :dia" if dia else ""
+    _dr   = f"AND DAY(wl.[Fecha de registro]) <= :dia" if dia else ""
+    _joins = "LEFT JOIN dbo.dim_usuarios_Aliv d ON wl.[Vendedor real] = d.vendedor"
+    _raw   = "ISNULL(d.agencia, wl.[Agencia])"
+    _AG_ORDER = ['ALIV', 'DEZANET', 'GYA', 'SIPION', 'LOTTUS', 'SUB-AGENCIAS']
+    p = {'mes': mes, 'anio': anio}
+    if dia:
+        p['dia'] = int(dia)
+
+    def _build_pivot(df):
+        if df.empty:
+            return {'columns': ['PLAN'] + _AG_ORDER + ['TOTAL'], 'rows': [], 'totals': {ag: 0 for ag in _AG_ORDER + ['TOTAL']}}
+        df['agencia'] = df['raw_agencia'].apply(_normalizar_agencia)
+        df = df.groupby(['nombre_plan', 'agencia'], as_index=False)['cnt'].sum()
+        pivot = df.pivot_table(index='nombre_plan', columns='agencia', values='cnt',
+                               aggfunc='sum', fill_value=0)
+        for ag in _AG_ORDER:
+            if ag not in pivot.columns:
+                pivot[ag] = 0
+        pivot['TOTAL'] = pivot[list(_AG_ORDER)].sum(axis=1)
+        pivot = pivot.sort_values('TOTAL', ascending=False)
+        rows = [{'PLAN': name, **{c: int(row.get(c, 0)) for c in _AG_ORDER + ['TOTAL']}}
+                for name, row in pivot.iterrows()]
+        totals = {c: int(pivot[c].sum()) for c in _AG_ORDER + ['TOTAL']}
+        return {'columns': ['PLAN'] + _AG_ORDER + ['TOTAL'], 'rows': rows, 'totals': totals}
+
+    try:
+        df_altas = get_data(f"""
+            SELECT wl.[Plan] AS nombre_plan, {_raw} AS raw_agencia, COUNT(*) AS cnt
+            FROM dbo.winforce_lima wl {_joins}
+            WHERE wl.[Estado orden] = 'Ejecutada'
+              AND MONTH({_fpa}) = :mes AND YEAR({_fpa}) = :anio
+              AND {_fpa} IS NOT NULL AND wl.[Plan] IS NOT NULL AND wl.[Plan] <> ''
+              {_dlw} {_da}
+            GROUP BY wl.[Plan], {_raw}
+        """, params=p)
+
+        df_ventas = get_data(f"""
+            SELECT wl.[Plan] AS nombre_plan, {_raw} AS raw_agencia, COUNT(*) AS cnt
+            FROM dbo.winforce_lima wl {_joins}
+            WHERE MONTH(wl.[Fecha de registro]) = :mes AND YEAR(wl.[Fecha de registro]) = :anio
+              AND wl.[Plan] IS NOT NULL AND wl.[Plan] <> ''
+              {_dlw} {_dr}
+            GROUP BY wl.[Plan], {_raw}
+        """, params=p)
+
+        return {'altas': _build_pivot(df_altas), 'ventas': _build_pivot(df_ventas)}
+    except Exception as e:
+        print(f"Error get_pivot_planes_agencias_lima: {e}")
+        return None
 
 
 import os as _os
@@ -1721,8 +1936,8 @@ def get_datos_agencia_lima(mes, anio, agencia, area='', dia=None):
     _ac  = _area_clause(area)
     _fpa = "TRY_CONVERT(DATE, LEFT(wl.[Fecha programación], 10), 105)"
     _dlw = _dept_lima('wl')
-    _dr  = "AND DAY(wl.[Fecha de registro]) = :dia" if dia else ""
-    _da  = f"AND DAY({_fpa}) = :dia" if dia else ""
+    _dr  = "AND DAY(wl.[Fecha de registro]) <= :dia" if dia else ""
+    _da  = f"AND DAY({_fpa}) <= :dia" if dia else ""
     # Expresión de agencia con prioridad: dim_usuarios_Aliv → Usuarios_win → winforce campo
     _ag_expr = "ISNULL(d.agencia, ISNULL(u.[AGENCIA], wl.[Agencia]))"
     _joins   = ("LEFT JOIN dbo.dim_usuarios_Aliv d ON wl.[Vendedor real] = d.vendedor "
@@ -1818,8 +2033,8 @@ def get_ranking_agencias_lima(mes, anio, area='', dia=None):
     _ac  = _area_clause(area)
     _fpa = "TRY_CONVERT(DATE, LEFT(wl.[Fecha programación], 10), 105)"
     _dlw = _dept_lima('wl')
-    _dr  = "AND DAY(wl.[Fecha de registro]) = :dia" if dia else ""
-    _da  = f"AND DAY({_fpa}) = :dia" if dia else ""
+    _dr  = "AND DAY(wl.[Fecha de registro]) <= :dia" if dia else ""
+    _da  = f"AND DAY({_fpa}) <= :dia" if dia else ""
     _ag_expr = "ISNULL(d.agencia, ISNULL(u.[AGENCIA], wl.[Agencia]))"
     _joins   = ("LEFT JOIN dbo.dim_usuarios_Aliv d ON wl.[Vendedor real] = d.vendedor "
                 "LEFT JOIN dbo.Usuarios_win u ON wl.[Vendedor real] = u.[VENDEDOR]")
@@ -1874,8 +2089,8 @@ def get_datos_vendedor_lima(mes, anio, vendedor, dia=None):
     dia (1-31): filtra ventas por Fecha de registro y altas por Fecha programación."""
     _fpa = "TRY_CONVERT(DATE, LEFT(wl.[Fecha programación], 10), 105)"
     _dlw = _dept_lima('wl')
-    _dr  = "AND DAY(wl.[Fecha de registro]) = :dia" if dia else ""
-    _da  = f"AND DAY({_fpa}) = :dia" if dia else ""
+    _dr  = "AND DAY(wl.[Fecha de registro]) <= :dia" if dia else ""
+    _da  = f"AND DAY({_fpa}) <= :dia" if dia else ""
     try:
         df_m = get_data(f"""
             SELECT TOP 1 wl.[Vendedor real] AS vr
@@ -1961,3 +2176,129 @@ def get_mora_filtros():
     except Exception as e:
         print(f"Error get_mora_filtros: {e}")
         return {'grupos': [], 'recibos': [], 'supervisores': [], 'distritos': [], 'riesgos': [], 'casos': []}
+
+
+def get_prediccion_dia():
+    """
+    Estima ventas y altas de hoy basado en el promedio ±1σ histórico
+    del mismo día de la semana en las últimas 12 semanas.
+    """
+    import pandas as pd
+    import math
+    from datetime import timedelta
+
+    hoy      = datetime.now()
+    diaw     = hoy.weekday()  # 0=Lun … 6=Dom
+    desde    = (hoy - timedelta(days=140)).strftime('%Y-%m-%d')
+    VERT     = {'Condominio/Edificio', 'C/E Habilitado'}
+    NOMBRES  = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo']
+
+    def _query_tabla(tabla, tipo):
+        """Devuelve DataFrame con columnas [fecha, tipo_dom] para altas o ventas."""
+        if tipo == 'altas':
+            sql = f"""
+                SELECT TRY_CONVERT(DATE, LEFT([Fecha programación], 10), 105) AS fecha,
+                       [Tipo de domicilio] AS tipo_dom
+                FROM dbo.{tabla}
+                WHERE [Estado orden] = 'Ejecutada'
+                  AND TRY_CONVERT(DATE, LEFT([Fecha programación], 10), 105) >= :desde
+                  AND TRY_CONVERT(DATE, LEFT([Fecha programación], 10), 105) < CAST(GETDATE() AS DATE)
+            """
+        else:
+            sql = f"""
+                SELECT CAST([Fecha de registro] AS DATE) AS fecha,
+                       [Tipo de domicilio] AS tipo_dom
+                FROM dbo.{tabla}
+                WHERE [Plan] IS NOT NULL AND [Plan] <> ''
+                  AND CAST([Fecha de registro] AS DATE) >= :desde
+                  AND CAST([Fecha de registro] AS DATE) < CAST(GETDATE() AS DATE)
+            """
+        try:
+            return get_data(sql, params={'desde': desde})
+        except Exception:
+            return None
+
+    def _query_hoy(tipo):
+        """Cuenta altas o ventas de hoy en la tabla actual (winforce_lima 2026)."""
+        if tipo == 'altas':
+            sql = """
+                SELECT [Tipo de domicilio] AS tipo_dom
+                FROM dbo.winforce_lima
+                WHERE [Estado orden] = 'Ejecutada'
+                  AND TRY_CONVERT(DATE, LEFT([Fecha programación], 10), 105) = CAST(GETDATE() AS DATE)
+            """
+        else:
+            sql = """
+                SELECT [Tipo de domicilio] AS tipo_dom
+                FROM dbo.winforce_lima
+                WHERE [Plan] IS NOT NULL AND [Plan] <> ''
+                  AND CAST([Fecha de registro] AS DATE) = CAST(GETDATE() AS DATE)
+            """
+        try:
+            return get_data(sql)
+        except Exception:
+            return None
+
+    def _count_hoy(df):
+        if df is None or df.empty:
+            return {'total': 0, 'vertical': 0, 'horizontal': 0}
+        df = df.copy()
+        df['es_vert'] = df['tipo_dom'].isin(VERT)
+        total = len(df)
+        vert  = int(df['es_vert'].sum())
+        return {'total': total, 'vertical': vert, 'horizontal': total - vert}
+
+    def _stats(dfs):
+        """Promedio y rango (±1σ) para el mismo día de semana."""
+        zero = {'total': 0, 'vertical': 0, 'horizontal': 0, 'n': 0,
+                'total_lo': 0, 'total_hi': 0, 'vert_lo': 0, 'vert_hi': 0,
+                'horiz_lo': 0, 'horiz_hi': 0}
+        frames = [df for df in dfs if df is not None and not df.empty]
+        if not frames:
+            return zero
+        df = pd.concat(frames, ignore_index=True)
+        df['fecha']   = pd.to_datetime(df['fecha'])
+        df['es_vert'] = df['tipo_dom'].isin(VERT)
+
+        daily = df.groupby('fecha').agg(
+            total   =('es_vert', 'count'),
+            vertical=('es_vert', 'sum'),
+        ).reset_index()
+        daily['horizontal'] = daily['total'] - daily['vertical']
+
+        same = daily[daily['fecha'].dt.weekday == diaw].sort_values('fecha').tail(12)
+        n = len(same)
+        if n == 0:
+            return zero
+
+        def _est(col):
+            v = same[col].values.astype(float)
+            m = v.mean()
+            s = float(v.std(ddof=1)) if n > 1 else 0.0
+            return int(round(m)), int(max(0, math.floor(m - s))), int(math.ceil(m + s))
+
+        tm, tlo, thi = _est('total')
+        vm, vlo, vhi = _est('vertical')
+        hm, hlo, hhi = _est('horizontal')
+        return {'total': tm, 'total_lo': tlo, 'total_hi': thi,
+                'vertical': vm, 'vert_lo': vlo, 'vert_hi': vhi,
+                'horizontal': hm, 'horiz_lo': hlo, 'horiz_hi': hhi, 'n': n}
+
+    try:
+        pa = _stats([_query_tabla('winforce_lima', 'altas'),
+                     _query_tabla('winforce_lima_2025', 'altas')])
+        pv = _stats([_query_tabla('winforce_lima', 'ventas'),
+                     _query_tabla('winforce_lima_2025', 'ventas')])
+        ah = _count_hoy(_query_hoy('altas'))
+        vh = _count_hoy(_query_hoy('ventas'))
+        return {
+            'dia_nombre': NOMBRES[diaw],
+            'n_muestras': pa['n'],
+            'altas':      pa,
+            'ventas':     pv,
+            'altas_hoy':  ah,
+            'ventas_hoy': vh,
+        }
+    except Exception as e:
+        print(f"Error get_prediccion_dia: {e}")
+        return None

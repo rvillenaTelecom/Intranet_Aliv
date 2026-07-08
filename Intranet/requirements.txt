@@ -7,3 +7,5 @@ lxml
 jinja2
 google-genai
 python-dotenv
+fastapi
+uvicorn[standard]

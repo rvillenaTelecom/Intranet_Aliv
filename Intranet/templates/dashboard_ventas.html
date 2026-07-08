@@ -101,6 +101,7 @@
 }
 .data-table td { padding: 9px 12px; border-bottom: 1px solid #f1f5f9; color: var(--text-primary); }
 .data-table tr:hover td { background: #fafbff; }
+.agencias-tfoot tr:hover td { background: #1e3a5f !important; }
 .data-table .num { text-align: right; font-variant-numeric: tabular-nums; }
 .data-table .rank { color: var(--text-light); font-weight: 700; text-align: center; width: 28px; }
 
@@ -201,8 +202,8 @@
             <button class="tab-btn active" onclick="switchTab('lima',this)">
                 <i class="fa-solid fa-city"></i> Lima
             </button>
-            <button class="tab-btn" onclick="switchTab('provincia',this)">
-                <i class="fa-solid fa-map"></i> Provincia
+            <button class="tab-btn" onclick="switchTab('aliv',this)">
+                <i class="fa-solid fa-building"></i> Aliv
             </button>
             <button class="tab-btn" onclick="switchTab('localizacion',this)">
                 <i class="fa-solid fa-location-dot"></i> Localización
@@ -235,6 +236,11 @@
                     <option value="{{ d }}" {% if dia_actual == d %}selected{% endif %}>{{ d }}</option>
                     {% endfor %}
                 </select>
+                <span class="filter-label">Base:</span>
+                <select name="base" class="fsel" style="min-width:60px;" title="Base de días para proyección">
+                    <option value="30" {% if base_dias == 30 %}selected{% endif %}>30d</option>
+                    <option value="28" {% if base_dias == 28 %}selected{% endif %}>28d</option>
+                </select>
                 <button type="submit" class="btn-apply">
                     <i class="fa-solid fa-magnifying-glass"></i> Aplicar
                 </button>
@@ -243,6 +249,7 @@
             <span class="period-badge">
                 <i class="fa-solid fa-calendar-days"></i>
                 {% if dia_actual %}Día {{ dia_actual }} · {% endif %}{{ mes_nombre }} {{ anio_actual }}
+                <span style="margin-left:6px; opacity:0.7;">· Base {{ base_dias }}d</span>
             </span>
         </div>
     </div>
@@ -521,129 +528,232 @@
 
 
 <!-- ═══════════════════════════════════════════════════════════
-     TAB 2 — PROVINCIA
+     TAB 2 — ALIV
 ════════════════════════════════════════════════════════════ -->
-<div id="tab-provincia" class="tab-content">
-{% if kpi_prov %}
-{% set p = kpi_prov %}
+<div id="tab-aliv" class="tab-content">
+{% if resumen_nac and resumen_nac.rows %}
 
-<!-- KPIs Provincia — Fila 1 -->
-<div class="kpi-row cols-6">
+{% set lima_row = resumen_nac.rows | selectattr('nivel', 'equalto', 'lima') | list | first %}
+
+<!-- KPI summary cards -->
+<div class="kpi-row cols-4 mb16">
     <div class="kcard blue">
-        <div class="kcard-label">Total Ventas</div>
-        <div class="kcard-main">{{ "{:,}".format(p.ventas) }}</div>
-        <div class="kcard-sub">Preventas registradas</div>
-        <i class="fa-solid fa-file-signature kcard-bg-icon"></i>
+        <div class="kcard-label">Altas Día {{ "%02d" % resumen_nac.dia_col }}.{{ "%02d" % mes_actual }}</div>
+        <div class="kcard-main">{{ lima_row.altas_dia if lima_row else '—' }}</div>
+        <div class="kcard-sub">Lima instalado ese día</div>
+        <i class="fa-solid fa-calendar-day kcard-bg-icon"></i>
     </div>
     <div class="kcard green">
-        <div class="kcard-label">Altas Instaladas</div>
-        <div class="kcard-main" style="color:#10b981;">{{ "{:,}".format(p.altas) }}</div>
-        <div class="kcard-sub">Cuota: <b>{{ "{:,}".format(p.cuota) }}</b></div>
-        <div class="kcard-bar-wrap">
-            <div class="kcard-bar" style="width:{{ [p.alcance,100]|min }}%; background:#10b981;"></div>
-        </div>
+        <div class="kcard-label">Altas Acum. {{ mes_nombre }}</div>
+        <div class="kcard-main" style="color:#10b981;">{{ "{:,}".format(lima_row.altas_acum) if lima_row else '—' }}</div>
+        <div class="kcard-sub">Cuota: <b>{{ "{:,}".format(lima_row.cuota) if lima_row else '—' }}</b></div>
         <i class="fa-solid fa-plug kcard-bg-icon"></i>
     </div>
     <div class="kcard orange">
         <div class="kcard-label">Proyección Cierre</div>
-        <div class="kcard-main" style="color:#f97316;">{{ "{:,}".format(p.proyeccion) }}</div>
-        <div class="kcard-sub">{{ p.pct_proyeccion }}% de la cuota</div>
+        <div class="kcard-main" style="color:#f97316;">{{ "{:,}".format(lima_row.proyeccion) if lima_row else '—' }}</div>
+        <div class="kcard-sub">Estimado al cierre del mes</div>
         <i class="fa-solid fa-chart-line kcard-bg-icon"></i>
     </div>
-    <div class="kcard {% if p.alcance >= p.alcance_ideal %}green{% else %}red{% endif %}">
-        <div class="kcard-label">Alcance Actual</div>
-        <div class="kcard-main" style="color:{% if p.alcance >= p.alcance_ideal %}#10b981{% else %}#ef4444{% endif %};">{{ p.alcance }}%</div>
-        <div class="kcard-sub">Ideal hoy: <b>{{ p.alcance_ideal }}%</b></div>
-        <i class="fa-solid fa-gauge-high kcard-bg-icon"></i>
-    </div>
-    <div class="kcard {% if p.ritmo_actual >= p.ritmo_necesario %}green{% else %}orange{% endif %}">
-        <div class="kcard-label">Ritmo Actual</div>
-        <div class="kcard-main">{{ p.ritmo_actual }}</div>
-        <div class="kcard-sub">altas / día · nec. <b>{{ p.ritmo_necesario }}</b></div>
-        <i class="fa-solid fa-bolt kcard-bg-icon"></i>
-    </div>
-    <div class="kcard teal">
-        <div class="kcard-label">Conversión Venta → Alta</div>
-        <div class="kcard-main" style="color:#14b8a6;">{{ p.conversion }}%</div>
-        <div class="kcard-sub">{{ "{:,}".format(p.altas) }} / {{ "{:,}".format(p.ventas) }}</div>
-        <i class="fa-solid fa-rotate kcard-bg-icon"></i>
+    <div class="kcard {% if lima_row and lima_row.alcance >= 100 %}green{% elif lima_row and lima_row.alcance >= 80 %}orange{% else %}red{% endif %}">
+        <div class="kcard-label">Alcance Lima</div>
+        <div class="kcard-main" style="color:{% if lima_row and lima_row.alcance >= 100 %}#10b981{% elif lima_row and lima_row.alcance >= 80 %}#f97316{% else %}#ef4444{% endif %};">
+            {{ lima_row.alcance if lima_row else '—' }}%
+        </div>
+        <div class="kcard-sub">Faltantes: <b>{{ lima_row.faltantes if lima_row else '—' }}</b></div>
+        <i class="fa-solid fa-bullseye kcard-bg-icon"></i>
     </div>
 </div>
 
-<!-- Registros Diarios Provincia -->
-<div class="panel mb16">
-    <div class="panel-title"><i class="fa-solid fa-chart-column"></i> Registros Diarios — Provincia</div>
-    <div style="height:220px;"><canvas id="chartProv"></canvas></div>
-</div>
-
-<!-- Tabla por Departamento -->
-{% if tabla_prov %}
+<!-- Tabla Lima -->
 <div class="panel">
-    <div class="panel-title"><i class="fa-solid fa-table"></i> Avance por Departamento</div>
-    <table class="data-table">
+    <div class="panel-title">
+        <i class="fa-solid fa-city"></i>
+        Lima — Altas {{ mes_nombre }} {{ anio_actual }}
+        <span style="font-size:11px; font-weight:400; color:var(--text-light); margin-left:6px;">
+            · Día {{ resumen_nac.dia_col }}
+        </span>
+    </div>
+    <div style="overflow-x:auto;">
+    <table class="data-table" style="min-width:600px;">
         <thead>
             <tr>
-                <th>Departamento</th>
-                <th class="num">Ventas</th>
-                <th class="num">Altas</th>
-                <th class="num">Cuota</th>
-                <th class="num">Proyección</th>
-                <th style="min-width:160px;">% Alcance</th>
-                <th>Estado</th>
+                <th style="min-width:160px;">ÁREA</th>
+                {% if dia_actual > 0 %}
+                <th class="num">ALTAS {{ "%02d" % resumen_nac.dia_col }}.{{ "%02d" % mes_actual }}</th>
+                {% endif %}
+                <th class="num">ALTAS ACUM {{ mes_nombre[:3]|upper }}</th>
+                <th class="num">PROY. CIERRE</th>
+                <th class="num">CUOTA</th>
+                <th style="min-width:150px;">ALCANCE (%)</th>
             </tr>
         </thead>
         <tbody>
-            {% for row in tabla_prov %}
-            <tr>
-                <td style="font-weight:600;">{{ row.agencia }}</td>
-                <td class="num">{{ "{:,}".format(row.ventas) }}</td>
-                <td class="num" style="font-weight:700; color:#10b981;">{{ "{:,}".format(row.altas) }}</td>
-                <td class="num" style="color:#f97316;">{{ "{:,}".format(row.cuota) }}</td>
-                <td class="num">{{ "{:,}".format(row.proyeccion) }}</td>
-                <td>
-                    <div class="alcance-bar-wrap">
-                        <div class="alcance-bar-bg">
-                            <div class="alcance-bar-fill" style="width:{{ [row.alcance,100]|min }}%; background:{% if row.estado=='meta' %}#10b981{% elif row.estado=='riesgo' %}#f59e0b{% else %}#ef4444{% endif %};"></div>
-                        </div>
-                        <span class="alcance-val" style="color:{% if row.estado=='meta' %}#10b981{% elif row.estado=='riesgo' %}#f59e0b{% else %}#ef4444{% endif %};">{{ row.alcance }}%</span>
+        {% for row in resumen_nac.rows %}
+        <tr {% if row.nivel == 'lima' %}style="background:#eff6ff; font-weight:700;"
+            {% elif row.nivel == 'lima_sub' %}style="background:#f8fafc; font-size:12px; color:var(--text-secondary);"
+            {% endif %}>
+            <td {% if row.nivel == 'lima_sub' %}style="padding-left:28px;"{% endif %}>
+                {% if row.nivel == 'lima' %}<i class="fa-solid fa-city" style="color:var(--primary); margin-right:6px;"></i>{% endif %}
+                {{ row.departamento }}
+            </td>
+            {% if dia_actual > 0 %}
+            <td class="num" {% if row.nivel == 'lima' %}style="font-weight:800;"{% endif %}>{{ row.altas_dia }}</td>
+            {% endif %}
+            <td class="num" {% if row.nivel == 'lima' %}style="font-weight:800;"{% endif %}>{{ "{:,}".format(row.altas_acum) }}</td>
+            <td class="num">{{ "{:,}".format(row.proyeccion) }}</td>
+            <td class="num">{% if row.cuota > 0 %}{{ "{:,}".format(row.cuota) }}{% else %}—{% endif %}</td>
+            <td>
+                {% if row.cuota > 0 %}
+                <div class="alcance-bar-wrap">
+                    <div class="alcance-bar-bg">
+                        <div class="alcance-bar-fill" style="width:{{ [row.alcance, 100]|min }}%; background:{% if row.alcance >= 100 %}#10b981{% elif row.alcance >= 80 %}#f97316{% else %}#ef4444{% endif %};"></div>
                     </div>
-                </td>
-                <td>
-                    {% if row.estado == 'meta' %}<span class="badge-meta">En Meta</span>
-                    {% elif row.estado == 'riesgo' %}<span class="badge-riesgo">En Riesgo</span>
-                    {% else %}<span class="badge-bajo">Bajo Meta</span>{% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-            <!-- Fila total -->
-            <tr style="background:#f8fafc; font-weight:700; border-top:2px solid var(--border);">
-                <td>Total Provincia</td>
-                <td class="num">{{ "{:,}".format(p.ventas) }}</td>
-                <td class="num" style="color:#10b981;">{{ "{:,}".format(p.altas) }}</td>
-                <td class="num" style="color:#f97316;">{{ "{:,}".format(p.cuota) }}</td>
-                <td class="num">{{ "{:,}".format(p.proyeccion) }}</td>
-                <td>
-                    <div class="alcance-bar-wrap">
-                        <div class="alcance-bar-bg">
-                            <div class="alcance-bar-fill" style="width:{{ [p.alcance,100]|min }}%; background:var(--primary);"></div>
-                        </div>
-                        <span class="alcance-val" style="color:var(--primary);">{{ p.alcance }}%</span>
-                    </div>
-                </td>
-                <td></td>
-            </tr>
+                    <span class="alcance-val" style="color:{% if row.alcance >= 100 %}#10b981{% elif row.alcance >= 80 %}#f97316{% else %}#ef4444{% endif %};">
+                        {{ row.alcance }}%
+                    </span>
+                </div>
+                {% else %}—{% endif %}
+            </td>
+        </tr>
+        {% endfor %}
         </tbody>
     </table>
+    </div>
+</div>
+
+<!-- Tabla por Agencia Comercial -->
+<div class="panel" style="margin-top:16px;">
+    <div class="panel-title">
+        <i class="fa-solid fa-store"></i>
+        Altas por Agencia Comercial — {{ mes_nombre }} {{ anio_actual }}
+    </div>
+    {% if tabla_agencias and tabla_agencias.rows %}
+    {% set lima = tabla_agencias.rows | selectattr('nivel', 'equalto', 'lima') | list | first %}
+    <div style="overflow-x:auto;">
+    <table class="data-table" style="min-width:900px; font-size:13px;">
+        <thead>
+            <tr>
+                <th style="min-width:130px;">DEPARTAMENTO</th>
+                <th class="num">ALIV</th>
+                <th class="num">DEZANET</th>
+                <th class="num">GYA</th>
+                <th class="num">SIPION</th>
+                <th class="num">LOTTUS</th>
+                <th class="num">SUB-AGENCIAS</th>
+                <th class="num" style="border-left:2px solid #cbd5e1;">TOTAL</th>
+                <th class="num">TOTAL SUB-AG.</th>
+                <th class="num" style="border-left:2px solid #cbd5e1; color:#f97316;">PROY. CIERRE SUB</th>
+                <th class="num" style="color:#f97316;">PROY. CIERRE DEZANET</th>
+                <th class="num" style="color:#f97316;">PROY. CIERRE ALIV</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for row in tabla_agencias.rows %}
+        <tr {% if row.nivel == 'lima' %}style="background:#eff6ff; font-weight:700;"
+            {% else %}style="background:#f8fafc; font-size:12px; color:var(--text-secondary);"{% endif %}>
+            <td {% if row.nivel == 'lima_sub' %}style="padding-left:28px;"{% endif %}>
+                {% if row.nivel == 'lima' %}<i class="fa-solid fa-city" style="color:var(--primary); margin-right:6px;"></i>{% endif %}
+                {{ row.label }}
+            </td>
+            <td class="num" {% if row.nivel == 'lima' %}style="font-weight:800;"{% endif %}>{{ row.aliv }}</td>
+            <td class="num">{{ row.dezanet }}</td>
+            <td class="num">{{ row.gya }}</td>
+            <td class="num">{{ row.sipion }}</td>
+            <td class="num">{{ row.lottus }}</td>
+            <td class="num">{{ row.sub_ag }}</td>
+            <td class="num" style="border-left:2px solid #cbd5e1; {% if row.nivel == 'lima' %}font-weight:800;{% endif %}">{{ row.total }}</td>
+            <td class="num" {% if row.nivel == 'lima' %}style="font-weight:800;"{% endif %}>{{ row.sub_total }}</td>
+            {% if row.nivel == 'lima' %}
+            <td class="num" style="border-left:2px solid #cbd5e1; color:#f97316; font-weight:800;">{{ "{:,}".format(tabla_agencias.proy_sub) }}</td>
+            <td class="num" style="color:#f97316; font-weight:800;">{{ "{:,}".format(tabla_agencias.proy_dezanet) }}</td>
+            <td class="num" style="color:#f97316; font-weight:800;">{{ "{:,}".format(tabla_agencias.proy_aliv) }}</td>
+            {% else %}
+            <td class="num" style="border-left:2px solid #cbd5e1; color:var(--text-light);">—</td>
+            <td class="num" style="color:var(--text-light);">—</td>
+            <td class="num" style="color:var(--text-light);">—</td>
+            {% endif %}
+        </tr>
+        {% endfor %}
+        </tbody>
+        <tfoot class="agencias-tfoot">
+        <tr style="background:#1e3a5f; font-weight:700;">
+            <td style="color:#fff;">TOTAL</td>
+            <td class="num" style="color:#fff;">{{ lima.aliv }}</td>
+            <td class="num" style="color:#fff;">{{ lima.dezanet }}</td>
+            <td class="num" style="color:#fff;">{{ lima.gya }}</td>
+            <td class="num" style="color:#fff;">{{ lima.sipion }}</td>
+            <td class="num" style="color:#fff;">{{ lima.lottus }}</td>
+            <td class="num" style="color:#fff;">{{ lima.sub_ag }}</td>
+            <td class="num" style="color:#fff; border-left:2px solid rgba(255,255,255,0.15);">{{ lima.total }}</td>
+            <td class="num" style="color:#fff;">{{ lima.sub_total }}</td>
+            <td class="num" style="color:#fff; border-left:2px solid rgba(255,255,255,0.15);">{{ "{:,}".format(tabla_agencias.proy_sub) }}</td>
+            <td class="num" style="color:#fff;">{{ "{:,}".format(tabla_agencias.proy_dezanet) }}</td>
+            <td class="num" style="color:#fff;">{{ "{:,}".format(tabla_agencias.proy_aliv) }}</td>
+        </tr>
+        </tfoot>
+    </table>
+    </div>
+    {% else %}
+    <p style="color:var(--text-light); padding:20px; text-align:center;">Sin datos para este período.</p>
+    {% endif %}
+</div>
+
+<!-- ── Pivot Planes × Agencias ───────────────────────────────────────── -->
+{% if pivot_agencias %}
+{% set _ag_cols = ['ALIV','DEZANET','GYA','SIPION','LOTTUS','SUB-AGENCIAS'] %}
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px;">
+{% for tipo, data in [('Altas', pivot_agencias.altas), ('Ventas', pivot_agencias.ventas)] %}
+<div class="panel" style="overflow-x:auto; min-width:0;">
+    <div class="panel-title">
+        <i class="fa-solid fa-{% if tipo == 'Altas' %}house-signal{% else %}handshake{% endif %}"></i>
+        {{ tipo }} por Plan y Agencia{% if dia_actual %} · Día 1–{{ dia_actual }}{% endif %}
+    </div>
+    {% if data and data.rows %}
+    <table class="data-table" style="width:100%; font-size:12px;">
+        <thead>
+            <tr>
+                <th style="min-width:140px;">Plan</th>
+                {% for ag in _ag_cols %}<th class="num">{{ ag }}</th>{% endfor %}
+                <th class="num" style="border-left:2px solid #cbd5e1; color:var(--primary); font-weight:800;">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for row in data.rows %}
+        <tr>
+            <td>{{ row.PLAN }}</td>
+            {% for ag in _ag_cols %}
+            <td class="num">{% if row[ag] %}{{ row[ag] }}{% endif %}</td>
+            {% endfor %}
+            <td class="num" style="border-left:2px solid #cbd5e1; font-weight:700;">{{ row.TOTAL }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+        <tfoot class="agencias-tfoot">
+        <tr style="background:#1e3a5f; font-weight:700;">
+            <td style="color:#fff;">Total</td>
+            {% for ag in _ag_cols %}
+            <td class="num" style="color:#fff;">{{ data.totals[ag] }}</td>
+            {% endfor %}
+            <td class="num" style="color:#fff; border-left:2px solid rgba(255,255,255,0.15);">{{ data.totals.TOTAL }}</td>
+        </tr>
+        </tfoot>
+    </table>
+    {% else %}
+    <p style="color:var(--text-light); padding:20px; text-align:center;">Sin datos.</p>
+    {% endif %}
+</div>
+{% endfor %}
 </div>
 {% endif %}
 
 {% else %}
-<div class="panel" style="text-align:center; padding:40px; color:var(--text-light);">
+<div class="panel" style="text-align:center; padding:60px; color:var(--text-light);">
     <i class="fa-solid fa-circle-exclamation" style="font-size:32px; margin-bottom:10px;"></i>
-    <p>No se pudieron cargar los datos de Provincia para este período.</p>
+    <p>No se pudieron cargar los datos para este período.</p>
 </div>
 {% endif %}
-</div><!-- /tab-provincia -->
+</div><!-- /tab-aliv -->
 
 
 <!-- Leaflet CSS -->
@@ -720,8 +830,8 @@ function switchTab(name, btn) {
     btn.classList.add('active');
     const isLima = name === 'lima';
     const isLoc  = name === 'localizacion';
-    document.getElementById('areaLabel').style.display  = (isLima || isLoc) ? '' : 'none';
-    document.getElementById('areaSelect').style.display = (isLima || isLoc) ? '' : 'none';
+    document.getElementById('areaLabel').style.display  = isLima ? '' : 'none';
+    document.getElementById('areaSelect').style.display = isLima ? '' : 'none';
     const locBar = document.getElementById('locFiltrosBar');
     locBar.style.display = isLoc ? 'flex' : 'none';
     document.getElementById('tabInput').value = name;
@@ -769,25 +879,6 @@ if (trendLima.length) {
                   tension: .4, borderWidth: 2, pointRadius: 3 },
                 { type: 'bar',  label: 'Altas (f. programación)', data: trendLima.map(d => d.altas),
                   backgroundColor: GREEN, borderRadius: 4 }
-            ]
-        },
-        options: { ...chartDefaults, interaction: { mode: 'index', intersect: false } }
-    });
-}
-
-// ── Gráfica diaria Provincia ─────────────────────────────
-const trendProv = {{ trend_prov | tojson }};
-if (trendProv.length) {
-    new Chart(document.getElementById('chartProv'), {
-        type: 'bar',
-        data: {
-            labels: trendProv.map(d => d.dia),
-            datasets: [
-                { type: 'line', label: 'Ventas (f. registro)', data: trendProv.map(d => d.ventas),
-                  borderColor: BLUE, backgroundColor: BLUE20, fill: true,
-                  tension: .4, borderWidth: 2, pointRadius: 3 },
-                { type: 'bar',  label: 'Altas (f. programación)', data: trendProv.map(d => d.altas),
-                  backgroundColor: ORANGE, borderRadius: 4 }
             ]
         },
         options: { ...chartDefaults, interaction: { mode: 'index', intersect: false } }
@@ -1065,6 +1156,7 @@ function initMapaLima() {
     document.getElementById('statDistritos').textContent = distSorted.length;
     setTimeout(() => _mapaLima.invalidateSize(), 100);
 }
+
 </script>
 
 {% endblock %}

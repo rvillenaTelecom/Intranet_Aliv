@@ -67,6 +67,10 @@
                 <i class="fa-solid fa-gauge-high"></i>
                 <span>Dashboards</span>
             </a>
+            <a href="{{ url_for('reporte_gerente') }}" class="nav-item {% if request.endpoint == 'reporte_gerente' %}active{% endif %}">
+                <i class="fa-solid fa-file-lines"></i>
+                <span>Rep. Gerencial</span>
+            </a>
 
             <div class="nav-section-label">Gestión</div>
             <a href="{{ url_for('usuarios') }}" class="nav-item {% if request.endpoint in ['usuarios','guardar_usuario','eliminar_usuario'] %}active{% endif %}">
