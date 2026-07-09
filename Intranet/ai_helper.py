@@ -1,6 +1,7 @@
 import os
 import json
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 try:
     import db_helper
@@ -746,18 +747,25 @@ def generate_chat_response(messages: list, user_role: str = "", user_name: str =
 
         loop_contents.append(types.Content(role="model", parts=parts))
 
-        fn_results = []
-        for part in fn_calls:
-            fc = part.function_call
-            result = _call_tool(fc.name, dict(fc.args))
-            fn_results.append(
-                types.Part(
+        fn_results = [None] * len(fn_calls)
+        with ThreadPoolExecutor(max_workers=len(fn_calls)) as executor:
+            future_to_idx = {
+                executor.submit(_call_tool, p.function_call.name, dict(p.function_call.args)): i
+                for i, p in enumerate(fn_calls)
+            }
+            for future in as_completed(future_to_idx):
+                i = future_to_idx[future]
+                fc = fn_calls[i].function_call
+                try:
+                    result = future.result()
+                except Exception as e:
+                    result = {"error": str(e)}
+                fn_results[i] = types.Part(
                     function_response=types.FunctionResponse(
                         name=fc.name,
                         response={"result": json.dumps(result, ensure_ascii=False, default=str)},
                     )
                 )
-            )
         loop_contents.append(types.Content(role="user", parts=fn_results))
 
     return "No pude completar la consulta. Por favor intenta de nuevo."
