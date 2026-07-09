@@ -33,16 +33,17 @@ from db_config import upload_to_sql, upload_incremental_to_sql
 # ─────────────────────────────────────────
 
 def buscar_winforce():
-    # Rutas probables
+    _scripts_dir = os.path.dirname(os.path.abspath(__file__))
+    _pipeline_dir = os.path.dirname(_scripts_dir)
     posibles = [
+        os.path.join(_pipeline_dir, "descargas_winforce_Dept", "Winforce_Lima.xlsx"),
+        os.path.join(_scripts_dir, "descargas_winforce_Dept", "Winforce_Lima.xlsx"),
         "Winforce_Lima.xlsx",
-        os.path.join("descargas_winforce_Dept", "Winforce_Lima.xlsx"),
-        os.path.join("..", "descargas_winforce_Dept", "Winforce_Lima.xlsx")
     ]
     for p in posibles:
         if os.path.exists(p):
             return p
-    return "Winforce_Lima.xlsx" # Fallback
+    return os.path.join(_pipeline_dir, "descargas_winforce_Dept", "Winforce_Lima.xlsx")
 
 RUTA_WINFORCE  = buscar_winforce()
 RUTA_KML       = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Parametros_ventas.kml")

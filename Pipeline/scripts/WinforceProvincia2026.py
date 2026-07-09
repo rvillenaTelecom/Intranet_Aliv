@@ -30,8 +30,8 @@ def descargar_reporte_winforce():
     USUARIO = "backoffice11@alivtelecom.pe"
     PASSWORD = "***REMOVED-WINFORCE-PASSWORD***"
     
-    # Carpeta donde se guardará el Excel descargado (usando la carpeta actual)
-    CARPETA_DESCARGA = os.path.join(os.getcwd(), "descargas_winforce_Dept")
+    # Carpeta de descargas siempre relativa al directorio Pipeline/ (padre de scripts/)
+    CARPETA_DESCARGA = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "descargas_winforce_Dept")
     os.makedirs(CARPETA_DESCARGA, exist_ok=True)
 
     print("Iniciando automatización con Playwright...")

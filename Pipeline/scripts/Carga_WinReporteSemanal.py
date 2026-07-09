@@ -31,8 +31,9 @@ def orden_archivo(filepath):
     return (mes, version)
 
 def consolidar_ventas():
-    input_folder = r"C:\Users\Usuario\Documents\Code Aliv\Python Automate\Descargas_Rápidas\Aliv_Reporte_Win"
-    output_file = r"C:\Users\Usuario\Documents\Code Aliv\Python Automate\Descargas_Rápidas\descargas_winforce_Dept\Win_reporte_semanal.xlsx"
+    _PIPELINE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    input_folder = os.path.join(_PIPELINE_DIR, "Aliv_Reporte_Win")
+    output_file = os.path.join(_PIPELINE_DIR, "descargas_winforce_Dept", "Win_reporte_semanal.xlsx")
 
     print(f"Buscando archivos en: {input_folder}")
 
