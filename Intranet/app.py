@@ -86,10 +86,23 @@ scheduler = APScheduler()
 scheduler.init_app(app)
 
 
-@scheduler.task('cron', id='job_solo_este_mes', hour='*', minute='*/15')
+@scheduler.task('cron', id='job_solo_este_mes', hour='*', minute=0)
 def _job_solo_este_mes():
-    """Antes: tarea 'Aliv_SoloesMes' -- cada hora. Ahora cada 15 min."""
+    """Cada hora en punto -- sube directo a Azure SQL (aliv-server-2), la que lee Render.
+    Antes era cada 15 min; se bajó a cada hora para no consumir tanto compute de Azure."""
     _ejecutar_fase_bg('daily')
+
+
+@scheduler.task('cron', id='job_subida_aliv', hour=9, minute=0)
+def _job_subida_aliv():
+    """Ventas Win Activas del Sistema Aliv -- 9:00am diario."""
+    _ejecutar_fase_bg('subida_aliv')
+
+
+@scheduler.task('cron', id='job_subida_referidos', hour=9, minute=5)
+def _job_subida_referidos():
+    """Ventas Win Referidos del Sistema Aliv -- 9:05am diario (5 min después de Subida Aliv para no pisarse)."""
+    _ejecutar_fase_bg('subida_referidos')
 
 
 @scheduler.task('cron', id='job_reporte_diario', hour=10, minute=0)

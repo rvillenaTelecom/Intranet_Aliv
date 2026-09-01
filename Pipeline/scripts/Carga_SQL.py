@@ -2,7 +2,8 @@
 Carga_SQL.py
 ======================
 Módulo compartido de conexión a base de datos y carga de DataFrames.
-  - SQL Server Express (.\\SQLEXPRESS / Aliv_DB) — conexión principal.
+  - Azure SQL (aliv-server-2, via pymssql) si AZURE_SQL_SERVER está en .env — base "en línea", la que lee Render.
+  - Si no, SQL Server Express local (.\\SQLEXPRESS / Aliv_DB) — respaldo para pruebas sin internet.
 
 Funciones disponibles:
   get_engine()                          → motor SQLAlchemy listo para usar
@@ -20,7 +21,18 @@ import urllib
 
 
 def get_engine():
-    """Crea el motor de conexión a SQL Server local."""
+    """Crea el motor de conexión a SQL Server (Azure si hay credenciales en .env, si no local)."""
+    azure_server = os.environ.get('AZURE_SQL_SERVER')
+    if azure_server:
+        azure_db   = os.environ.get('AZURE_SQL_DATABASE', 'Aliv_DB')
+        azure_user = os.environ.get('AZURE_SQL_USER')
+        azure_pass = os.environ.get('AZURE_SQL_PASSWORD')
+        conn_str = (
+            f"mssql+pymssql://{urllib.parse.quote_plus(azure_user)}:{urllib.parse.quote_plus(azure_pass)}"
+            f"@{azure_server}:1433/{azure_db}"
+        )
+        return sa.create_engine(conn_str)
+
     SERVER = r'.\SQLEXPRESS'
     DATABASE = 'Aliv_DB'
     connection_string = (
