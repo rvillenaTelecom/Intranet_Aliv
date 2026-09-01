@@ -8,7 +8,7 @@ import sys
 from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from cuotas_config import CUOTA_LIMA as _CUOTA_LIMA
+from cuotas_config import cuota_lima as _cuota_lima
 
 
 def _dias_mes(mes, anio):
@@ -182,7 +182,7 @@ def get_kpi_lima(mes, anio, area='', dia=None, cumul=False, base_dias=30, agenci
             # No hay cuota oficial por canal (Aliv directo vs subagencias) —
             # con agencia_grupo activo se omite y el panel de proyección se
             # oculta solo (mismo comportamiento que un mes sin cuota definida).
-            cuota = _CUOTA_LIMA.get((mes, area), 0) if not agencia_grupo else 0
+            cuota = _cuota_lima(mes, area) if not agencia_grupo else 0
             proyeccion      = round(altas / dias_trans * base_dias) if dias_trans > 0 else 0
             alcance         = round(altas / cuota * 100, 1) if cuota > 0 else 0
             alcance_ideal   = round(dias_trans / dias_tot * 100, 1)
@@ -370,9 +370,9 @@ def get_cuotas_lima_historial(anio):
     hoy = datetime.now()
     out = []
     for m in range(1, 13):
-        cuota_vert = cuotas_config.CUOTA_LIMA.get((m, 'Vertical'), 0)
-        cuota_horiz = cuotas_config.CUOTA_LIMA.get((m, 'Horizontal'), 0)
-        cuota_total = cuotas_config.CUOTA_LIMA.get((m, ''), 0)
+        cuota_vert = cuotas_config.cuota_lima(m, 'Vertical')
+        cuota_horiz = cuotas_config.cuota_lima(m, 'Horizontal')
+        cuota_total = cuotas_config.cuota_lima(m, '')
         altas = altas_por_mes.get(m, {'vertical': 0, 'horizontal': 0, 'total': 0})
         out.append({
             'mes': m,
@@ -384,7 +384,7 @@ def get_cuotas_lima_historial(anio):
             'altas_horizontal': altas['horizontal'],
             'altas_total': altas['total'],
             'alcance': round(altas['total'] / cuota_total * 100, 1) if cuota_total > 0 else None,
-            'definida': (m, '') in cuotas_config.CUOTA_LIMA,
+            'definida': cuotas_config.cuota_definida(m),
             'es_mes_actual': (m == hoy.month and anio == hoy.year),
             'es_futuro': (anio, m) > (hoy.year, hoy.month),
         })
@@ -392,54 +392,9 @@ def get_cuotas_lima_historial(anio):
 
 
 def set_cuota_lima(mes, vertical, horizontal):
-    """Define/actualiza la cuota Vertical+Horizontal de Lima de un mes.
-    Actualiza el dict compartido en memoria (Intranet y Pipeline leen el mismo
-    objeto) y reescribe cuotas_config.py en disco para que quede persistido."""
+    """Define/actualiza la cuota Vertical+Horizontal de Lima de un mes (en Azure SQL)."""
     import cuotas_config
-
-    mes = int(mes)
-    if not 1 <= mes <= 12:
-        raise ValueError("Mes fuera de rango (1-12)")
-    vertical = max(int(vertical), 0)
-    horizontal = max(int(horizontal), 0)
-    total = vertical + horizontal
-
-    cuotas_config.CUOTA_LIMA[(mes, '')] = total
-    cuotas_config.CUOTA_LIMA[(mes, 'Vertical')] = vertical
-    cuotas_config.CUOTA_LIMA[(mes, 'Horizontal')] = horizontal
-
-    _persistir_cuota_lima(cuotas_config)
-    return {'mes': mes, 'vertical': vertical, 'horizontal': horizontal, 'total': total}
-
-
-def _persistir_cuota_lima(cuotas_config_mod):
-    """Reescribe el bloque `CUOTA_LIMA = {...}` de cuotas_config.py en disco,
-    reconstruyéndolo a partir del dict actual en memoria."""
-    import re
-
-    path = cuotas_config_mod.__file__
-    with open(path, 'r', encoding='utf-8') as f:
-        src = f.read()
-
-    data = cuotas_config_mod.CUOTA_LIMA
-    meses_presentes = sorted(set(m for (m, _a) in data.keys()))
-    lineas = []
-    for m in meses_presentes:
-        t = data.get((m, ''), 0)
-        v = data.get((m, 'Vertical'), 0)
-        h = data.get((m, 'Horizontal'), 0)
-        lineas.append(f"    ({m}, ''): {t}, ({m}, 'Vertical'): {v}, ({m}, 'Horizontal'): {h},")
-
-    faltantes = [m for m in range(1, 13) if m not in meses_presentes]
-    bloque = "CUOTA_LIMA = {\n" + "\n".join(lineas)
-    if faltantes:
-        rango = f"{faltantes[0]}-{faltantes[-1]}" if len(faltantes) > 1 else str(faltantes[0])
-        bloque += f"\n    # {rango}: agregar cuando WIN las asigne."
-    bloque += "\n}"
-
-    nuevo_src = re.sub(r"CUOTA_LIMA = \{.*?\n\}", lambda _m: bloque, src, count=1, flags=re.DOTALL)
-    with open(path, 'w', encoding='utf-8') as f:
-        f.write(nuevo_src)
+    return cuotas_config.set_cuota_lima(mes, vertical, horizontal)
 
 
 def get_daily_trend_lima(mes, anio, area=''):
@@ -515,7 +470,7 @@ def get_proyeccion_cierre_lima(mes, anio, dia_ref=None, base_dias=29, area=''):
     serie_tendencia = [max(round(a + b * d), 0) for d in dias_full]
     serie_real      = [acumulado[d - 1] if d <= n else None for d in dias_full]
 
-    cuota = _CUOTA_LIMA.get((mes, area), 0)
+    cuota = _cuota_lima(mes, area)
     fin_plano     = serie_plano[-1] if serie_plano else 0
     fin_tendencia = serie_tendencia[-1] if serie_tendencia else 0
     piso  = min(fin_plano, fin_tendencia)

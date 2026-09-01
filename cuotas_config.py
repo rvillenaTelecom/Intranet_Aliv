@@ -3,35 +3,124 @@ cuotas_config.py
 ========================
 Fuente única de cuotas mensuales (metas de altas asignadas por WIN a Aliv).
 
-Este es el ÚNICO archivo que se debe editar cada mes para actualizar cuotas.
-Lo importan tanto Intranet/db_helper.py (dashboard web) como todos los
-scripts de reportes PDF en Pipeline/scripts/ — así se evita que un reporte
-quede con una cuota vieja mientras otro ya se actualizó.
+Vive en Azure SQL (tabla dbo.cuotas_lima), no en este archivo -- así Render,
+tu PC local y el Pipeline leen/escriben la misma fuente real, sin depender
+de un archivo que se reescribía en disco y se perdía en cada deploy de Render.
+
+Usa el mismo patrón de conexión que Intranet/db_config.py y
+Pipeline/scripts/Carga_SQL.py: Azure SQL (pymssql) si hay credenciales en
+el entorno, si no SQL Server local (pyodbc).
 
 Uso desde otro archivo (Intranet/ o Pipeline/scripts/):
     import sys, os
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from cuotas_config import CUOTA_LIMA, cuota_lima
+    from cuotas_config import cuota_lima, cuota_definida, set_cuota_lima
 """
 
-# ──────────────────────────────────────────────
-# LIMA
-# Clave: (mes_num, area). area='' = total Lima, 'Vertical' = Condominio/Edificio,
-# 'Horizontal' = resto de Lima.
-# ──────────────────────────────────────────────
-CUOTA_LIMA = {
-    (1, ''): 2010, (1, 'Vertical'): 230, (1, 'Horizontal'): 1780,
-    (2, ''): 2210, (2, 'Vertical'): 260, (2, 'Horizontal'): 1950,
-    (3, ''): 1920, (3, 'Vertical'): 231, (3, 'Horizontal'): 1689,
-    (4, ''): 1838, (4, 'Vertical'): 310, (4, 'Horizontal'): 1528,
-    (5, ''): 2332, (5, 'Vertical'): 320, (5, 'Horizontal'): 2012,
-    (6, ''): 2500, (6, 'Vertical'): 314, (6, 'Horizontal'): 2186,
-    (7, ''): 2250, (7, 'Vertical'): 270, (7, 'Horizontal'): 1980,
-    (8, ''): 2599, (8, 'Vertical'): 304, (8, 'Horizontal'): 2295,
-    (9, ''): 0, (9, 'Vertical'): 0, (9, 'Horizontal'): 0,
-    # 10-12: agregar cuando WIN las asigne.
-}
+import os
+import time
+import urllib
+import sqlalchemy as sa
+
+_engine = None
+_cache = None
+_cache_ts = 0
+_CACHE_TTL = 60  # segundos
+
+
+def _get_engine():
+    global _engine
+    if _engine is not None:
+        return _engine
+
+    azure_server = os.environ.get('AZURE_SQL_SERVER')
+    if azure_server:
+        azure_db   = os.environ.get('AZURE_SQL_DATABASE', 'Aliv_DB')
+        azure_user = os.environ.get('AZURE_SQL_USER')
+        azure_pass = os.environ.get('AZURE_SQL_PASSWORD')
+        conn_str = (
+            f"mssql+pymssql://{urllib.parse.quote_plus(azure_user)}:{urllib.parse.quote_plus(azure_pass)}"
+            f"@{azure_server}:1433/{azure_db}"
+        )
+        _engine = sa.create_engine(conn_str)
+        return _engine
+
+    SERVER = r'.\SQLEXPRESS'
+    DATABASE = 'Aliv_DB'
+    connection_string = (
+        f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+        f"SERVER={SERVER};"
+        f"DATABASE={DATABASE};"
+        f"Trusted_Connection=yes;"
+    )
+    params = urllib.parse.quote_plus(connection_string)
+    _engine = sa.create_engine(f"mssql+pyodbc:///?odbc_connect={params}", fast_executemany=True)
+    return _engine
+
+
+def _init_tabla():
+    engine = _get_engine()
+    insp = sa.inspect(engine)
+    if not insp.has_table('cuotas_lima', schema='dbo'):
+        with engine.begin() as conn:
+            conn.execute(sa.text("""
+                CREATE TABLE dbo.cuotas_lima (
+                    mes  INT NOT NULL,
+                    area NVARCHAR(20) NOT NULL,
+                    cuota INT NOT NULL,
+                    PRIMARY KEY (mes, area)
+                )
+            """))
+
+
+def _cargar():
+    """Dict {(mes, area): cuota} de todas las cuotas, con cache de 60s en memoria
+    (evita una consulta a SQL en cada llamada dentro de un mismo proceso)."""
+    global _cache, _cache_ts
+    if _cache is not None and time.time() - _cache_ts < _CACHE_TTL:
+        return _cache
+    try:
+        _init_tabla()
+        engine = _get_engine()
+        with engine.connect() as conn:
+            rows = conn.execute(sa.text("SELECT mes, area, cuota FROM dbo.cuotas_lima")).fetchall()
+        _cache = {(int(r[0]), r[1]): int(r[2]) for r in rows}
+        _cache_ts = time.time()
+    except Exception as e:
+        print(f"[cuotas_config] Error cargando cuotas de SQL: {e}")
+        _cache = _cache or {}
+    return _cache
 
 
 def cuota_lima(mes, area=''):
-    return CUOTA_LIMA.get((mes, area), 0)
+    return _cargar().get((int(mes), area), 0)
+
+
+def cuota_definida(mes):
+    return (int(mes), '') in _cargar()
+
+
+def set_cuota_lima(mes, vertical, horizontal):
+    """Define/actualiza la cuota Vertical+Horizontal de Lima de un mes en SQL."""
+    global _cache
+    mes = int(mes)
+    if not 1 <= mes <= 12:
+        raise ValueError("Mes fuera de rango (1-12)")
+    vertical = max(int(vertical), 0)
+    horizontal = max(int(horizontal), 0)
+    total = vertical + horizontal
+
+    _init_tabla()
+    engine = _get_engine()
+    with engine.begin() as conn:
+        for area, valor in (('', total), ('Vertical', vertical), ('Horizontal', horizontal)):
+            conn.execute(sa.text("""
+                MERGE dbo.cuotas_lima AS t
+                USING (SELECT :mes AS mes, :area AS area, :cuota AS cuota) AS s
+                ON t.mes = s.mes AND t.area = s.area
+                WHEN MATCHED THEN UPDATE SET cuota = s.cuota
+                WHEN NOT MATCHED THEN INSERT (mes, area, cuota) VALUES (s.mes, s.area, s.cuota);
+            """), {"mes": mes, "area": area, "cuota": valor})
+
+    _cache = None  # forzar recarga en la próxima lectura
+    return {'mes': mes, 'vertical': vertical, 'horizontal': horizontal, 'total': total}
