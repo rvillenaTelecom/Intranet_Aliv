@@ -26,6 +26,10 @@ _INTRANET_DIR  = os.path.dirname(os.path.abspath(__file__))
 _PIPELINE_DIR  = os.path.join(os.path.dirname(_INTRANET_DIR), 'Pipeline')
 _PIPELINE_SCRIPT = os.path.join(_PIPELINE_DIR, 'run_pipeline.py')
 _FASES_VALIDAS = {'bd', 'daily', 'consolidar', 'actualizar_ventas', 'subida_aliv', 'subida_referidos', 'reporte_diario', 'reporte_gerente', 'reporte_nocturno', 'reporte_proyeccion'}
+# Render no tiene Playwright/Chromium instalado (Intranet/requirements.txt no
+# los incluye a propósito) -- el pipeline de scraping solo puede correr desde
+# la PC local. Render define RENDER=true automáticamente en su entorno.
+IS_RENDER = bool(os.environ.get('RENDER'))
 
 _pipeline_running = False
 _pipeline_proc    = None
@@ -515,7 +519,7 @@ def eliminar_usuario(uid):
 def pipeline():
     return render_template('pipeline.html',
                            user=session['name'], role=session['role'],
-                           corriendo=_pipeline_running)
+                           corriendo=_pipeline_running, is_render=IS_RENDER)
 
 
 @app.route('/pipeline/ejecutar', methods=['POST'])
@@ -523,6 +527,8 @@ def pipeline():
 def pipeline_ejecutar():
     if session.get('role') != 'admin':
         return jsonify({'ok': False, 'error': 'Sin permisos de administrador'}), 403
+    if IS_RENDER:
+        return jsonify({'ok': False, 'error': 'El pipeline no puede correr en Render (falta Playwright/Chromium) — ejecútalo desde tu PC local.'}), 400
     if _pipeline_running:
         return jsonify({'ok': False, 'error': 'Ya hay un proceso en ejecución'}), 409
 
@@ -599,6 +605,8 @@ def api_pipeline_trigger():
     puedan disparar una fase sin loguearse."""
     if not _api_key_valida():
         return jsonify({'ok': False, 'error': 'API key invalida o ausente'}), 401
+    if IS_RENDER:
+        return jsonify({'ok': False, 'error': 'El pipeline no puede correr en Render (falta Playwright/Chromium).'}), 400
 
     data = request.get_json(silent=True) or request.form
     fase = (data.get('fase') or '').strip()

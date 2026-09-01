@@ -18,7 +18,12 @@
     </div>
 </div>
 
-{% if role != 'admin' %}
+{% if is_render %}
+<div class="pl-alert pl-alert-info">
+    <i class="fa-solid fa-circle-info"></i>
+    <span>El pipeline no está disponible en este ambiente (Render no tiene Playwright/Chromium instalado). Ejecuta estos procesos desde tu PC local con <code>python app.py</code> corriendo.</span>
+</div>
+{% elif role != 'admin' %}
 <div class="pl-alert pl-alert-info">
     <i class="fa-solid fa-circle-info"></i>
     <span>Solo el administrador puede ejecutar procesos. Puedes ver el estado pero no iniciar ninguno.</span>
@@ -49,7 +54,7 @@
             <div class="pl-card-desc">Corre en secuencia: Winforce (incremental) + Zonificación, Subida Aliv y Subida Referidos. El botón que reemplaza los 3 de abajo.</div>
         </div>
         <div class="pl-card-footer">
-            {% if role == 'admin' %}
+            {% if role == 'admin' and not is_render %}
             <button class="pl-btn pl-btn-run pl-btn-green" onclick="ejecutar('actualizar_ventas')" data-fase="actualizar_ventas">
                 <i class="fa-solid fa-play"></i> Ejecutar
             </button>
@@ -71,7 +76,7 @@
             <div class="pl-card-desc">Descarga Lima desde Winforce, aplica zonificación KML y sube todo a SQL desde el 01-01-2026 hasta hoy. Usa esto cuando haya varios días sin actualizar.</div>
         </div>
         <div class="pl-card-footer">
-            {% if role == 'admin' %}
+            {% if role == 'admin' and not is_render %}
             <button class="pl-btn pl-btn-run" onclick="ejecutar('bd')" data-fase="bd">
                 <i class="fa-solid fa-play"></i> Ejecutar
             </button>
@@ -93,7 +98,7 @@
             <div class="pl-card-desc">Descarga solo el mes actual y el anterior (rango incremental). Mucho más rápido, ideal para uso diario. No borra datos históricos.</div>
         </div>
         <div class="pl-card-footer">
-            {% if role == 'admin' %}
+            {% if role == 'admin' and not is_render %}
             <button class="pl-btn pl-btn-run pl-btn-green" onclick="ejecutar('daily')" data-fase="daily">
                 <i class="fa-solid fa-play"></i> Ejecutar
             </button>
@@ -115,7 +120,7 @@
             <div class="pl-card-desc">Consolida Lima en la tabla maestra de ventas y actualiza métricas agregadas. Ejecutar después de descargar datos nuevos.</div>
         </div>
         <div class="pl-card-footer">
-            {% if role == 'admin' %}
+            {% if role == 'admin' and not is_render %}
             <button class="pl-btn pl-btn-run" onclick="ejecutar('consolidar')" data-fase="consolidar">
                 <i class="fa-solid fa-play"></i> Ejecutar
             </button>
@@ -137,7 +142,7 @@
             <div class="pl-card-desc">Descarga <strong>Ventas Win Activas</strong> del Sistema Aliv (mes anterior + actual) y la sube a <code>ventas_aliv</code> en SQL Server, reemplazando solo ese rango de fechas. 100% automatico.</div>
         </div>
         <div class="pl-card-footer">
-            {% if role == 'admin' %}
+            {% if role == 'admin' and not is_render %}
             <button class="pl-btn pl-btn-slate" onclick="ejecutar('subida_aliv')" data-fase="subida_aliv">
                 <i class="fa-solid fa-play"></i> Ejecutar
             </button>
@@ -159,7 +164,7 @@
             <div class="pl-card-desc">Descarga <strong>Ventas Win Referidos</strong> del Sistema Aliv (mes actual) y la sube a <code>ventas_referidos</code> en SQL Server, reemplazando solo ese rango de fechas. 100% automatico.</div>
         </div>
         <div class="pl-card-footer">
-            {% if role == 'admin' %}
+            {% if role == 'admin' and not is_render %}
             <button class="pl-btn pl-btn-slate" onclick="ejecutar('subida_referidos')" data-fase="subida_referidos">
                 <i class="fa-solid fa-play"></i> Ejecutar
             </button>
@@ -202,7 +207,7 @@
             <div class="pl-card-desc">Genera el reporte de altas del día anterior para Lima. Se usa para el seguimiento diario de ventas.</div>
         </div>
         <div class="pl-card-footer">
-            {% if role == 'admin' %}
+            {% if role == 'admin' and not is_render %}
             <button class="pl-btn pl-btn-run" onclick="ejecutar('reporte_diario')" data-fase="reporte_diario">
                 <i class="fa-solid fa-play"></i> Ejecutar
             </button>
@@ -227,7 +232,7 @@
             <div class="pl-card-desc">Genera el PDF gerencial con métricas de Vertical y Horizontal. <strong>Mañana</strong> usa datos del día anterior; <strong>Noche</strong> usa datos de hoy.</div>
         </div>
         <div class="pl-card-footer" style="display:flex; gap:8px;">
-            {% if role == 'admin' %}
+            {% if role == 'admin' and not is_render %}
             <button class="pl-btn pl-btn-run" style="font-size:12px; padding:8px 6px; flex:1;" onclick="ejecutar('reporte_gerente')" data-fase="reporte_gerente">
                 <i class="fa-solid fa-cloud-sun"></i> Mañana
             </button>
@@ -258,7 +263,7 @@
             <div class="pl-card-desc">Metas (cuota oficial + estirada), BAC día por día, necesidad neta y la proyección de cierre a dos métodos, para Vertical y Horizontal. Usa datos del día anterior.</div>
         </div>
         <div class="pl-card-footer">
-            {% if role == 'admin' %}
+            {% if role == 'admin' and not is_render %}
             <button class="pl-btn pl-btn-green" onclick="ejecutar('reporte_proyeccion')" data-fase="reporte_proyeccion">
                 <i class="fa-solid fa-play"></i> Ejecutar
             </button>
@@ -395,7 +400,7 @@
         </div>
         <div style="display:flex;gap:8px;align-items:center">
             <span id="plTermCode" class="pl-term-code" style="display:none"></span>
-            {% if role == 'admin' %}
+            {% if role == 'admin' and not is_render %}
             <button class="pl-term-btn pl-term-cancel" id="plBtnCancelar" onclick="cancelar()" style="display:none">
                 <i class="fa-solid fa-stop"></i> Cancelar
             </button>
