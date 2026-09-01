@@ -11,6 +11,7 @@ venv/
 *.xls
 *.csv
 *.kml
+!Pipeline/scripts/Parametros_ventas.kml
 *.pdf
 data.json
 

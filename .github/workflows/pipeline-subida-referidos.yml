@@ -1,0 +1,13 @@
+name: Pipeline - Subida Referidos
+
+on:
+  schedule:
+    - cron: "5 14 * * *"   # 9:05am Peru (UTC-5) -- 5 min despues de Subida Aliv
+  workflow_dispatch: {}
+
+jobs:
+  run:
+    uses: ./.github/workflows/_pipeline-run.yml
+    with:
+      fase: subida_referidos
+    secrets: inherit

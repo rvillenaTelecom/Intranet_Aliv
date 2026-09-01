@@ -1,0 +1,13 @@
+name: Pipeline - Solo este mes
+
+on:
+  schedule:
+    - cron: "0 * * * *"   # cada hora en punto (UTC)
+  workflow_dispatch: {}
+
+jobs:
+  run:
+    uses: ./.github/workflows/_pipeline-run.yml
+    with:
+      fase: daily
+    secrets: inherit
