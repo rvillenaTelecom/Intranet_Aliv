@@ -105,6 +105,9 @@
 
 /* ── Grid layouts ────────────────────────────────────────── */
 .grid-2-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 16px; }
+.vel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; min-width: 0; }
+.vel-grid > div { min-width: 0; }
+.vel-grid canvas { max-width: 100%; }
 .grid-1-1 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
 .grid-3-2 { display: grid; grid-template-columns: 3fr 2fr; gap: 16px; margin-bottom: 16px; }
 .mb16 { margin-bottom: 16px; }
@@ -216,7 +219,7 @@
         -webkit-print-color-adjust: exact; print-color-adjust: exact;
     }
     .data-table tr:nth-child(even) td { background: #f5f7fa !important; }
-    .grid-2-1, .grid-1-1, .grid-3-2 { grid-template-columns: 1fr !important; }
+    .grid-2-1, .grid-1-1, .grid-3-2, .vel-grid { grid-template-columns: 1fr !important; }
     [style*="overflow-x:auto"] { overflow: visible !important; }
     .data-table th, .data-table td { padding: 5px 7px !important; font-size: 10.5px !important; }
     .kpi-row.cols-6, .kpi-row.cols-5, .kpi-row.cols-4, .kpi-row.cols-3 { grid-template-columns: repeat(3, 1fr); }
@@ -230,6 +233,7 @@
     .kpi-row.cols-3 { grid-template-columns: repeat(3, 1fr); }
     .grid-2-1, .grid-3-2 { grid-template-columns: 1fr; }
     .grid-1-1 { grid-template-columns: 1fr; }
+    .vel-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) {
     .kpi-row.cols-6, .kpi-row.cols-5, .kpi-row.cols-4, .kpi-row.cols-3 { grid-template-columns: repeat(2, 1fr); }
@@ -714,7 +718,7 @@ function proySetBasis(btn, basis) {
 <div class="panel mb16">
     <div class="panel-title"><i class="fa-solid fa-gauge-high"></i> Velocidad Planes — Altas Lima</div>
     <p style="font-size:11px; color:var(--text-secondary); margin-top:-10px; margin-bottom:14px;">Distribución de instalaciones por velocidad de plan</p>
-    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+    <div class="vel-grid">
         <div>
             {% for v in vel_planes %}
             <div class="hbar-row">
