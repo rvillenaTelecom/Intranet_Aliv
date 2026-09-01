@@ -5,7 +5,7 @@ pandas
 openpyxl
 lxml
 jinja2
-google-genai
+google-genai==2.7.0
 python-dotenv
 fastapi
 uvicorn[standard]
