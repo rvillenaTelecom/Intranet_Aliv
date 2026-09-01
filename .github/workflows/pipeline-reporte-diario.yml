@@ -1,8 +1,9 @@
 name: Pipeline - Reporte Diario
 
 on:
-  schedule:
-    - cron: "0 15 * * *"   # 10:00am Peru (UTC-5)
+  # PAUSADO: descomentar cuando esten listos los Secrets en GitHub
+  # schedule:
+  #   - cron: "0 15 * * *"   # 10:00am Peru (UTC-5)
   workflow_dispatch: {}
 
 jobs:
