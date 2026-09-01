@@ -41,7 +41,15 @@
             </div>
         </div>
 
+        {% set _locked_home = {'vertical': 'dashboard_ventas', 'horizontal_sub': 'dashboard_ventas', 'horizontal_aliv': 'dashboard_ventas', 'ejecutivo': 'reporte_gerente'} %}
         <nav class="sidebar-nav">
+            {% if role in _locked_home %}
+            <div class="nav-section-label">Mi dashboard</div>
+            <a href="{{ url_for(_locked_home[role]) }}" class="nav-item active">
+                <i class="fa-solid fa-gauge-high"></i>
+                <span>{{ role | capitalize | replace('_', ' ') }}</span>
+            </a>
+            {% else %}
             <div class="nav-section-label">Principal</div>
             <a href="{{ url_for('home') }}" class="nav-item {% if request.endpoint == 'home' %}active{% endif %}">
                 <i class="fa-solid fa-house"></i>
@@ -85,6 +93,7 @@
                 <i class="fa-solid fa-database"></i>
                 <span>Consultas SQL</span>
             </a>
+            {% endif %}
         </nav>
 
         <div class="sidebar-footer">

@@ -188,7 +188,60 @@ USERS = {
         'role': 'tecnologia',
         'name': 'Equipo Tecnología'
     },
+    'vertical': {
+        'password_hash': 'scrypt:32768:8:1$Vz8lDPriB3iglgsF$39624d66226d07973daa855cbf6d20e9ef2ca45e935f0f94f0c69e61f2b1aafc9c72739d6ced2110c1a7962b21500a72859ef1f9c197015b9f2272dc05dab2d0',
+        'role': 'vertical',
+        'name': 'Gerente Vertical'
+    },
+    'horizontal_sub': {
+        'password_hash': 'scrypt:32768:8:1$kBeU1J3IK0tgZqDl$9947a8f448b3816e598dc8fde55e9cc11e4c47db990015fa96198ce2b46990d9f248562075f6a2cb2a9c107d52be8c6a3590d04c19d22e85d359a7c5f7a11adc',
+        'role': 'horizontal_sub',
+        'name': 'Gerente Horizontal Sub'
+    },
+    'horizontal_aliv': {
+        'password_hash': 'scrypt:32768:8:1$GqSd3NHdzQYqt10a$99ab34c7f46a02f53115c1fab0c5e097a867b30dc156f01a836dfec039a9bb19c45f61156a698dc0a98b9400e1d23667523c6ae45f51715fb9f55ae8d2eca757',
+        'role': 'horizontal_aliv',
+        'name': 'Gerente Horizontal Aliv'
+    },
+    'ejecutivo': {
+        'password_hash': 'scrypt:32768:8:1$I8oJX7olYzbQqfbN$274e1e7f8408a2365c26e9cda1d98f003d4f43b34655174e805870c6b14efce8421ed69495aad25da366b67fd067ffaaf8aed55657bc29b70475f55bfc268760',
+        'role': 'ejecutivo',
+        'name': 'Gerente Ejecutivo'
+    },
 }
+
+# Roles con acceso restringido a un único dashboard/área — el filtro se fuerza
+# en el servidor (no solo se oculta en el HTML) para que no puedan verse entre sí
+# cambiando la URL a mano.
+ROLE_SCOPE = {
+    'vertical':        {'home': 'dashboard_ventas', 'area': 'Vertical',   'agencia': ''},
+    'horizontal_sub':  {'home': 'dashboard_ventas', 'area': 'Horizontal', 'agencia': 'Sub'},
+    'horizontal_aliv': {'home': 'dashboard_ventas', 'area': 'Horizontal', 'agencia': 'Aliv'},
+    'ejecutivo':       {'home': 'reporte_gerente'},
+}
+
+_LOCKED_ROLE_ALLOWED_ENDPOINTS = {
+    'static', 'login', 'logout', 'root',
+    'dashboard_ventas', 'reporte_gerente',
+    'lima_distritos_geo', 'api_chat',
+}
+# resumen-tabla/proyeccion-cierre devuelven el consolidado Vertical+Horizontal
+# (para el toggle interno de Ejecutivo) — no deben quedar accesibles por URL
+# directa para los roles bloqueados a una sola área.
+_ROLE_EXTRA_ENDPOINTS = {
+    'ejecutivo': {'api_resumen_tabla', 'api_proyeccion_cierre'},
+}
+
+@app.before_request
+def _enforce_locked_role_scope():
+    role = session.get('role')
+    if role not in ROLE_SCOPE:
+        return
+    allowed = _LOCKED_ROLE_ALLOWED_ENDPOINTS | _ROLE_EXTRA_ENDPOINTS.get(role, set())
+    if request.endpoint not in allowed:
+        scope = ROLE_SCOPE[role]
+        return redirect(url_for(scope['home'], **{k: v for k, v in scope.items() if k != 'home' and v}))
+
 
 def login_required(f):
     @wraps(f)
@@ -212,6 +265,10 @@ def login():
             session['user'] = username
             session['role'] = USERS[username]['role']
             session['name'] = USERS[username]['name']
+            scope = ROLE_SCOPE.get(session['role'])
+            if scope:
+                params = {k: v for k, v in scope.items() if k != 'home' and v}
+                return redirect(url_for(scope['home'], **params))
             return redirect(url_for('home'))
         error = 'Usuario o contraseña incorrectos'
     return render_template('login.html', error=error)
@@ -242,9 +299,16 @@ def dashboard_ventas():
     from datetime import timedelta
     mes       = request.args.get('mes',  datetime.now().month, type=int)
     anio      = request.args.get('anio', datetime.now().year,  type=int)
-    area      = request.args.get('area', '')
-    _agencia  = request.args.get('agencia', '')
-    agencia   = _agencia if _agencia in ('Aliv', 'Sub') else ''
+    _scope    = ROLE_SCOPE.get(session['role'])
+    if _scope and _scope['home'] != 'dashboard_ventas':
+        return redirect(url_for(_scope['home']))
+    if _scope:
+        area    = _scope['area']
+        agencia = _scope['agencia']
+    else:
+        area      = request.args.get('area', '')
+        _agencia  = request.args.get('agencia', '')
+        agencia   = _agencia if _agencia in ('Aliv', 'Sub') else ''
     _dia      = request.args.get('dia', 0, type=int)
     dia       = _dia if _dia and 1 <= _dia <= 31 else None
     _base     = request.args.get('base', 30, type=int)
@@ -970,6 +1034,10 @@ def api_avance_horario():
 @app.route('/reporte-gerente')
 @login_required
 def reporte_gerente():
+    _scope = ROLE_SCOPE.get(session['role'])
+    if _scope and _scope['home'] != 'reporte_gerente':
+        return redirect(url_for(_scope['home'], **{k: v for k, v in _scope.items() if k != 'home' and v}))
+
     from datetime import timedelta
     hoy_real = datetime.now()
     _base     = request.args.get('base', 30, type=int)

@@ -274,7 +274,7 @@
                     <option value="{{ y }}" {% if anio_actual == y %}selected{% endif %}>{{ y }}</option>
                     {% endfor %}
                 </select>
-                {% if area != 'Vertical' %}
+                {% if area != 'Vertical' and role not in ['vertical', 'horizontal_sub', 'horizontal_aliv'] %}
                 <span class="filter-label" id="areaLabel">Área:</span>
                 <select name="area" class="fsel" id="areaSelect">
                     <option value="" {% if not area %}selected{% endif %}>Todas</option>
@@ -288,7 +288,8 @@
                     <option value="Sub" {% if agencia == 'Sub' %}selected{% endif %}>Subagencias</option>
                 </select>
                 {% else %}
-                <input type="hidden" name="area" value="Vertical">
+                <input type="hidden" name="area" value="{{ area }}">
+                {% if agencia %}<input type="hidden" name="agencia" value="{{ agencia }}">{% endif %}
                 {% endif %}
                 <span class="filter-label">Día:</span>
                 <select name="dia" class="fsel" style="min-width:70px;">
