@@ -2,7 +2,7 @@
 ReporteDiarioGerente.py
 ========================
 Reporte diario gerencial en PDF.
-Página 1: Lima Total + Vertical (Condominio/Edificio + C/E Habilitado)
+Página 1: Lima Total + Vertical (Condominio/Edificio)
 Página 2: Horizontal (todo lo que no es Vertical)
 
 Uso:
@@ -29,21 +29,10 @@ from reportlab.lib.enums import TA_CENTER
 sys.path.insert(0, os.path.dirname(__file__))
 from db_config import get_engine
 
-# ──────────────────────────────────────────────
-# CONFIGURACIÓN — actualizar cuotas cada mes
-# ──────────────────────────────────────────────
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from cuotas_config import cuota_lima
 
-CUOTA_VERTICAL_MES = {
-    1: 230, 2: 260, 3: 231, 4: 310, 5: 320, 6: 314,
-    7: 270, 8: 0, 9: 0, 10: 0, 11: 0, 12: 0,
-}
-
-CUOTA_HORIZONTAL_MES = {
-    1: 1780, 2: 1950, 3: 1689, 4: 1528, 5: 2012, 6: 2186,
-    7: 1980, 8: 0, 9: 0, 10: 0, 11: 0, 12: 0,
-}
-
-VERTICAL_TIPOS = {'Condominio/Edificio', 'C/E Habilitado'}
+VERTICAL_TIPOS = {'Condominio/Edificio'}
 
 _AGENCIAS = ['ALIV', 'DEZANET', 'GYA', 'LOTTUS', 'SIPION', 'SUB-AGENCIAS']
 
@@ -183,6 +172,8 @@ def extraer_datos(ayer):
             WHERE wl.[Estado orden] = 'Ejecutada'
               AND TRY_CONVERT(DATE, LEFT(wl.[Fecha programación], 10), 105) >= :primer_dia
               AND TRY_CONVERT(DATE, LEFT(wl.[Fecha programación], 10), 105) <= :ayer
+              AND wl.[Departamento] IN ('LIMA', 'CALLAO')
+              AND LOWER(wl.[Distrito]) NOT IN ('barranca', 'chancay', 'huacho', 'hualmay', 'huaral')
         """), {"primer_dia": primer_dia, "ayer": ayer}).fetchall()
 
     parsed = []
@@ -219,6 +210,8 @@ def extraer_datos(ayer):
               AND YEAR(wl.[Fecha de registro]) = :anio
               AND CAST(wl.[Fecha de registro] AS DATE) <= :ayer
               AND wl.[Plan] IS NOT NULL AND wl.[Plan] <> ''
+              AND wl.[Departamento] IN ('LIMA', 'CALLAO')
+              AND LOWER(wl.[Distrito]) NOT IN ('barranca', 'chancay', 'huacho', 'hualmay', 'huaral')
         """), {"mes": mes_num, "anio": ayer.year, "ayer": ayer}).fetchall()
     for vrow in ventas_raw:
         vfecha, vdom, vplan, vagencia = vrow
@@ -366,8 +359,8 @@ def extraer_datos(ayer):
         "semanas_def": semanas_def,
         "total_mtd":   len(parsed),
         "total_ayer":  sum(1 for r in parsed if r["date"] == ayer),
-        "vertical":    metricas(rows_v, CUOTA_VERTICAL_MES.get(mes_num, 0), ventas_v),
-        "horizontal":  metricas(rows_h, CUOTA_HORIZONTAL_MES.get(mes_num, 0), ventas_h),
+        "vertical":    metricas(rows_v, cuota_lima(mes_num, 'Vertical'), ventas_v),
+        "horizontal":  metricas(rows_h, cuota_lima(mes_num, 'Horizontal'), ventas_h),
     }
 
 

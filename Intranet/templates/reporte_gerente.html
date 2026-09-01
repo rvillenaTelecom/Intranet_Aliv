@@ -4,501 +4,1174 @@
 
 {% block content %}
 <style>
-/* ── Variables ── */
 :root {
-  --rg-border: #c8cfd8;
-  --rg-head-bg: #1a2535;
-  --rg-head2-bg: #2d3f56;
-  --rg-head-fg: #ffffff;
-  --rg-alt: #f5f7fa;
-  --rg-green: #155724;
-  --rg-green-bg: #d4edda;
-  --rg-amber: #856404;
-  --rg-amber-bg: #fff3cd;
-  --rg-red: #721c24;
-  --rg-red-bg: #f8d7da;
-  --rg-total-bg: #e9ecef;
-  --rg-radius: 6px;
+    --rg-gold:   #F47920;
+    --rg-silver: #8A8578;
+    --rg-bronze: #B8722E;
+    --kpi-teal:   #3FBFAD;
+    --kpi-purple: #9C8CF0;
 }
 
-/* ── Layout ── */
-.rg-wrap { max-width: 1200px; margin: 0 auto; }
-
-/* ── Controls bar ── */
+/* ── Barra de controles ─────────────────────────────────────── */
 .rg-controls {
-  display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
-  background: #fff; border: 1px solid var(--rg-border); border-radius: var(--rg-radius);
-  padding: 10px 14px; margin-bottom: 18px;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 12px; margin-bottom: 20px;
+    background: var(--bg-card); border-radius: 11px; padding: 12px 16px;
+    box-shadow: var(--shadow); border: 1px solid var(--border);
 }
-.rg-controls select, .rg-controls input {
-  padding: 5px 9px; border: 1px solid var(--rg-border); border-radius: 4px;
-  font-size: 13px; background: #fff; color: #333;
+.rg-controls-left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.rg-label { font-size: 12px; font-weight: 700; color: var(--text-secondary); white-space: nowrap; }
+.rg-sel, .rg-input {
+    padding: 6px 12px; border: 1px solid var(--border); border-radius: 7px;
+    font-size: 13px; background: var(--bg-main); color: var(--text-primary);
+    cursor: pointer; outline: none; font-family: var(--font-body);
 }
-.rg-controls label { font-size: 12px; color: #666; font-weight: 600; }
-.rg-controls .sep { flex: 1; }
-.btn-rg {
-  padding: 6px 14px; border-radius: 4px; border: none; cursor: pointer;
-  font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;
+.rg-input { width: 108px; cursor: text; }
+.rg-sel:focus, .rg-input:focus { border-color: var(--brand); }
+.rg-btn {
+    padding: 7px 16px; border: none; border-radius: 7px; cursor: pointer;
+    font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 7px;
+    transition: background .2s;
 }
-.btn-apply  { background: #1a2535; color: #fff; }
-.btn-print  { background: #0d6efd; color: #fff; }
-.btn-28d, .btn-30d { min-width: 42px; }
-.btn-base-active { box-shadow: inset 0 0 0 2px #fff; }
+.rg-btn-apply { background: var(--brand); color: var(--on-brand); }
+.rg-btn-apply:hover { background: var(--brand-hover); }
+.rg-btn-print { background: var(--bg-inset); color: var(--text-primary); border: 1px solid var(--border-strong); }
+.rg-btn-print:hover { background: var(--bg-card-hover); }
+.rg-controls-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.rg-pdf-group { display: flex; align-items: center; gap: 8px; padding-left: 12px; border-left: 1px solid var(--border-strong); }
+.rg-pdf-group-label { font-size: 10px; font-weight: 700; color: var(--text-light); text-transform: uppercase; letter-spacing: .4px; white-space: nowrap; }
+.rg-btn-manana, .rg-btn-noche { background: var(--bg-inset); color: var(--text-primary); border: 1px solid var(--border-strong); }
+.rg-btn-manana:hover, .rg-btn-noche:hover { background: var(--bg-card-hover); }
+.rg-btn:disabled { opacity: .5; cursor: not-allowed; }
+.rg-pdf-status { font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
+.rg-pdf-status.ok  { color: var(--success); }
+.rg-pdf-status.err { color: var(--danger); }
 
-/* ── Report header ── */
-.rg-header {
-  background: var(--rg-head-bg); color: #fff; border-radius: var(--rg-radius);
-  padding: 16px 20px; margin-bottom: 18px; display: flex; align-items: center;
-  justify-content: space-between; flex-wrap: wrap; gap: 8px;
+/* ── Hero KPI ───────────────────────────────────────────────── */
+.kpi-row { display: grid; gap: 14px; margin-bottom: 16px; }
+.kpi-row.cols-6 { grid-template-columns: repeat(6, 1fr); }
+.kpi-row.cols-4 { grid-template-columns: repeat(4, 1fr); }
+.kpi-row.cols-3 { grid-template-columns: repeat(3, 1fr); }
+.kcard {
+    background: var(--bg-card); border-radius: 11px; padding: 16px 18px;
+    border-left: 4px solid var(--border-strong); box-shadow: var(--shadow);
+    position: relative; overflow: hidden;
 }
-.rg-header h2 { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: .4px; }
-.rg-header-meta { font-size: 12px; opacity: .8; text-align: right; }
+.kcard.blue   { border-color: var(--brand); }
+.kcard.green  { border-color: var(--success); }
+.kcard.orange { border-color: var(--warning); }
+.kcard.red    { border-color: var(--danger); }
+.kcard.purple { border-color: var(--kpi-purple); }
+.kcard.teal   { border-color: var(--kpi-teal); }
+.kcard.gray   { border-color: var(--slate); }
+.kcard-label { font-size: 10px; font-weight: 700; text-transform: uppercase;
+               color: var(--text-secondary); letter-spacing: .5px; margin-bottom: 6px; }
+.kcard-main  { font-family: var(--font-mono); font-size: 27px; font-weight: 700;
+               color: var(--text-primary); line-height: 1; font-variant-numeric: tabular-nums; }
+.kcard-sub   { font-size: 11px; color: var(--text-light); margin-top: 6px; }
+.kcard-sub b { color: var(--text-secondary); }
+.kcard-bg-icon {
+    position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+    font-size: 36px; opacity: .08; color: var(--text-primary);
+}
+.kcard-bar-wrap { margin-top: 10px; background: var(--bg-inset); border-radius: 4px; height: 5px; }
+.kcard-bar { height: 5px; border-radius: 4px; transition: width .6s; }
 
-/* ── Sections ── */
-.rg-section { margin-bottom: 22px; }
-.rg-section-title {
-  font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
-  color: var(--rg-head2-bg); border-bottom: 2px solid var(--rg-head2-bg);
-  padding-bottom: 4px; margin-bottom: 8px;
+/* ── Toggle chico (Ref Hoy/Ayer, botones auxiliares) ─────────── */
+.rg-tgl { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+.rg-tgl-btn {
+    padding: 4px 12px; font-size: 12px; font-weight: 600; border: none; cursor: pointer;
+    background: var(--bg-inset); color: var(--text-secondary); transition: background .15s, color .15s;
 }
+.rg-tgl-btn.active { background: var(--brand); color: var(--on-brand); }
+.rg-tgl.disabled .rg-tgl-btn { opacity: .35; pointer-events: none; }
+.rg-mini-btn {
+    padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 6px; cursor: pointer;
+    background: var(--bg-inset); color: var(--text-primary); border: 1px solid var(--border-strong);
+    display: inline-flex; align-items: center; gap: 6px;
+}
+.rg-mini-btn:hover { background: var(--bg-card-hover); }
 
-/* ── Tables ── */
-.rg-table-wrap { overflow-x: auto; }
-.rg-table {
-  width: 100%; border-collapse: collapse; font-size: 13px;
-  border: 1px solid var(--rg-border); border-radius: var(--rg-radius); overflow: hidden;
+/* ── Instalaciones de hoy ─────────────────────────────────────── */
+.rg-instalaciones-row { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; margin-bottom: 18px; }
+.inst-main {
+    font-family: var(--font-mono); font-size: 34px; font-weight: 700; line-height: 1; margin-top: 6px;
 }
-.rg-table th {
-  background: var(--rg-head-bg); color: #fff;
-  padding: 8px 10px; text-align: right; font-size: 12px; font-weight: 600;
-  white-space: nowrap;
+.inst-slash { color: var(--text-light); font-weight: 400; margin: 0 6px; }
+.inst-sub { font-size: 12px; color: var(--text-secondary); margin-top: 10px; }
+.inst-mini { display: flex; flex-direction: column; justify-content: center; gap: 8px; }
+.inst-mini-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 9px 12px; background: var(--bg-inset); border-radius: 8px;
 }
-.rg-table th.left { text-align: left; }
-.rg-table td {
-  padding: 7px 10px; border-bottom: 1px solid var(--rg-border);
-  text-align: right; white-space: nowrap; color: #333;
+.inst-mini-label { font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .3px; }
+.inst-mini-val { font-family: var(--font-mono); font-size: 18px; font-weight: 700; color: var(--text-primary); }
+.inst-divider { width: 1px; align-self: stretch; background: var(--border); }
+.inst-ejec-block { flex: 1; min-width: 240px; }
+.inst-ejec-label { font-size: 11px; font-weight: 700; color: var(--text-light); text-transform: uppercase; letter-spacing: .3px; margin-bottom: 10px; }
+.inst-ejec-cards { display: flex; gap: 14px; }
+.inst-ejec-card {
+    flex: 1; background: var(--success-glow); border-radius: 10px; border-left: 4px solid var(--success);
+    padding: 14px 18px;
 }
-.rg-table td.left { text-align: left; }
-.rg-table tr:nth-child(even) td { background: var(--rg-alt); }
-.rg-table tr:last-child td { border-bottom: none; }
-.rg-table tr.row-sub td { color: #555; font-size: 12px; padding-left: 22px; }
-.rg-table tr.row-total td {
-  background: var(--rg-total-bg) !important;
-  font-weight: 700; border-top: 2px solid var(--rg-border);
-}
+.inst-ejec-card-label { font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .3px; margin-bottom: 6px; }
+.inst-ejec-card-val { font-family: var(--font-mono); font-size: 30px; font-weight: 700; color: var(--success); line-height: 1; }
 
-/* ── Color badges ── */
-.cell-green { background: var(--rg-green-bg) !important; color: var(--rg-green); font-weight: 700; }
-.cell-amber { background: var(--rg-amber-bg) !important; color: var(--rg-amber); font-weight: 700; }
-.cell-red   { background: var(--rg-red-bg)   !important; color: var(--rg-red);   font-weight: 700; }
-.num-red    { color: #dc3545; font-weight: 700; }
-.num-green  { color: #198754; font-weight: 700; }
-
-/* ── Rank badge ── */
-.rank-badge {
-  display: inline-block; width: 22px; height: 22px; border-radius: 50%;
-  background: var(--rg-head-bg); color: #fff; font-size: 11px; font-weight: 700;
-  text-align: center; line-height: 22px;
+/* ── Paneles y secciones ────────────────────────────────────── */
+.rg-section { margin-bottom: 18px; }
+.panel { background: var(--bg-card); border-radius: 11px; padding: 20px;
+         box-shadow: var(--shadow); border: 1px solid var(--border); min-width: 0; }
+.panel-title {
+    font-family: var(--font-display); font-size: 14px; font-weight: 600;
+    color: var(--text-primary); margin-bottom: 16px;
+    display: flex; align-items: baseline; gap: 9px;
 }
-.rank-badge.gold   { background: #c8960c; }
-.rank-badge.silver { background: #7d8b9a; }
-.rank-badge.bronze { background: #a0522d; }
-
-/* ── Two-column grid ── */
+.panel-eyebrow { font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+                  color: var(--brand); }
 .rg-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 
-/* ── Print styles ── */
+/* ── Tablas ─────────────────────────────────────────────────── */
+.data-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.data-table th {
+    background: var(--bg-card-hover); padding: 9px 12px; text-align: right;
+    font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .3px; color: var(--text-secondary); border-bottom: 2px solid var(--border);
+    white-space: nowrap;
+}
+.data-table th.left { text-align: left; }
+.data-table td {
+    padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--text-primary);
+    text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+.data-table td.left { text-align: left; white-space: normal; }
+.data-table tr:hover td { background: var(--bg-card-hover); }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr.row-sub td:first-child { padding-left: 26px; color: var(--text-secondary); font-weight: 500; }
+.data-table tr.row-total td { background: var(--bg-inset); font-weight: 700; border-top: 2px solid var(--border-strong); }
+
+.cell-green { background: var(--success-glow) !important; color: #6EE7C0; font-weight: 700; border-radius: 5px; }
+.cell-amber { background: var(--warning-glow) !important; color: #FFC876; font-weight: 700; border-radius: 5px; }
+.cell-red   { background: var(--danger-glow)  !important; color: #FF9E9A; font-weight: 700; border-radius: 5px; }
+.num-red    { color: var(--danger); font-weight: 700; }
+.num-green  { color: var(--success); font-weight: 700; }
+
+.rank-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; border-radius: 50%; flex: none;
+    background: var(--bg-inset); color: var(--text-secondary); font-size: 11px; font-weight: 700;
+}
+.rank-badge.gold   { background: var(--rg-gold); color: #1a1206; }
+.rank-badge.silver { background: var(--rg-silver); color: #17140f; }
+.rank-badge.bronze { background: var(--rg-bronze); color: #1a1206; }
+.rank-row td.left { display: flex; align-items: center; gap: 10px; }
+
+/* ── Pivot Sub-Agencias: ALIV (fuerza propia) vs. subagencias ─── */
+.pivot-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.pivot-table th {
+    background: var(--bg-card-hover); color: var(--text-secondary); padding: 9px 12px;
+    text-align: right; font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .3px; white-space: nowrap; border-bottom: 2px solid var(--border);
+}
+.pivot-table th.left { text-align: left; border-bottom-color: var(--brand); }
+.pivot-table th.left, .pivot-table td.left { border-right: 2px solid var(--border-strong); }
+.pivot-table td {
+    padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--text-primary);
+    text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 600;
+}
+.pivot-table td.left { text-align: left; font-weight: 600; white-space: normal; }
+.pivot-table tr.pivot-sub td.left { padding-left: 4px; color: var(--text-secondary); font-weight: 500; }
+.pivot-table tr.pivot-total td { border-top: 2px solid var(--border-strong); background: var(--bg-inset); font-weight: 700; }
+.pivot-table td.col-total { color: var(--brand); font-weight: 800; }
+.pivot-legend { font-size: 11px; color: var(--text-light); margin-top: 10px; }
+.pivot-legend b { color: var(--text-secondary); }
+
+/* ── Print: versión clara para PDF ──────────────────────────── */
 @media print {
-  .sidebar, .topbar, .rg-controls, .no-print { display: none !important; }
-  .main-content { margin: 0 !important; padding: 0 !important; }
-  .content-area { padding: 0 !important; }
-  body, .rg-table { font-size: 11px; }
-  .rg-section { break-inside: avoid; }
-  .rg-grid-2 { grid-template-columns: 1fr 1fr; }
-  .rg-header { background: #1a2535 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .rg-table th { background: #1a2535 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .cell-green { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .cell-amber { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .cell-red   { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    /* El layout normal usa altura fija (100vh) con scroll interno en
+       .content-area — al imprimir eso recorta todo a lo que cabe en una
+       pantalla. Hay que soltar esas alturas para que el contenido fluya
+       en varias páginas. */
+    html, body { height: auto !important; }
+    .layout { display: block !important; height: auto !important; overflow: visible !important; }
+    .main-content { display: block !important; height: auto !important; overflow: visible !important; margin: 0 !important; padding: 0 !important; }
+    .content-area { height: auto !important; overflow: visible !important; padding: 0 !important; }
+    .sidebar, .topbar, .rg-controls, .no-print { display: none !important; }
+    body, .content-area, .main-content { background: #fff !important; }
+    .welcome-banner {
+        background: #1a2535 !important; color: #fff !important;
+        -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    .welcome-title, .welcome-sub { color: #fff !important; }
+    .kcard, .panel {
+        background: #fff !important; border: 1px solid #c8cfd8 !important;
+        box-shadow: none !important; break-inside: avoid;
+    }
+    .kcard-main, .panel-title, .data-table td { color: #1a1a1a !important; }
+    .kcard-label, .kcard-sub, .text-secondary { color: #555 !important; }
+    .data-table th {
+        background: #1a2535 !important; color: #fff !important;
+        -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    .data-table tr:nth-child(even) td { background: #f5f7fa !important; }
+    .data-table tr.row-total td { background: #e9ecef !important; }
+    .pivot-table th {
+        background: #1a2535 !important; color: #fff !important;
+        -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    .pivot-table th.left { border-bottom-color: #F47920 !important; }
+    .pivot-table td, .pivot-table td.left { color: #1a1a1a !important; }
+    .pivot-table tr.pivot-total td { background: #e9ecef !important; }
+    .pivot-table td.col-total { color: #B8560F !important; }
+    .cell-green { background: #d4edda !important; color: #155724 !important; }
+    .cell-amber { background: #fff3cd !important; color: #856404 !important; }
+    .cell-red   { background: #f8d7da !important; color: #721c24 !important; }
+    .rank-badge { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .rg-grid-2 { grid-template-columns: 1fr 1fr; }
+    .rg-grid-2-wide { grid-template-columns: 1fr !important; }
+    .proy-cuota-block table { min-width: 0 !important; width: 100% !important; }
+    .proy-cuota-block, .pivot-table, .data-table { overflow: visible !important; }
+    /* Cualquier envoltorio con overflow-x:auto inline (todas las tablas del
+       reporte usan este patrón) pinta una barra de scroll estática al
+       imprimir en vez de dejar fluir el contenido — hay que soltarlo. */
+    [style*="overflow-x:auto"] { overflow: visible !important; }
+    .data-table th, .data-table td, .pivot-table th, .pivot-table td {
+        padding: 5px 7px !important; font-size: 10.5px !important;
+    }
+    .kpi-row.cols-6, .kpi-row.cols-4, .kpi-row.cols-3 { grid-template-columns: repeat(3, 1fr); }
+    .rg-instalaciones-row { grid-template-columns: 2fr 1fr; }
+    .inst-main, .inst-sub, .inst-mini-val, .inst-ejec-label { color: #1a1a1a !important; }
+    .inst-mini-row { background: #f5f7fa !important; }
+    .inst-ejec-card { background: #d4edda !important; }
+    .inst-ejec-card-label { color: #155724 !important; }
+    .inst-ejec-card-val { color: #155724 !important; }
+    .rg-chart-wrap { height: 280px !important; width: 100% !important; break-inside: avoid; page-break-inside: avoid; }
+    * { box-shadow: none !important; }
 }
 
+@media (max-width: 1100px) {
+    .kpi-row.cols-6 { grid-template-columns: repeat(3, 1fr); }
+    .kpi-row.cols-4 { grid-template-columns: repeat(4, 1fr); }
+    .kpi-row.cols-3 { grid-template-columns: repeat(3, 1fr); }
+}
 @media (max-width: 700px) {
-  .rg-grid-2 { grid-template-columns: 1fr; }
+    .kpi-row.cols-6, .kpi-row.cols-4, .kpi-row.cols-3 { grid-template-columns: repeat(2, 1fr); }
+    .rg-grid-2 { grid-template-columns: 1fr; }
+    .rg-instalaciones-row { grid-template-columns: 1fr; }
+    .inst-divider { display: none; }
+    .rg-controls, .rg-controls-left, .rg-controls-right { flex-direction: column; align-items: stretch; }
+    .rg-sel, .rg-input, .rg-btn { width: 100%; box-sizing: border-box; justify-content: center; }
+    .rg-pdf-group { flex-wrap: wrap; padding-left: 0; border-left: none; border-top: 1px solid var(--border-strong); padding-top: 8px; width: 100%; }
+}
+@media (max-width: 420px) {
+    .kpi-row.cols-6, .kpi-row.cols-4, .kpi-row.cols-3 { grid-template-columns: 1fr; }
 }
 </style>
 
-<div class="rg-wrap">
-
-  <!-- ── Controls ── -->
-  <form class="rg-controls no-print" method="get" action="{{ url_for('reporte_gerente') }}">
-    <label>Mes</label>
-    <select name="mes">
-      {% for m in meses %}
-      <option value="{{ m.id }}" {% if m.id == mes_actual %}selected{% endif %}>{{ m.nombre }}</option>
-      {% endfor %}
-    </select>
-
-    <label>Año</label>
-    <select name="anio">
-      {% for a in anios %}
-      <option value="{{ a }}" {% if a == anio_actual %}selected{% endif %}>{{ a }}</option>
-      {% endfor %}
-    </select>
-
-    <label>Día (acum. hasta)</label>
-    <input type="number" name="dia" min="0" max="31" value="{{ dia_actual or '' }}" placeholder="todo el mes" style="width:110px;">
-
-    <label>Base</label>
-    <select name="base">
-      <option value="30" {% if base_dias == 30 %}selected{% endif %}>30d</option>
-      <option value="28" {% if base_dias == 28 %}selected{% endif %}>28d</option>
-    </select>
-
-    <button type="submit" class="btn-rg btn-apply"><i class="fa-solid fa-rotate"></i> Actualizar</button>
-    <span class="sep"></span>
-    <button type="button" class="btn-rg btn-print" onclick="window.print()">
-      <i class="fa-solid fa-print"></i> Imprimir / PDF
-    </button>
-  </form>
-
-  <!-- ── Report header ── -->
-  <div class="rg-header">
-    <div>
-      <h2><i class="fa-solid fa-file-lines"></i> WIN · REPORTE GERENCIAL</h2>
-      <div style="font-size:13px; opacity:.85; margin-top:3px;">
+<!-- ── Banner ─────────────────────────────────────────────────── -->
+<div class="welcome-banner">
+    <div class="welcome-title"><i class="fa-solid fa-briefcase"></i> Reporte Gerencial</div>
+    <div class="welcome-sub">
         {{ mes_nombre }} {{ anio_actual }}
-        {% if dia_actual %} · Acumulado al día {{ dia_actual }}{% endif %}
-        · Proyección base {{ base_dias }}d
-      </div>
+        {%- if dia_pick %} · Día {{ dia_pick }} (exacto, no acumulado)
+        {%- elif dia_actual %} · Acumulado a cierre de ayer (día {{ dia_actual }})
+        {%- else %} · Hoy en vivo{% endif %}
+        · Proyección base {{ base_dias }}d{% if area %} · Área: {{ area }}{% endif %}
+        <span style="opacity:.7;"> · Generado {{ generado }}</span>
     </div>
-    <div class="rg-header-meta">
-      Generado: {{ generado }}<br>
-      {% set dt = kpi_t.get('dias_trans', 0) %}
-      {% set dtot = kpi_t.get('dias_tot', 30) %}
-      Día {{ dt }} de {{ dtot }}
-    </div>
-  </div>
+</div>
 
-  <!-- ══════════════════════════════════════════════════ -->
-  <!-- 1. RESUMEN POR ÁREA                               -->
-  <!-- ══════════════════════════════════════════════════ -->
-  <div class="rg-section">
-    <div class="rg-section-title">1. Resumen por Área</div>
-    <div class="rg-table-wrap">
-      <table class="rg-table">
+<!-- ── Controles ──────────────────────────────────────────────── -->
+<form class="rg-controls no-print" method="get" action="{{ url_for('reporte_gerente') }}">
+    <div class="rg-controls-left">
+        <span class="rg-label">Mes</span>
+        <select name="mes" class="rg-sel">
+            {% for m in meses %}
+            <option value="{{ m.id }}" {% if m.id == mes_actual %}selected{% endif %}>{{ m.nombre }}</option>
+            {% endfor %}
+        </select>
+        <span class="rg-label">Año</span>
+        <select name="anio" class="rg-sel">
+            {% for a in anios %}
+            <option value="{{ a }}" {% if a == anio_actual %}selected{% endif %}>{{ a }}</option>
+            {% endfor %}
+        </select>
+        <span class="rg-label">Corte</span>
+        <input type="hidden" name="ref" id="refInput" value="{{ ref }}">
+        <div class="rg-tgl" id="corteTgl">
+            <button type="button" class="rg-tgl-btn {% if ref == 'ayer' %}active{% endif %}" onclick="rgSetRefFilter('ayer')">Ayer</button>
+            <button type="button" class="rg-tgl-btn {% if ref == 'hoy' %}active{% endif %}" onclick="rgSetRefFilter('hoy')">Hoy</button>
+        </div>
+        <span class="rg-label">Día</span>
+        <select name="dia" id="diaPickSelect" class="rg-sel" onchange="rgToggleCorteState()" title="Ver ventas/altas de un día exacto (no acumulado)">
+            <option value="0" {% if not dia_pick %}selected{% endif %}>Todos</option>
+            {% for d in range(1, 32) %}
+            <option value="{{ d }}" {% if dia_pick == d %}selected{% endif %}>{{ d }}</option>
+            {% endfor %}
+        </select>
+        <span class="rg-label">Base</span>
+        <select name="base" class="rg-sel">
+            {% for b in range(25, 32) %}
+            <option value="{{ b }}" {% if base_dias == b %}selected{% endif %}>{{ b }}d</option>
+            {% endfor %}
+        </select>
+        <span class="rg-label">Área</span>
+        <select name="area" class="rg-sel">
+            <option value="" {% if not area %}selected{% endif %}>Todas</option>
+            <option value="Vertical" {% if area == 'Vertical' %}selected{% endif %}>Vertical</option>
+            <option value="Horizontal" {% if area == 'Horizontal' %}selected{% endif %}>Horizontal</option>
+        </select>
+        <button type="submit" class="rg-btn rg-btn-apply"><i class="fa-solid fa-rotate"></i> Actualizar</button>
+    </div>
+    <div class="rg-controls-right">
+        <button type="button" class="rg-btn rg-btn-print" onclick="window.print()">
+            <i class="fa-solid fa-print"></i> Imprimir / PDF
+        </button>
+        {% if role == 'admin' %}
+        <div class="rg-pdf-group">
+            <span class="rg-pdf-group-label">PDF oficial</span>
+            <button type="button" id="rgBtnManana" class="rg-btn rg-btn-manana" onclick="rgEjecutarReporte('reporte_gerente', this)" title="Genera el PDF gerencial oficial (Pipeline, ~2-3 min) — usa datos del día anterior">
+                <i class="fa-solid fa-cloud-sun"></i> Mañana
+            </button>
+            <button type="button" id="rgBtnNoche" class="rg-btn rg-btn-noche" onclick="rgEjecutarReporte('reporte_nocturno', this)" title="Genera el PDF gerencial oficial (Pipeline, ~2-3 min) — usa datos de hoy">
+                <i class="fa-solid fa-moon"></i> Noche
+            </button>
+            <span id="rgPdfStatus" class="rg-pdf-status"></span>
+        </div>
+        {% endif %}
+    </div>
+</form>
+
+<!-- ── Hero: KPIs (según Área seleccionada) ─────────────────────── -->
+<div class="kpi-row cols-6">
+    <div class="kcard blue">
+        <div class="kcard-label">Total Ventas</div>
+        <div class="kcard-main">{{ "{:,}".format(k.get('ventas', 0)) }}</div>
+        <div class="kcard-sub">Preventas con ID pedido</div>
+        <i class="fa-solid fa-file-signature kcard-bg-icon"></i>
+    </div>
+    <div class="kcard green">
+        <div class="kcard-label">Altas Instaladas</div>
+        <div class="kcard-main" style="color:var(--success);">{{ "{:,}".format(k.get('altas', 0)) }}</div>
+        <div class="kcard-sub">{% if k.get('cuota') %}Cuota: <b>{{ "{:,}".format(k.get('cuota', 0)) }}</b>{% else %}<span style="color:var(--warning);">Sin cuota definida</span>{% endif %}</div>
+        <div class="kcard-bar-wrap">
+            <div class="kcard-bar" style="width:{{ [k.get('alcance', 0),100]|min }}%; background:var(--success);"></div>
+        </div>
+        <i class="fa-solid fa-plug kcard-bg-icon"></i>
+    </div>
+    <div class="kcard {% if k.get('cuota') %}orange{% else %}gray{% endif %}">
+        <div class="kcard-label">Proyección Cierre</div>
+        <div class="kcard-main" style="color:{% if k.get('cuota') %}var(--warning){% else %}var(--slate){% endif %};">{{ "{:,}".format(k.get('proyeccion', 0)) }}</div>
+        <div class="kcard-sub">{% if k.get('cuota') %}{{ k.get('pct_proyeccion', 0) }}% de la cuota{% else %}Sin cuota definida{% endif %}</div>
+        <i class="fa-solid fa-chart-line kcard-bg-icon"></i>
+    </div>
+    <div class="kcard {% if not k.get('cuota') %}gray{% elif k.get('alcance', 0) >= k.get('alcance_ideal', 0) %}green{% else %}red{% endif %}">
+        <div class="kcard-label">Alcance Actual</div>
+        <div class="kcard-main" style="color:{% if not k.get('cuota') %}var(--slate){% elif k.get('alcance', 0) >= k.get('alcance_ideal', 0) %}var(--success){% else %}var(--danger){% endif %};">{% if k.get('cuota') %}{{ k.get('alcance', 0) }}%{% else %}—{% endif %}</div>
+        <div class="kcard-sub">{% if k.get('cuota') %}Ideal hoy: <b>{{ k.get('alcance_ideal', 0) }}%</b>{% else %}Sin cuota definida{% endif %}</div>
+        <i class="fa-solid fa-gauge-high kcard-bg-icon"></i>
+    </div>
+    <div class="kcard {% if k.get('ritmo_actual', 0) >= k.get('ritmo_necesario', 0) %}green{% else %}orange{% endif %}">
+        <div class="kcard-label">Ritmo Actual</div>
+        <div class="kcard-main">{{ k.get('ritmo_actual', 0) }}</div>
+        <div class="kcard-sub">altas / día{% if k.get('cuota') %} · nec. <b>{{ k.get('ritmo_necesario', 0) }}</b>{% endif %}</div>
+        <i class="fa-solid fa-bolt kcard-bg-icon"></i>
+    </div>
+    <div class="kcard {% if not k.get('cuota') %}gray{% elif k.get('faltantes', 0) == 0 %}green{% else %}red{% endif %}">
+        <div class="kcard-label">Altas Faltantes</div>
+        <div class="kcard-main" style="color:{% if not k.get('cuota') %}var(--slate){% elif k.get('faltantes', 0) == 0 %}var(--success){% else %}var(--danger){% endif %};">{% if k.get('cuota') %}{{ "{:,}".format(k.get('faltantes', 0)) }}{% else %}—{% endif %}</div>
+        <div class="kcard-sub">Días: <b>{{ k.get('dias_trans', 0) }}/{{ k.get('dias_tot', 0) }}</b></div>
+        <i class="fa-solid fa-flag-checkered kcard-bg-icon"></i>
+    </div>
+</div>
+
+<div class="rg-section">
+<div class="panel">
+    <div class="panel-title"><i class="fa-solid fa-diagram-project" style="color:var(--brand);"></i> Embudo de Conversión</div>
+    <div class="kpi-row cols-3" style="margin-bottom:0;">
+        <div class="kcard blue">
+            <div class="kcard-label">Preventa → Alta</div>
+            <div class="kcard-main" style="color:var(--brand);">{{ k.get('conversion', 0) }}%</div>
+            <div class="kcard-sub">{{ "{:,}".format(k.get('altas', 0)) }} altas / {{ "{:,}".format(k.get('ventas', 0)) }} preventas</div>
+            <i class="fa-solid fa-route kcard-bg-icon"></i>
+        </div>
+        <div class="kcard purple">
+            <div class="kcard-label">Preventa → Venta</div>
+            <div class="kcard-main" style="color:var(--kpi-purple);">{{ k.get('conv_preventa_venta', 0) }}%</div>
+            <div class="kcard-sub">{{ "{:,}".format(k.get('validado', 0)) }} validadas / {{ "{:,}".format(k.get('ventas', 0)) }} preventas</div>
+            <i class="fa-solid fa-file-signature kcard-bg-icon"></i>
+        </div>
+        <div class="kcard teal">
+            <div class="kcard-label">Venta → Alta</div>
+            <div class="kcard-main" style="color:var(--kpi-teal);">{{ k.get('conv_venta_alta', 0) }}%</div>
+            <div class="kcard-sub">{{ "{:,}".format(k.get('altas', 0)) }} altas / {{ "{:,}".format(k.get('validado', 0)) }} validadas</div>
+            <i class="fa-solid fa-rotate kcard-bg-icon"></i>
+        </div>
+    </div>
+</div>
+</div>
+
+<!-- ── Instalaciones de hoy/ayer + desglose Vertical/Horizontal ─── -->
+<div class="rg-section rg-instalaciones-row">
+    <div class="panel">
+        <div class="panel-title"><i class="fa-solid fa-plug" style="color:var(--success);"></i> Instalaciones de {{ avance_label }}</div>
+        <div style="display:flex; align-items:center; gap:28px; flex-wrap:wrap;">
+            <div>
+                <div class="inst-main" style="color:{{ 'var(--success)' if activaciones_hoy.faltan == 0 else 'var(--warning)' }};">{{ activaciones_hoy.ejecutadas }}<span class="inst-slash">/</span>{{ activaciones_hoy.agendadas }}</div>
+                <div class="inst-sub">Faltan <b style="color:{{ 'var(--success)' if activaciones_hoy.faltan == 0 else 'var(--warning)' }};">{{ activaciones_hoy.faltan }}</b> por ejecutar (Programada + Validado)</div>
+            </div>
+            <div class="inst-divider"></div>
+            <div class="inst-ejec-block">
+                <div class="inst-ejec-label">Ya instaladas</div>
+                <div class="inst-ejec-cards">
+                    <div class="inst-ejec-card">
+                        <div class="inst-ejec-card-label">Vertical</div>
+                        <div class="inst-ejec-card-val">{{ activaciones_hoy.ejecutadas_vertical }}</div>
+                    </div>
+                    <div class="inst-ejec-card">
+                        <div class="inst-ejec-card-label">Horizontal</div>
+                        <div class="inst-ejec-card-val">{{ activaciones_hoy.ejecutadas_horizontal }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="panel inst-mini">
+        <div class="panel-title" style="font-size:11px; margin-bottom:10px;">Agendado para {{ avance_label }}, por área</div>
+        <div class="inst-mini-row">
+            <span class="inst-mini-label">Vertical</span>
+            <span class="inst-mini-val">{{ activaciones_hoy.agendadas_vertical }}</span>
+        </div>
+        <div class="inst-mini-row">
+            <span class="inst-mini-label">Horizontal</span>
+            <span class="inst-mini-val">{{ activaciones_hoy.agendadas_horizontal }}</span>
+        </div>
+    </div>
+</div>
+
+<!-- ── ¿Qué necesito para llegar a la cuota? — Vertical y Horizontal siempre visibles ─── -->
+{% if kpi_v.get('cuota') or kpi_h.get('cuota') %}
+<div class="rg-section rg-grid-2 rg-grid-2-wide">
+{% for label, kp in [('Vertical', kpi_v), ('Horizontal', kpi_h)] %}
+{% set extra_default = 105 if label == 'Horizontal' else 110 %}
+{% if kp.get('cuota') %}
+{% set cuota_extra = (kp.get('cuota', 0) * extra_default / 100) | round | int %}
+{% set faltan_extra = [cuota_extra - kp.get('altas_ayer', 0), 0] | max %}
+{% set dias_r = kp.get('dias_rest_incl_hoy', 1) or 1 %}
+{% set altas_nec_extra = faltan_extra / dias_r %}
+{% set conv_ayer = kp.get('conversion_ayer', 0) %}
+{% set ventas_nec_extra = (altas_nec_extra / (conv_ayer / 100)) if conv_ayer > 0 else None %}
+<div class="panel proy-cuota-block" style="margin-bottom:0;"
+     data-cuota="{{ kp.get('cuota', 0) }}" data-altas-ayer="{{ kp.get('altas_ayer', 0) }}" data-altas-hoy="{{ kp.get('altas', 0) }}"
+     data-conversion="{{ kp.get('conversion_ayer', 0) }}" data-dias-default="{{ kp.get('dias_rest_incl_hoy', 1) }}" data-basis="ayer">
+    <div class="panel-title"><i class="fa-solid fa-bullseye" style="color:var(--brand);"></i> ¿Qué necesito para llegar a la cuota? — {{ label }}</div>
+    <div style="font-size:12px; color:var(--text-secondary); margin:-8px 0 12px;">
+        Conversión a cierre de ayer: <b style="color:var(--text-primary);">{{ kp.get('conversion_ayer', 0) }}%</b>
+        <span style="opacity:0.75;">· MTD (incluye hoy): {{ kp.get('conversion', 0) }}%</span>
+    </div>
+    <div class="proy-controls no-print" style="display:flex; flex-wrap:wrap; gap:16px; align-items:center; margin-bottom:12px; font-size:12px; color:var(--text-secondary);">
+        <label style="display:flex; align-items:center; gap:6px;">
+            Días restantes:
+            <input type="number" class="proy-dias-input" value="{{ kp.get('dias_rest_incl_hoy', 1) }}" step="0.5" min="0.5"
+                   style="width:64px; background:var(--bg-inset); border:1px solid var(--border); border-radius:6px; color:var(--text-primary); padding:4px 6px; font-size:12px;"
+                   oninput="proyRecalc(this.closest('.proy-cuota-block'))">
+        </label>
+        <button type="button" class="rg-mini-btn" style="padding:3px 10px; font-size:11px;" onclick="proyResetDias(this)">Restablecer</button>
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+            <input type="checkbox" class="proy-extra-toggle" checked onchange="proyRecalc(this.closest('.proy-cuota-block'))"> Meta adicional:
+            <input type="number" class="proy-extra-pct" value="{{ extra_default }}" min="1" step="1"
+                   style="width:56px; background:var(--bg-inset); border:1px solid var(--border); border-radius:6px; color:var(--text-primary); padding:4px 6px; font-size:12px;"
+                   oninput="proyRecalc(this.closest('.proy-cuota-block'))">%
+        </label>
+        <div style="display:flex; align-items:center; gap:6px;">
+            Altas con corte a:
+            <div class="rg-tgl">
+                <button type="button" class="proy-basis-btn rg-tgl-btn active" data-basis="ayer" onclick="proySetBasis(this,'ayer')">Ayer</button>
+                <button type="button" class="proy-basis-btn rg-tgl-btn" data-basis="hoy" onclick="proySetBasis(this,'hoy')">Hoy</button>
+            </div>
+        </div>
+    </div>
+    <div style="overflow-x:auto;">
+    <table class="data-table" style="min-width:460px;">
         <thead>
-          <tr>
-            <th class="left">ÁREA</th>
-            <th>VENTAS</th>
-            <th>ALTAS</th>
-            <th>META</th>
-            <th>PROY. ({{ base_dias }}d)</th>
-            <th>AVANCE %</th>
-            <th>FALTAN</th>
-            <th>RITMO/DÍA</th>
-            <th>REQ./DÍA</th>
-            <th>CONV. %</th>
-            <th>ANULAC.</th>
-          </tr>
+            <tr>
+                <th class="left" style="min-width:130px;">Meta</th>
+                <th>Cuota</th>
+                <th class="proy-th-altas">Altas (cierre ayer)</th>
+                <th class="proy-th-faltan">Faltan a cierre de ayer</th>
+                <th>Altas / día</th>
+                <th>Ventas / día</th>
+            </tr>
         </thead>
         <tbody>
-          {% for kpi, label, cls in [
-              (kpi_t, 'LIMA TOTAL', ''),
-              (kpi_h, 'Horizontal', 'row-sub'),
-              (kpi_v, 'Vertical',   'row-sub'),
-          ] %}
-          {% set alc = kpi.get('alcance', 0) %}
-          <tr class="{{ cls }}">
-            <td class="left" style="font-weight:{% if not cls %}700{% else %}500{% endif %};">
-              {% if cls %}›{% endif %} {{ label }}
-            </td>
-            <td>{{ "{:,}".format(kpi.get('ventas', 0)) }}</td>
-            <td style="font-weight:600;">{{ "{:,}".format(kpi.get('altas', 0)) }}</td>
-            <td>{{ "{:,}".format(kpi.get('cuota', 0)) }}</td>
-            <td>{{ "{:,}".format(kpi.get('proyeccion', 0)) }}</td>
-            <td class="{% if alc >= 100 %}cell-green{% elif alc >= 80 %}cell-amber{% else %}cell-red{% endif %}">
-              {{ alc }}%
-            </td>
-            <td class="{% if kpi.get('faltantes', 0) == 0 %}num-green{% else %}num-red{% endif %}">
-              {{ "{:,}".format(kpi.get('faltantes', 0)) }}
-            </td>
-            <td>{{ kpi.get('ritmo_actual', 0) }}</td>
-            <td>{{ kpi.get('ritmo_necesario', 0) }}</td>
-            <td>{{ kpi.get('conversion', 0) }}%</td>
-            <td>{{ "{:,}".format(kpi.get('anulaciones', 0)) }}</td>
-          </tr>
-          {% endfor %}
+            <tr class="proy-row-100">
+                <td class="left" style="font-weight:700;">100% <span style="color:var(--text-secondary); font-weight:400;">(oficial)</span></td>
+                <td>{{ "{:,}".format(kp.get('cuota', 0)) }}</td>
+                <td class="proy-altas-base">{{ "{:,}".format(kp.get('altas_ayer', 0)) }}</td>
+                <td class="proy-faltan-100 {% if kp.get('faltantes_ayer_100', 0) == 0 %}num-green{% endif %}">{{ "{:,}".format(kp.get('faltantes_ayer_100', 0)) }}</td>
+                <td class="proy-altas-100" style="font-weight:700; color:var(--warning);">{{ kp.get('altas_nec_100', 0) }}</td>
+                <td class="proy-ventas-100" style="font-weight:700; color:var(--brand);">{{ kp.get('ventas_nec_100') if kp.get('ventas_nec_100') is not none else '—' }}</td>
+            </tr>
+            <tr class="proy-row-extra">
+                <td class="left" style="font-weight:700;"><span class="proy-label-extra">{{ extra_default }}%</span> <span style="color:var(--text-secondary); font-weight:400;">(extra)</span></td>
+                <td class="proy-cuota-extra">{{ "{:,}".format(cuota_extra) }}</td>
+                <td class="proy-altas-base">{{ "{:,}".format(kp.get('altas_ayer', 0)) }}</td>
+                <td class="proy-faltan-extra">{{ "{:,}".format(faltan_extra) }}</td>
+                <td class="proy-altas-extra" style="font-weight:700; color:var(--warning);">{{ "%.1f"|format(altas_nec_extra) }}</td>
+                <td class="proy-ventas-extra" style="font-weight:700; color:var(--brand);">{{ "%.1f"|format(ventas_nec_extra) if ventas_nec_extra is not none else '—' }}</td>
+            </tr>
         </tbody>
-      </table>
+    </table>
     </div>
-  </div>
+    <div style="font-size:11px; color:var(--text-secondary); margin-top:10px;">
+        Cierre de ayer por defecto (hoy aún está a medio registrar/ejecutar). Cambia a "Hoy" para ver el acumulado en vivo.
+        {% if kp.get('ventas_nec_100') is none %}Aún no hay ventas registradas este mes para calcular la conversión.{% endif %}
+    </div>
+</div>
+{% endif %}
+{% endfor %}
+</div>
+{% endif %}
+<script>
+function proyFmt(n) { return Math.round(n).toLocaleString('en-US'); }
 
-  <!-- ══════════════════════════════════════════════════ -->
-  <!-- 2. ALTAS POR AGENCIA                              -->
-  <!-- ══════════════════════════════════════════════════ -->
-  {% if tabla_agencias and tabla_agencias.rows %}
-  <div class="rg-section">
-    <div class="rg-section-title">2. Altas por Agencia</div>
-    <div class="rg-table-wrap">
-      <table class="rg-table">
+function proyRecalc(block) {
+    var dias = parseFloat(block.querySelector('.proy-dias-input').value);
+    if (!dias || dias <= 0) return;
+    var cuota = parseFloat(block.dataset.cuota) || 0;
+    var conversion = parseFloat(block.dataset.conversion) / 100;
+    var basis = block.dataset.basis || 'ayer';
+    var altasBase = basis === 'hoy'
+        ? (parseFloat(block.dataset.altasHoy) || 0)
+        : (parseFloat(block.dataset.altasAyer) || 0);
+
+    var thAltas = block.querySelector('.proy-th-altas');
+    var thFaltan = block.querySelector('.proy-th-faltan');
+    if (thAltas) thAltas.textContent = basis === 'hoy' ? 'Altas (hoy en vivo)' : 'Altas (cierre ayer)';
+    if (thFaltan) thFaltan.textContent = basis === 'hoy' ? 'Faltan a hoy' : 'Faltan a cierre de ayer';
+    block.querySelectorAll('.proy-altas-base').forEach(function (cell) {
+        cell.textContent = proyFmt(altasBase);
+    });
+
+    var faltan100 = Math.max(cuota - altasBase, 0);
+    var altasNec100 = faltan100 / dias;
+    var ventasNec100 = conversion > 0 ? altasNec100 / conversion : null;
+    block.querySelector('.proy-faltan-100').textContent = proyFmt(faltan100);
+    block.querySelector('.proy-altas-100').textContent = altasNec100.toFixed(1);
+    block.querySelector('.proy-ventas-100').textContent = (ventasNec100 !== null && isFinite(ventasNec100)) ? ventasNec100.toFixed(1) : '—';
+
+    var extraOn = block.querySelector('.proy-extra-toggle').checked;
+    var extraRow = block.querySelector('.proy-row-extra');
+    extraRow.style.display = extraOn ? '' : 'none';
+    if (extraOn) {
+        var pct = parseFloat(block.querySelector('.proy-extra-pct').value) || 100;
+        var cuotaExtra = Math.round(cuota * pct / 100);
+        var faltanExtra = Math.max(cuotaExtra - altasBase, 0);
+        var altasNecExtra = faltanExtra / dias;
+        var ventasNecExtra = conversion > 0 ? altasNecExtra / conversion : null;
+        block.querySelector('.proy-label-extra').textContent = pct + '%';
+        block.querySelector('.proy-cuota-extra').textContent = proyFmt(cuotaExtra);
+        block.querySelector('.proy-faltan-extra').textContent = proyFmt(faltanExtra);
+        block.querySelector('.proy-altas-extra').textContent = altasNecExtra.toFixed(1);
+        block.querySelector('.proy-ventas-extra').textContent = (ventasNecExtra !== null && isFinite(ventasNecExtra)) ? ventasNecExtra.toFixed(1) : '—';
+    }
+}
+function proyResetDias(btn) {
+    var block = btn.closest('.proy-cuota-block');
+    block.querySelector('.proy-dias-input').value = block.dataset.diasDefault;
+    proyRecalc(block);
+}
+function proySetBasis(btn, basis) {
+    var block = btn.closest('.proy-cuota-block');
+    block.dataset.basis = basis;
+    block.querySelectorAll('.proy-basis-btn').forEach(function (b) {
+        b.classList.toggle('active', b.dataset.basis === basis);
+    });
+    proyRecalc(block);
+}
+</script>
+
+<!-- ══════════════════════════════════════════════════ -->
+<!-- 1 & 2 — SUB-AGENCIAS: VENTAS / ALTAS               -->
+<!-- ══════════════════════════════════════════════════ -->
+<div class="rg-section rg-grid-2 rg-grid-2-wide">
+{% for metric, label, eyebrow in [('ventas', 'Ventas', '01'), ('altas', 'Altas', '02')] %}
+{% set d = pivot_sub.get(metric) %}
+<div class="panel">
+    <div class="panel-title"><span class="panel-eyebrow">{{ eyebrow }}</span> Sub-Agencias — {{ label }}</div>
+    <div style="overflow-x:auto;">
+    <table class="pivot-table">
         <thead>
-          <tr>
-            <th class="left">ÁREA</th>
-            <th>ALIV</th>
-            <th>DEZANET</th>
-            <th>GYA</th>
-            <th>SIPION</th>
-            <th>LOTTUS</th>
-            <th>SUB-AG.</th>
-            <th>TOTAL</th>
-          </tr>
+            <tr>
+                <th class="left">Área</th>
+                <th>ALIV</th><th>DEZANET</th><th>LOTTUS</th><th>SIPION</th>
+                <th>SUB-AGENCIAS</th><th>SUB-AGENCIAS 2</th><th>Total</th>
+            </tr>
         </thead>
         <tbody>
-          {% for row in tabla_agencias.rows %}
-          <tr class="{% if row.nivel == 'lima_sub' %}row-sub{% endif %}">
-            <td class="left" style="font-weight:{% if row.nivel == 'lima' %}700{% else %}500{% endif %};">
-              {% if row.nivel == 'lima_sub' %}›{% endif %} {{ row.label }}
-            </td>
-            <td>{{ row.aliv }}</td>
-            <td>{{ row.dezanet }}</td>
-            <td>{{ row.gya }}</td>
-            <td>{{ row.sipion }}</td>
-            <td>{{ row.lottus }}</td>
-            <td>{{ row.sub_ag }}</td>
-            <td style="font-weight:700;">{{ row.total }}</td>
-          </tr>
-          {% endfor %}
+            {% if d %}
+            <tr class="pivot-sub">
+                <td class="left">Horizontal</td>
+                <td>{{ d.horizontal.aliv }}</td><td>{{ d.horizontal.dezanet }}</td><td>{{ d.horizontal.lottus }}</td>
+                <td>{{ d.horizontal.sipion }}</td><td>{{ d.horizontal.sub_agencias }}</td><td>{{ d.horizontal.sub_agencias_2 }}</td>
+                <td class="col-total">{{ d.horizontal.total }}</td>
+            </tr>
+            <tr class="pivot-sub">
+                <td class="left">Vertical</td>
+                <td>{{ d.vertical.aliv }}</td><td>{{ d.vertical.dezanet }}</td><td>{{ d.vertical.lottus }}</td>
+                <td>{{ d.vertical.sipion }}</td><td>{{ d.vertical.sub_agencias }}</td><td>{{ d.vertical.sub_agencias_2 }}</td>
+                <td class="col-total">{{ d.vertical.total }}</td>
+            </tr>
+            <tr class="pivot-total">
+                <td class="left">Total Lima</td>
+                <td>{{ d.lima.aliv }}</td><td>{{ d.lima.dezanet }}</td><td>{{ d.lima.lottus }}</td>
+                <td>{{ d.lima.sipion }}</td><td>{{ d.lima.sub_agencias }}</td><td>{{ d.lima.sub_agencias_2 }}</td>
+                <td class="col-total">{{ d.lima.total }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="8" class="left" style="color:var(--text-light);">Sin datos</td></tr>
+            {% endif %}
         </tbody>
-        <tfoot>
-          <tr>
-            <td class="left" style="font-size:11px; color:#888; font-style:italic;">
-              Proyecciones ({{ base_dias }}d):
-              ALIV={{ tabla_agencias.proy_aliv }} ·
-              DEZANET+GYA+SIP+LOTTUS={{ tabla_agencias.proy_dezanet }} ·
-              SUB-AG={{ tabla_agencias.proy_sub }}
-            </td>
-            <td colspan="7"></td>
-          </tr>
-        </tfoot>
-      </table>
+    </table>
     </div>
-  </div>
-  {% endif %}
+    {% if d %}
+    <div class="pivot-legend"><i class="fa-solid fa-circle-info"></i> <b>ALIV</b> = fuerza propia · el resto son subagencias externas (DEZANET, LOTTUS, SIPION y sub-agencias agrupadas).</div>
+    {% endif %}
+</div>
+{% endfor %}
+</div>
 
-  <!-- ══════════════════════════════════════════════════ -->
-  <!-- 3 & 4 — TOP VENDEDORES + DISTRITOS (lado a lado)  -->
-  <!-- ══════════════════════════════════════════════════ -->
-  <div class="rg-grid-2">
-
-    <!-- 3. TOP VENDEDORES -->
-    <div class="rg-section">
-      <div class="rg-section-title">3. Top 10 Vendedores</div>
-      <div class="rg-table-wrap">
-        <table class="rg-table">
-          <thead>
-            <tr>
-              <th class="left">#</th>
-              <th class="left">VENDEDOR</th>
-              <th class="left">AGENCIA</th>
-              <th>ALTAS</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% if top_vendedores %}
-            {% for v in top_vendedores %}
-            <tr>
-              <td class="left">
-                <span class="rank-badge {% if loop.index == 1 %}gold{% elif loop.index == 2 %}silver{% elif loop.index == 3 %}bronze{% endif %}">
-                  {{ loop.index }}
-                </span>
-              </td>
-              <td class="left" style="font-size:12px; max-width:160px; overflow:hidden; text-overflow:ellipsis;">{{ v.vendedor }}</td>
-              <td class="left" style="font-size:12px; color:#555;">{{ v.agencia or '—' }}</td>
-              <td style="font-weight:700;">{{ v.altas }}</td>
-            </tr>
-            {% endfor %}
-            {% else %}
-            <tr><td colspan="4" class="left" style="color:#888;">Sin datos</td></tr>
-            {% endif %}
-          </tbody>
+<!-- ══════════════════════════════════════════════════ -->
+<!-- 3 & 4 — TOP DISTRITOS + PLANES INSTALADOS         -->
+<!-- ══════════════════════════════════════════════════ -->
+<div class="rg-section rg-grid-2">
+    <div class="panel">
+        <div class="panel-title"><span class="panel-eyebrow">03</span> Top 10 Distritos</div>
+        <div style="overflow-x:auto;">
+        <table class="data-table" style="table-layout:fixed;">
+        <colgroup><col style="width:55%;"><col style="width:22%;"><col style="width:23%;"></colgroup>
+            <thead><tr><th class="left">DISTRITO</th><th>ALTAS</th><th>%</th></tr></thead>
+            <tbody>
+                {% if top_distritos %}
+                {% set total_dist = top_distritos | sum(attribute='altas') %}
+                {% for d in top_distritos %}
+                <tr class="rank-row">
+                    <td class="left" style="display:flex; align-items:center; gap:8px; font-size:12px;">
+                        <span class="rank-badge {% if loop.index == 1 %}gold{% elif loop.index == 2 %}silver{% elif loop.index == 3 %}bronze{% endif %}">{{ loop.index }}</span>
+                        {{ d.Distrito }}
+                    </td>
+                    <td style="font-weight:700;">{{ d.altas }}</td>
+                    <td style="color:var(--text-secondary);">{{ "%.1f"|format(d.altas / total_dist * 100 if total_dist else 0) }}%</td>
+                </tr>
+                {% endfor %}
+                {% else %}
+                <tr><td colspan="3" class="left" style="color:var(--text-light);">Sin datos</td></tr>
+                {% endif %}
+            </tbody>
         </table>
-      </div>
+        </div>
     </div>
 
-    <!-- 4. TOP DISTRITOS -->
-    <div class="rg-section">
-      <div class="rg-section-title">4. Top 10 Distritos</div>
-      <div class="rg-table-wrap">
-        <table class="rg-table">
-          <thead>
-            <tr>
-              <th class="left">#</th>
-              <th class="left">DISTRITO</th>
-              <th>ALTAS</th>
-              <th>%</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% if top_distritos %}
-            {% set total_dist = top_distritos | sum(attribute='altas') %}
-            {% for d in top_distritos %}
-            <tr>
-              <td class="left">
-                <span class="rank-badge {% if loop.index == 1 %}gold{% elif loop.index == 2 %}silver{% elif loop.index == 3 %}bronze{% endif %}">
-                  {{ loop.index }}
-                </span>
-              </td>
-              <td class="left" style="font-size:12px;">{{ d.Distrito }}</td>
-              <td style="font-weight:700;">{{ d.altas }}</td>
-              <td style="color:#666;">{{ "%.1f"|format(d.altas / total_dist * 100 if total_dist else 0) }}%</td>
-            </tr>
-            {% endfor %}
-            {% else %}
-            <tr><td colspan="4" class="left" style="color:#888;">Sin datos</td></tr>
-            {% endif %}
-          </tbody>
+    <div class="panel">
+        <div class="panel-title"><span class="panel-eyebrow">04</span> Planes Instalados (Altas)</div>
+        <div style="overflow-x:auto;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th class="left">PLAN</th><th>VERT.</th>
+                    <th>HORIZ.</th><th>TOTAL</th><th>TOTAL %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if planes_merged %}
+                {% set grand_total = planes_merged | sum(attribute='total') %}
+                {% for p in planes_merged %}
+                <tr>
+                    <td class="left" style="font-weight:600;">{{ p.velocidad }}{% if p.velocidad and (p.velocidad | string).isdigit() %} Mbps{% endif %}</td>
+                    <td>{{ p.v_altas }}</td>
+                    <td>{{ p.h_altas }}</td>
+                    <td style="font-weight:700;">{{ p.total }}</td>
+                    <td style="color:var(--text-secondary);">{{ "%.1f"|format(p.total / grand_total * 100 if grand_total else 0) }}%</td>
+                </tr>
+                {% endfor %}
+                <tr class="row-total">
+                    <td class="left">TOTAL</td>
+                    <td>{{ planes_merged | sum(attribute='v_altas') }}</td>
+                    <td>{{ planes_merged | sum(attribute='h_altas') }}</td>
+                    <td>{{ grand_total }}</td><td>100.0%</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" class="left" style="color:var(--text-light);">Sin datos de planes</td></tr>
+                {% endif %}
+            </tbody>
         </table>
-      </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Resumen Lima (áreas + proyección de cierre) ───────────────── -->
+<div class="rg-section">
+<div class="panel">
+    <div class="panel-title" style="justify-content:space-between; flex-wrap:wrap; gap:10px;">
+        <span><i class="fa-solid fa-table-columns" style="color:var(--success);"></i> Resumen Lima</span>
+        <div class="no-print" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-family:var(--font-body); font-weight:400;">
+            <span style="font-size:12px; color:var(--text-secondary);">Corte: <b style="color:var(--text-primary);">{{ 'Ayer' if ref == 'ayer' else 'Hoy' }}</b> <span style="opacity:.7;">(usa el filtro de arriba)</span></span>
+            <button type="button" class="rg-mini-btn" onclick="rgCargarResumen()"><i class="fa-solid fa-rotate-right"></i></button>
+            <button type="button" id="rgCopyBtn" class="rg-mini-btn" onclick="rgCopiarResumen()"><i class="fa-solid fa-copy"></i> Copiar</button>
+            <button type="button" id="rgCopyLideresBtn" class="rg-mini-btn" onclick="rgCopiarResumenLideres()"><i class="fa-solid fa-comment-dots"></i> Para líderes</button>
+        </div>
+    </div>
+    <div id="rgResumenBody">
+        <div style="text-align:center; padding:24px 0; color:var(--text-secondary);">
+            <i class="fa-solid fa-circle-notch fa-spin" style="font-size:20px; color:var(--success);"></i>
+            <div style="margin-top:10px; font-size:12px;">Cargando datos…</div>
+        </div>
     </div>
 
-  </div><!-- /rg-grid-2 -->
-
-  <!-- ══════════════════════════════════════════════════ -->
-  <!-- 5. PLANES INSTALADOS (ALTAS)                      -->
-  <!-- ══════════════════════════════════════════════════ -->
-  <div class="rg-section">
-    <div class="rg-section-title">5. Planes Instalados (Altas)</div>
-    <div class="rg-table-wrap">
-      <table class="rg-table">
-        <thead>
-          <tr>
-            <th class="left">PLAN</th>
-            <th>VERT. ALTAS</th>
-            <th>VERT. %</th>
-            <th>HORIZ. ALTAS</th>
-            <th>HORIZ. %</th>
-            <th>TOTAL</th>
-            <th>TOTAL %</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% if planes_merged %}
-          {% set grand_total = planes_merged | sum(attribute='total') %}
-          {% for p in planes_merged %}
-          <tr>
-            <td class="left" style="font-weight:600;">
-              {{ p.velocidad }}{% if p.velocidad and (p.velocidad | string).isdigit() %} Mbps{% endif %}
-            </td>
-            <td>{{ p.v_altas }}</td>
-            <td style="color:#666;">{{ "%.1f"|format(p.v_pct) }}%</td>
-            <td>{{ p.h_altas }}</td>
-            <td style="color:#666;">{{ "%.1f"|format(p.h_pct) }}%</td>
-            <td style="font-weight:700;">{{ p.total }}</td>
-            <td style="color:#555;">{{ "%.1f"|format(p.total / grand_total * 100 if grand_total else 0) }}%</td>
-          </tr>
-          {% endfor %}
-          <tr class="row-total">
-            <td class="left">TOTAL</td>
-            <td>{{ planes_merged | sum(attribute='v_altas') }}</td>
-            <td>—</td>
-            <td>{{ planes_merged | sum(attribute='h_altas') }}</td>
-            <td>—</td>
-            <td>{{ grand_total }}</td>
-            <td>100.0%</td>
-          </tr>
-          {% else %}
-          <tr><td colspan="7" class="left" style="color:#888;">Sin datos de planes</td></tr>
-          {% endif %}
-        </tbody>
-      </table>
+    <div style="margin-top:18px; padding-top:16px; border-top:1px solid var(--border);">
+        <div style="display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:6px; margin-bottom:6px;">
+            <div style="font-size:13px; font-weight:700; color:var(--text-primary);">
+                <i class="fa-solid fa-chart-line" style="color:var(--success);"></i> Proyección de cierre — dos métodos
+            </div>
+            <div id="rgProjRango" style="font-size:11px; color:var(--text-secondary);">—</div>
+        </div>
+        <div class="rg-chart-wrap" style="height:240px;"><canvas id="rgChartProyeccion"></canvas></div>
+        <p style="font-size:11px; color:var(--text-light); margin-top:8px; line-height:1.5;">
+            <i class="fa-solid fa-circle-info"></i>
+            Ritmo actual: (altas acum. ÷ días transcurridos) × base. Tendencia: regresión lineal sobre el acumulado diario, extrapolada a la base ({{ base_dias }}d, ver filtros).
+            Lima + Callao, Estado orden = Ejecutada, por fecha de programación.
+        </p>
     </div>
-  </div>
+</div>
+</div>
 
-  <!-- ══════════════════════════════════════════════════ -->
-  <!-- 6 & 7 — ESTADOS + TRAMO INSTALACIÓN (lado a lado) -->
-  <!-- ══════════════════════════════════════════════════ -->
-  <div class="rg-grid-2">
-
-    <!-- 6. ESTADO DE ÓRDENES -->
-    <div class="rg-section">
-      <div class="rg-section-title">6. Estado de Órdenes</div>
-      <div class="rg-table-wrap">
-        <table class="rg-table">
-          <thead>
-            <tr>
-              <th class="left">ESTADO</th>
-              <th>CANTIDAD</th>
-              <th>%</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% if dist_estados %}
-            {% set total_est = dist_estados | sum(attribute='registro') %}
-            {% for e in dist_estados | sort(attribute='registro', reverse=True) %}
-            <tr>
-              <td class="left">{{ e.estado or '(Sin estado)' }}</td>
-              <td style="font-weight:{% if e.estado == 'Ejecutada' %}700{% else %}400{% endif %};">
-                {{ "{:,}".format(e.registro) }}
-              </td>
-              <td style="color:#555;">{{ "%.1f"|format(e.pct_registro) }}%</td>
-            </tr>
-            {% endfor %}
-            <tr class="row-total">
-              <td class="left">TOTAL</td>
-              <td>{{ "{:,}".format(total_est) }}</td>
-              <td>100.0%</td>
-            </tr>
-            {% else %}
-            <tr><td colspan="3" class="left" style="color:#888;">Sin datos</td></tr>
-            {% endif %}
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- 7. TRAMO DE INSTALACIÓN -->
-    <div class="rg-section">
-      <div class="rg-section-title">7. Tiempo de Instalación</div>
-      <div class="rg-table-wrap">
-        <table class="rg-table">
-          <thead>
-            <tr>
-              <th class="left">TRAMO</th>
-              <th>ALTAS</th>
-              <th>%</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% if tramos %}
-            {% set total_tram = tramos | sum(attribute='cnt') %}
-            {% for t in tramos %}
-            <tr>
-              <td class="left">{{ t.tramo }}</td>
-              <td style="font-weight:{% if t.tramo == 'Mismo día' %}700{% else %}400{% endif %};">
-                {{ "{:,}".format(t.cnt) }}
-              </td>
-              <td style="color:#555;">{{ "%.1f"|format(t.cnt / total_tram * 100 if total_tram else 0) }}%</td>
-            </tr>
-            {% endfor %}
-            <tr class="row-total">
-              <td class="left">TOTAL</td>
-              <td>{{ "{:,}".format(total_tram) }}</td>
-              <td>100.0%</td>
-            </tr>
-            {% else %}
-            <tr><td colspan="3" class="left" style="color:#888;">Sin datos</td></tr>
-            {% endif %}
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-  </div><!-- /rg-grid-2 -->
-
-  <!-- Pie de página -->
-  <div style="text-align:center; font-size:11px; color:#999; padding: 10px 0 4px; margin-top:8px;" class="no-print">
+<div style="text-align:center; font-size:11px; color:var(--text-light); padding: 10px 0 4px; margin-top:8px;" class="no-print">
     AlivTelecom · Sistema de Reportes · {{ generado }}
-  </div>
+</div>
 
-</div><!-- /rg-wrap -->
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+if (window.Chart) {
+    Chart.defaults.color = 'rgba(242,240,236,0.75)';
+    Chart.defaults.borderColor = 'rgba(255,255,255,0.08)';
+    Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(10,10,11,0.95)';
+    Chart.defaults.plugins.tooltip.titleColor = '#F2F0EC';
+    Chart.defaults.plugins.tooltip.bodyColor = '#F2F0EC';
+    Chart.defaults.plugins.tooltip.borderColor = 'rgba(255,255,255,0.12)';
+    Chart.defaults.plugins.tooltip.borderWidth = 1;
+}
+
+// ── Filtro global: Hoy / Ayer (recarga toda la página) ────
+function rgSetRefFilter(r) {
+    document.getElementById('refInput').value = r;
+    document.getElementById('refInput').closest('form').submit();
+}
+
+// Un Día específico manda sobre el corte Ayer/Hoy — lo apaga visualmente.
+function rgToggleCorteState() {
+    var dia = document.getElementById('diaPickSelect').value;
+    document.getElementById('corteTgl').classList.toggle('disabled', dia !== '0');
+}
+document.addEventListener('DOMContentLoaded', rgToggleCorteState);
+
+// ── Generar PDF gerencial oficial (mismo pipeline que la página Pipeline) ─
+var _rgPdfSSE = null;
+
+function rgEjecutarReporte(fase, btn) {
+    var status  = document.getElementById('rgPdfStatus');
+    var btnMan  = document.getElementById('rgBtnManana');
+    var btnNoc  = document.getElementById('rgBtnNoche');
+
+    btnMan.disabled = true;
+    btnNoc.disabled = true;
+    status.className = 'rg-pdf-status';
+    status.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Generando ' + (fase === 'reporte_nocturno' ? 'reporte de noche' : 'reporte de mañana') + '…';
+
+    var fd = new FormData();
+    fd.append('fase', fase);
+
+    fetch('/pipeline/ejecutar', { method: 'POST', body: fd })
+        .then(function (r) { return r.json().then(function (data) { return { status: r.status, data: data }; }); })
+        .then(function (res) {
+            if (!res.data.ok) {
+                status.className = 'rg-pdf-status err';
+                status.textContent = res.data.error || 'No se pudo iniciar';
+                btnMan.disabled = false;
+                btnNoc.disabled = false;
+                return;
+            }
+            rgSeguirPdfSSE();
+        })
+        .catch(function (err) {
+            status.className = 'rg-pdf-status err';
+            status.textContent = 'Error de red: ' + err;
+            btnMan.disabled = false;
+            btnNoc.disabled = false;
+        });
+}
+
+function rgSeguirPdfSSE() {
+    var status = document.getElementById('rgPdfStatus');
+    var btnMan = document.getElementById('rgBtnManana');
+    var btnNoc = document.getElementById('rgBtnNoche');
+
+    if (_rgPdfSSE) _rgPdfSSE.close();
+    _rgPdfSSE = new EventSource('/pipeline/stream');
+
+    _rgPdfSSE.onmessage = function (e) {
+        var msg = JSON.parse(e.data);
+        if (msg.t === 'done') {
+            var ok = msg.code === 0;
+            status.className = 'rg-pdf-status ' + (ok ? 'ok' : 'err');
+            status.innerHTML = ok
+                ? '<i class="fa-solid fa-circle-check"></i> PDF generado'
+                : '<i class="fa-solid fa-circle-xmark"></i> Falló (código ' + msg.code + ')';
+            btnMan.disabled = false;
+            btnNoc.disabled = false;
+            _rgPdfSSE.close();
+        } else if (msg.t === 'idle') {
+            status.className = 'rg-pdf-status';
+            status.textContent = '';
+            btnMan.disabled = false;
+            btnNoc.disabled = false;
+            _rgPdfSSE.close();
+        } else if (msg.t === 'err') {
+            status.className = 'rg-pdf-status err';
+            status.textContent = msg.v;
+        }
+        // t === 'l' (líneas de log del proceso): no se muestran acá, solo el estado final.
+        // Para ver el detalle completo, usa la página Pipeline.
+    };
+    _rgPdfSSE.onerror = function () {
+        status.className = 'rg-pdf-status err';
+        status.textContent = 'Conexión interrumpida';
+        btnMan.disabled = false;
+        btnNoc.disabled = false;
+    };
+}
+
+// ── Resumen Lima ─────────────────────────────────────────
+var _rgBase = {{ base_dias }};
+var _rgRef  = '{{ ref }}';
+var _rgMes  = {{ mes_actual }};
+var _rgAnio = {{ anio_actual }};
+var _rgUltimoResumen = null;
+
+function rgCargarResumen() {
+    var body = document.getElementById('rgResumenBody');
+    body.innerHTML = '<div style="text-align:center; padding:24px 0; color:var(--text-secondary);">' +
+        '<i class="fa-solid fa-circle-notch fa-spin" style="font-size:20px; color:var(--success);"></i>' +
+        '<div style="margin-top:10px; font-size:12px;">Cargando datos…</div></div>';
+
+    fetch('/api/resumen-tabla?base=' + _rgBase + '&ref=' + _rgRef + '&mes=' + _rgMes + '&anio=' + _rgAnio)
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (!data.ok) {
+                body.innerHTML = '<p style="color:var(--danger); margin:0; font-size:12px;">Error: ' + (data.error || 'desconocido') + '</p>';
+                return;
+            }
+            _rgUltimoResumen = data;
+            var pct = function (v) { return v.toFixed(1) + '%'; };
+            var ritmo = function (v) { return Math.round(v) + '/d'; };
+
+            var rows = data.filas.map(function (f) {
+                var isTotal = f.area === 'TOTAL';
+                var avzCls = f.avz >= 100 ? 'cell-green' : f.avz >= 80 ? 'cell-amber' : 'cell-red';
+                var alcCls = f.alcance >= 100 ? 'num-green' : '';
+                return '<tr class="' + (isTotal ? 'row-total' : '') + '">' +
+                    '<td class="left" style="font-weight:' + (isTotal ? 700 : 600) + ';">' + f.area + '</td>' +
+                    '<td style="font-weight:700; color:var(--success);">' + f.altas.toLocaleString('es-PE') + '</td>' +
+                    '<td>' + f.meta.toLocaleString('es-PE') + '</td>' +
+                    '<td>' + f.proyeccion.toLocaleString('es-PE') + '</td>' +
+                    '<td><span class="' + avzCls + '" style="padding:3px 8px;">' + pct(f.avz) + '</span></td>' +
+                    '<td class="' + alcCls + '">' + pct(f.alcance) + '</td>' +
+                    '<td>' + ritmo(f.ritmo_actual) + '</td>' +
+                    '<td style="color:var(--warning); font-weight:600;">' + ritmo(f.ritmo_necesario) + '</td>' +
+                    '<td class="' + (f.faltantes === 0 ? 'num-green' : 'num-red') + '">' + f.faltantes.toLocaleString('es-PE') + '</td>' +
+                    '</tr>';
+            }).join('');
+
+            body.innerHTML = '<div style="overflow-x:auto;">' +
+                '<table id="rgResumenTabla" class="data-table">' +
+                '<thead><tr>' +
+                '<th class="left">ÁREA</th><th>ALTAS</th><th>META</th><th>PROYECCIÓN</th>' +
+                '<th>PROY/META</th><th>% LOGRADO</th><th>RITMO/D</th><th>RITMO NEC.</th><th>FALTANTES</th>' +
+                '</tr></thead><tbody>' + rows + '</tbody></table></div>' +
+                '<p style="font-size:11px; color:var(--text-light); margin-top:10px; line-height:1.5;">' +
+                '<i class="fa-solid fa-circle-info"></i> Ref: <strong>' + (_rgRef === 'ayer' ? 'Ayer (acum.)' : 'Hoy') + '</strong>' +
+                ' &nbsp;·&nbsp; PROY. = altas ÷ días × base ' + _rgBase + 'd &nbsp;·&nbsp; AVZ = PROY ÷ META &nbsp;·&nbsp; ALCANCE = altas ÷ META</p>';
+        })
+        .catch(function (err) {
+            body.innerHTML = '<p style="color:var(--danger); margin:0; font-size:12px;">Error de conexión: ' + err + '</p>';
+        });
+
+    rgCargarProyeccionChart();
+}
+
+// ── Proyección de cierre — dos métodos ────────────────────
+var _rgProjChart = null;
+
+function _rgStackLabelsY(items, minGap) {
+    items.sort(function (a, b) { return a.y - b.y; });
+    for (var i = 1; i < items.length; i++) {
+        if (items[i].y - items[i - 1].y < minGap) items[i].y = items[i - 1].y + minGap;
+    }
+    return items;
+}
+
+var _rgPrintMode = false;
+
+function _rgProyeccionLabelsPlugin(info) {
+    return {
+        id: 'rgProyeccionLabels',
+        afterDatasetsDraw: function (chart) {
+            var ctx = chart.ctx, chartArea = chart.chartArea, scales = chart.scales;
+            if (!chartArea) return;
+            var xScale = scales.x, yScale = scales.y;
+            var idxHoy = info.diasTrans - 1;
+            var idxFin = info.baseDias - 1;
+            var fmt = function (v) { return Math.round(v).toLocaleString('es-PE'); };
+            var lineColor  = _rgPrintMode ? 'rgba(26,26,26,.35)' : 'rgba(242,240,236,.28)';
+            var labelColor = _rgPrintMode ? '#1a1a1a' : 'rgba(242,240,236,.65)';
+            var valueColor = _rgPrintMode ? '#1a1a1a' : 'rgba(242,240,236,.9)';
+            var endValueColor = _rgPrintMode ? '#1a1a1a' : 'rgba(242,240,236,.92)';
+
+            ctx.save();
+
+            if (idxHoy >= 0 && idxHoy < idxFin) {
+                var xHoy = xScale.getPixelForValue(idxHoy);
+                ctx.beginPath();
+                ctx.setLineDash([3, 3]);
+                ctx.strokeStyle = lineColor;
+                ctx.lineWidth = 1;
+                ctx.moveTo(xHoy, chartArea.top);
+                ctx.lineTo(xHoy, chartArea.bottom);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                ctx.fillStyle = labelColor;
+                ctx.font = '700 10px Inter, -apple-system, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'alphabetic';
+                ctx.fillText('HOY', xHoy, chartArea.top - 8);
+
+                if (info.realHoy != null) {
+                    var yReal = yScale.getPixelForValue(info.realHoy);
+                    ctx.fillStyle = '#1D9E75';
+                    ctx.beginPath();
+                    ctx.arc(xHoy, yReal, 3.5, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.textAlign = 'right';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillStyle = valueColor;
+                    ctx.font = '700 11px Inter, -apple-system, sans-serif';
+                    ctx.fillText(fmt(info.realHoy), xHoy - 8, yReal - 10);
+                }
+            }
+
+            var xFin = xScale.getPixelForValue(idxFin);
+            var items = [];
+            if (info.cuota > 0) items.push({ key: 'cuota', value: info.cuota, color: 'rgba(124,139,153,.85)', y: yScale.getPixelForValue(info.cuota) });
+            items.push({ key: 'tendencia', value: info.tendenciaFinal, color: '#F47920', y: yScale.getPixelForValue(info.tendenciaFinal) });
+            items.push({ key: 'plano', value: info.planoFinal, color: '#ABA8A2', y: yScale.getPixelForValue(info.planoFinal) });
+            items.forEach(function (it) { it.trueY = it.y; });
+            _rgStackLabelsY(items, 14);
+
+            items.forEach(function (it) {
+                if (it.trueY !== it.y) {
+                    ctx.beginPath();
+                    ctx.strokeStyle = it.color;
+                    ctx.lineWidth = 1;
+                    ctx.moveTo(xFin + 4, it.trueY);
+                    ctx.lineTo(xFin + 10, it.y);
+                    ctx.stroke();
+                }
+                ctx.beginPath();
+                ctx.fillStyle = it.color;
+                ctx.arc(xFin + 4, it.trueY, 3, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = endValueColor;
+                ctx.font = '700 11px Inter, -apple-system, sans-serif';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(fmt(it.value), xFin + 14, it.y);
+            });
+
+            ctx.restore();
+        },
+    };
+}
+
+function rgCargarProyeccionChart() {
+    fetch('/api/proyeccion-cierre?base=' + _rgBase + '&ref=' + _rgRef + '&mes=' + _rgMes + '&anio=' + _rgAnio)
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (!data.ok || !window.Chart) return;
+            var canvas = document.getElementById('rgChartProyeccion');
+            if (!canvas) return;
+
+            var labels = data.dias.map(function (d) { return 'Día ' + d; });
+            var cuotaLine = data.cuota > 0 ? data.dias.map(function () { return data.cuota; }) : data.dias.map(function () { return null; });
+            var realHoy = data.real.length ? data.real.filter(function (v) { return v != null; }).slice(-1)[0] : null;
+
+            if (_rgProjChart) _rgProjChart.destroy();
+            _rgProjChart = new Chart(canvas, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'Cuota', data: cuotaLine, borderColor: 'rgba(124,139,153,.55)', borderDash: [5, 4], pointRadius: 0, borderWidth: 1.5 },
+                        { label: 'Tendencia (regresión)', data: data.tendencia, borderColor: '#F47920', pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: '#F47920', pointHoverBorderColor: '#1B1B1F', pointHoverBorderWidth: 2, borderWidth: 2, tension: .15 },
+                        { label: 'Ritmo actual (plano)', data: data.plano, borderColor: '#ABA8A2', borderDash: [2, 2], pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: '#ABA8A2', pointHoverBorderColor: '#1B1B1F', pointHoverBorderWidth: 2, borderWidth: 2 },
+                        { label: 'Acumulado real', data: data.real, borderColor: '#1D9E75', backgroundColor: 'rgba(29,158,117,.10)', pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: '#1D9E75', pointHoverBorderColor: '#1B1B1F', pointHoverBorderWidth: 2, borderWidth: 2.5, fill: true, tension: .1 },
+                    ],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    layout: { padding: { top: 22, right: 66, bottom: 2, left: 2 } },
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 }, color: _rgPrintMode ? _RG_COLOR_PRINT : _RG_COLOR_SCREEN } },
+                        tooltip: {
+                            callbacks: {
+                                label: function (ctx) {
+                                    return ctx.dataset.label && ctx.parsed.y != null
+                                        ? ctx.dataset.label + ': ' + Math.round(ctx.parsed.y).toLocaleString('es-PE')
+                                        : null;
+                                },
+                            },
+                        },
+                    },
+                    scales: {
+                        x: { ticks: { maxTicksLimit: 10, font: { size: 10 }, color: _rgPrintMode ? _RG_COLOR_PRINT : _RG_COLOR_SCREEN }, grid: { display: false } },
+                        y: { ticks: { font: { size: 10 }, color: _rgPrintMode ? _RG_COLOR_PRINT : _RG_COLOR_SCREEN }, beginAtZero: true },
+                    },
+                },
+                plugins: [_rgProyeccionLabelsPlugin({
+                    diasTrans: data.dias_trans,
+                    baseDias: data.base_dias,
+                    cuota: data.cuota,
+                    tendenciaFinal: data.tendencia[data.tendencia.length - 1],
+                    planoFinal: data.plano[data.plano.length - 1],
+                    realHoy: realHoy,
+                })],
+            });
+
+            var projEl = document.getElementById('rgProjRango');
+            if (!projEl) return;
+            var piso = data.piso, techo = data.techo;
+            var linea = 'Piso ' + piso.toLocaleString('es-PE') + ' (plano) · techo ' + techo.toLocaleString('es-PE') + ' (tendencia)';
+            if (data.cuota > 0 && techo > piso) {
+                var pct = (data.cuota - piso) / (techo - piso) * 100;
+                var ubic = pct <= 20 ? 'bajo del rango' : pct <= 45 ? 'medio-bajo del rango'
+                    : pct <= 55 ? 'medio del rango' : pct <= 80 ? 'medio-alto del rango' : 'alto del rango';
+                linea += ' — la cuota está en el ' + ubic;
+            }
+            projEl.textContent = linea;
+        })
+        .catch(function () {});
+}
+
+function rgCopiarResumen() {
+    var filas = document.querySelectorAll('#rgResumenTabla tr');
+    var lineas = Array.from(filas).map(function (tr) {
+        return Array.from(tr.querySelectorAll('th, td')).map(function (c) { return c.innerText.trim(); }).join('\t');
+    });
+    navigator.clipboard.writeText(lineas.join('\n'))
+        .then(function () {
+            var btn = document.getElementById('rgCopyBtn');
+            btn.innerHTML = '<i class="fa-solid fa-check"></i> Copiado';
+            setTimeout(function () { btn.innerHTML = '<i class="fa-solid fa-copy"></i> Copiar'; }, 2000);
+        })
+        .catch(function () { alert('No se pudo copiar'); });
+}
+
+function rgCopiarResumenLideres() {
+    if (!_rgUltimoResumen) return;
+    var f = _rgUltimoResumen.filas;
+    var h = f.find(function (x) { return x.area === 'Horizontal'; });
+    var v = f.find(function (x) { return x.area === 'Vertical'; });
+    if (!h || !v) return;
+
+    var hoy = new Date();
+    var fechaTxt = hoy.toLocaleDateString('es-PE', { day: '2-digit', month: 'short' }).replace('.', '');
+    var nf = function (n) { return Math.round(n).toLocaleString('es-PE'); };
+
+    var bloque = function (label, r) {
+        var emoji = r.avz >= 100 ? '🟢' : '🔴';
+        return '*' + label + '* ' + emoji + '\n' +
+               emoji + ' Avance: *' + r.alcance.toFixed(1) + '% de cuota*  (' + nf(r.altas) + ' / ' + nf(r.meta) + ')\n' +
+               emoji + ' Necesita: *' + r.ritmo_necesario_neto + '/día*  (ritmo actual: ' + r.ritmo_actual + '/día)\n\n' +
+               '• Proyección a cierre: ' + nf(r.proyeccion) + ' (' + r.avz.toFixed(1) + '% de la meta)\n' +
+               '• Falta: ' + nf(r.faltantes) + ' — con ' + nf(r.bac) + ' ya agendados (BAC), quedan *' + nf(r.faltante_neto) + ' netos*';
+    };
+
+    var conclusion;
+    if (h.avz >= 100 && v.avz >= 100) {
+        conclusion = 'Vertical y Horizontal van encaminados a cuota.';
+    } else if (h.avz < 100 && v.avz < 100) {
+        conclusion = 'Horizontal y Vertical necesitan subir el ritmo para cerrar en cuota.';
+    } else {
+        var atras = h.avz < 100 ? h : v;
+        var nombreAtras = h.avz < 100 ? 'Horizontal' : 'Vertical';
+        var nombreBien = h.avz < 100 ? 'Vertical' : 'Horizontal';
+        var extra = Math.max(Math.round(atras.ritmo_necesario_neto - atras.ritmo_actual), 0);
+        conclusion = nombreBien + ' va encaminado. ' + nombreAtras + ' necesita subir ' +
+                     (extra > 0 ? '~' + extra + ' altas/día extra' : 'el ritmo') + ' para cerrar en cuota.';
+    }
+
+    var msg = '📊 *Avance Ventas Lima — corte ' + fechaTxt + ' (día ' + _rgUltimoResumen.dia_corte + ' de ' + _rgUltimoResumen.dias_mes + ')*\n\n' +
+              bloque('Horizontal', h) + '\n\n' + bloque('Vertical', v) + '\n\n' +
+              '👉 ' + conclusion;
+
+    navigator.clipboard.writeText(msg)
+        .then(function () {
+            var btn = document.getElementById('rgCopyLideresBtn');
+            btn.innerHTML = '<i class="fa-solid fa-check"></i> Copiado';
+            setTimeout(function () { btn.innerHTML = '<i class="fa-solid fa-comment-dots"></i> Para líderes'; }, 2000);
+        })
+        .catch(function () { alert('No se pudo copiar'); });
+}
+
+document.addEventListener('DOMContentLoaded', rgCargarResumen);
+
+// Chart.js dibuja el canvas al tamaño de su contenedor en pantalla, con
+// colores claros pensados para el fondo oscuro. Al imprimir hay que: (1)
+// redibujar al nuevo tamaño de página (no hay resize automático en el flujo
+// de impresión) y (2) recolorear leyenda/ejes/etiquetas a un tono oscuro,
+// porque el claro casi no se ve sobre fondo blanco.
+var _RG_COLOR_SCREEN = 'rgba(242,240,236,0.75)';
+var _RG_COLOR_PRINT  = '#1a1a1a';
+
+function rgSetChartPrintMode(isPrint) {
+    _rgPrintMode = isPrint;
+    var color = isPrint ? _RG_COLOR_PRINT : _RG_COLOR_SCREEN;
+    if (window.Chart) Chart.defaults.color = color;
+    if (!_rgProjChart) return;
+    // Chart.defaults.color no siempre se propaga a ejes/leyenda ya creados —
+    // se fuerza también en las opciones del chart existente.
+    var opts = _rgProjChart.options || {};
+    if (opts.scales) {
+        if (opts.scales.x && opts.scales.x.ticks) opts.scales.x.ticks.color = color;
+        if (opts.scales.y && opts.scales.y.ticks) opts.scales.y.ticks.color = color;
+    }
+    if (opts.plugins && opts.plugins.legend && opts.plugins.legend.labels) {
+        opts.plugins.legend.labels.color = color;
+    }
+    _rgProjChart.resize();
+    _rgProjChart.update('none');
+}
+window.addEventListener('beforeprint', function () { rgSetChartPrintMode(true); });
+window.addEventListener('afterprint', function () { rgSetChartPrintMode(false); });
+if (window.matchMedia) {
+    var _rgPrintMql = window.matchMedia('print');
+    var _rgPrintListener = function (mql) { rgSetChartPrintMode(mql.matches); };
+    if (_rgPrintMql.addEventListener) _rgPrintMql.addEventListener('change', _rgPrintListener);
+    else if (_rgPrintMql.addListener) _rgPrintMql.addListener(_rgPrintListener);
+}
+</script>
 {% endblock %}

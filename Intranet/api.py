@@ -10,12 +10,12 @@ from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from db_helper import (
-    get_kpi_lima, get_kpi_provincia,
-    get_daily_trend_lima, get_daily_trend_provincia,
+    get_kpi_lima,
+    get_daily_trend_lima,
     get_distribucion_estados_lima, get_top_distritos_lima,
     get_velocidad_planes_lima, get_top_vendedores_lima,
     get_tipo_vivienda_lima, get_pivot_planes_agencia,
-    get_tramo_dias_lima, get_tabla_provincia,
+    get_tramo_dias_lima,
     get_localizacion_lima, get_datos_distrito_lima,
     get_anulaciones_agencia_lima, get_comparacion_meses_lima,
     get_puntos_mapa_lima, get_ranking_agencias_lima,
@@ -111,16 +111,6 @@ def kpi_lima(
     return get_kpi_lima(mes, anio, area=area, dia=dia)
 
 
-@app.get("/kpi/provincia")
-def kpi_provincia(
-    mes: int = Query(default=None),
-    anio: int = Query(default=None),
-):
-    mes = mes or _mes_default()
-    anio = anio or _anio_default()
-    return get_kpi_provincia(mes, anio)
-
-
 # ── Tendencias diarias ────────────────────────────────────────────────────────
 
 @app.get("/lima/trend")
@@ -132,16 +122,6 @@ def trend_lima(
     mes = mes or _mes_default()
     anio = anio or _anio_default()
     return get_daily_trend_lima(mes, anio, area=area)
-
-
-@app.get("/provincia/trend")
-def trend_provincia(
-    mes: int = Query(default=None),
-    anio: int = Query(default=None),
-):
-    mes = mes or _mes_default()
-    anio = anio or _anio_default()
-    return get_daily_trend_provincia(mes, anio)
 
 
 # ── Lima — distribuciones ─────────────────────────────────────────────────────
@@ -322,18 +302,6 @@ def comparacion_lima(
     area: str = Query(default=""),
 ):
     return get_comparacion_meses_lima(mes1, anio1, mes2, anio2, area=area)
-
-
-# ── Provincia ─────────────────────────────────────────────────────────────────
-
-@app.get("/provincia/tabla")
-def tabla_provincia(
-    mes: int = Query(default=None),
-    anio: int = Query(default=None),
-):
-    mes = mes or _mes_default()
-    anio = anio or _anio_default()
-    return get_tabla_provincia(mes, anio)
 
 
 # ── Mora / Clawback ───────────────────────────────────────────────────────────

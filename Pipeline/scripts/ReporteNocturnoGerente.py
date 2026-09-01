@@ -28,21 +28,10 @@ from reportlab.lib.enums import TA_CENTER
 sys.path.insert(0, os.path.dirname(__file__))
 from db_config import get_engine
 
-# ──────────────────────────────────────────────
-# CONFIGURACIÓN — cuotas mensuales
-# ──────────────────────────────────────────────
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from cuotas_config import cuota_lima
 
-CUOTA_VERTICAL_MES = {
-    1: 230, 2: 260, 3: 231, 4: 310, 5: 320, 6: 314,
-    7: 270, 8: 0, 9: 0, 10: 0, 11: 0, 12: 0,
-}
-
-CUOTA_HORIZONTAL_MES = {
-    1: 1780, 2: 1950, 3: 1689, 4: 1528, 5: 2012, 6: 2186,
-    7: 1980, 8: 0, 9: 0, 10: 0, 11: 0, 12: 0,
-}
-
-VERTICAL_TIPOS = {'Condominio/Edificio', 'C/E Habilitado'}
+VERTICAL_TIPOS = {'Condominio/Edificio'}
 
 _AGENCIAS = ['ALIV', 'DEZANET', 'GYA', 'LOTTUS', 'SIPION', 'SUB-AGENCIAS']
 
@@ -151,6 +140,8 @@ def extraer_datos(hoy):
             WHERE wl.[Estado orden] = 'Ejecutada'
               AND TRY_CONVERT(DATE, LEFT(wl.[Fecha programación], 10), 105) >= :primer_dia
               AND TRY_CONVERT(DATE, LEFT(wl.[Fecha programación], 10), 105) <= :hoy
+              AND wl.[Departamento] IN ('LIMA', 'CALLAO')
+              AND LOWER(wl.[Distrito]) NOT IN ('barranca', 'chancay', 'huacho', 'hualmay', 'huaral')
         """), {"primer_dia": primer_dia, "hoy": hoy}).fetchall()
 
         # Ventas MTD
@@ -164,6 +155,8 @@ def extraer_datos(hoy):
               AND YEAR(wl.[Fecha de registro]) = :anio
               AND CAST(wl.[Fecha de registro] AS DATE) <= :hoy
               AND wl.[Plan] IS NOT NULL AND wl.[Plan] <> ''
+              AND wl.[Departamento] IN ('LIMA', 'CALLAO')
+              AND LOWER(wl.[Distrito]) NOT IN ('barranca', 'chancay', 'huacho', 'hualmay', 'huaral')
         """), {"mes": mes_num, "anio": hoy.year, "hoy": hoy}).fetchall()
 
     altas = []
@@ -280,8 +273,8 @@ def extraer_datos(hoy):
         "dias_rest":    dias_rest,
         "total_mtd":    len(altas),
         "total_hoy":    sum(1 for r in altas if r["date"] == hoy),
-        "vertical":     metricas(altas_v, CUOTA_VERTICAL_MES.get(mes_num, 0), ventas_v),
-        "horizontal":   metricas(altas_h, CUOTA_HORIZONTAL_MES.get(mes_num, 0), ventas_h),
+        "vertical":     metricas(altas_v, cuota_lima(mes_num, 'Vertical'), ventas_v),
+        "horizontal":   metricas(altas_h, cuota_lima(mes_num, 'Horizontal'), ventas_h),
     }
 
 

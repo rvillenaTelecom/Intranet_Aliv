@@ -3,6 +3,7 @@ load_dotenv()
 from flask import Flask, render_template, redirect, url_for, session, request, jsonify, Response, stream_with_context, flash
 from functools import wraps
 from werkzeug.security import check_password_hash
+from flask_apscheduler import APScheduler
 import subprocess
 import os
 import sys
@@ -24,11 +25,83 @@ app.secret_key = os.environ.get('SECRET_KEY', 'AlivIntranet2026!')
 _INTRANET_DIR  = os.path.dirname(os.path.abspath(__file__))
 _PIPELINE_DIR  = os.path.join(os.path.dirname(_INTRANET_DIR), 'Pipeline')
 _PIPELINE_SCRIPT = os.path.join(_PIPELINE_DIR, 'run_pipeline.py')
-_FASES_VALIDAS = {'bd', 'daily', 'consolidar', 'subida_aliv', 'reporte_diario', 'reporte_gerente', 'reporte_nocturno'}
+_FASES_VALIDAS = {'bd', 'daily', 'consolidar', 'actualizar_ventas', 'subida_aliv', 'subida_referidos', 'reporte_diario', 'reporte_gerente', 'reporte_nocturno', 'reporte_proyeccion'}
 
 _pipeline_running = False
 _pipeline_proc    = None
 _pipeline_log     = []   # [(tipo, dato), ...] del run actual
+
+
+def _ejecutar_fase_bg(fase):
+    """Lanza run_pipeline.py <fase> en background. Usado tanto por el boton
+    'Ejecutar' de /pipeline como por los jobs programados de APScheduler,
+    para que compartan el mismo candado (_pipeline_running) y no se pisen."""
+    global _pipeline_running, _pipeline_proc, _pipeline_log
+
+    if _pipeline_running:
+        print(f"[Scheduler] Se omite '{fase}': ya hay un proceso de pipeline en ejecucion.")
+        return False
+
+    _pipeline_log = []
+    _pipeline_running = True
+
+    def _run():
+        global _pipeline_running, _pipeline_proc
+        try:
+            args = [sys.executable, _PIPELINE_SCRIPT]
+            if fase != 'bd':
+                args.append(fase)
+            proc = subprocess.Popen(
+                args,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                encoding='utf-8',
+                errors='replace',
+                cwd=_PIPELINE_DIR,
+            )
+            _pipeline_proc = proc
+            for line in proc.stdout:
+                _pipeline_log.append(('line', line.rstrip()))
+            proc.wait()
+            _pipeline_log.append(('done', proc.returncode))
+        except Exception as exc:
+            _pipeline_log.append(('error', str(exc)))
+            _pipeline_log.append(('done', 1))
+        finally:
+            _pipeline_running = False
+            _pipeline_proc = None
+
+    threading.Thread(target=_run, daemon=True).start()
+    return True
+
+
+# --- SCHEDULER INTERNO: reemplaza las tareas de Windows Task Scheduler ---
+# (Aliv_SoloesMes, Aliv_ReporteDiario, Aliv_Todo2026 -- mismos horarios)
+class _SchedulerConfig:
+    SCHEDULER_API_ENABLED = False
+
+app.config.from_object(_SchedulerConfig())
+scheduler = APScheduler()
+scheduler.init_app(app)
+
+
+@scheduler.task('cron', id='job_solo_este_mes', hour='*', minute='*/15')
+def _job_solo_este_mes():
+    """Antes: tarea 'Aliv_SoloesMes' -- cada hora. Ahora cada 15 min."""
+    _ejecutar_fase_bg('daily')
+
+
+@scheduler.task('cron', id='job_reporte_diario', hour=10, minute=0)
+def _job_reporte_diario():
+    """Antes: tarea 'Aliv_ReporteDiario' -- 10:00am diario."""
+    _ejecutar_fase_bg('reporte_diario')
+
+
+@scheduler.task('cron', id='job_todo_2026', day=1, hour=2, minute=0)
+def _job_todo_2026():
+    """Antes: tarea 'Aliv_Todo2026' -- dia 1 de cada mes, 2:00am."""
+    _ejecutar_fase_bg('bd')
 
 _dashboard_cache = {}
 _CACHE_TTL = 300  # 5 minutos
@@ -166,13 +239,16 @@ def dashboards():
 @app.route('/dashboard-ventas')
 @login_required
 def dashboard_ventas():
+    from datetime import timedelta
     mes       = request.args.get('mes',  datetime.now().month, type=int)
     anio      = request.args.get('anio', datetime.now().year,  type=int)
     area      = request.args.get('area', '')
+    _agencia  = request.args.get('agencia', '')
+    agencia   = _agencia if _agencia in ('Aliv', 'Sub') else ''
     _dia      = request.args.get('dia', 0, type=int)
     dia       = _dia if _dia and 1 <= _dia <= 31 else None
     _base     = request.args.get('base', 30, type=int)
-    base_dias = _base if _base in (25, 26, 28, 30) else 30
+    base_dias = _base if _base in range(25, 32) else 30
 
     meses = [
         {'id': 1, 'nombre': 'Enero'},    {'id': 2, 'nombre': 'Febrero'},
@@ -186,27 +262,24 @@ def dashboard_ventas():
 
     anios = list(range(2024, datetime.now().year + 2))
 
-    cache_key = (mes, anio, area, dia, base_dias)
+    cache_key = (mes, anio, area, agencia, dia, base_dias)
     db_data = _cache_get(cache_key)
 
     if db_data is None:
         _queries = {
-            'kpi_lima':       lambda: db_helper.get_kpi_lima(mes, anio, area=area, dia=dia, base_dias=base_dias),
-            'kpi_prov':       lambda: db_helper.get_kpi_provincia(mes, anio),
+            'kpi_lima':       lambda: db_helper.get_kpi_lima(mes, anio, area=area, dia=dia, cumul=True, base_dias=base_dias, agencia_grupo=agencia),
             'trend_lima':     lambda: db_helper.get_daily_trend_lima(mes, anio, area=area),
-            'trend_prov':     lambda: db_helper.get_daily_trend_provincia(mes, anio),
             'top_dist':       lambda: db_helper.get_top_distritos_lima(mes, anio, area=area, dia=dia),
-            'tipo_vivienda':  lambda: db_helper.get_tipo_vivienda_lima(mes, anio, area=area, dia=dia),
             'dist_estados':   lambda: db_helper.get_distribucion_estados_lima(mes, anio, area=area, dia=dia),
-            'pivot_planes':   lambda: db_helper.get_pivot_planes_agencia(mes, anio, area=area, dia=dia),
             'vel_planes':     lambda: db_helper.get_velocidad_planes_lima(mes, anio, area=area, dia=dia),
-            'tabla_prov':     lambda: db_helper.get_tabla_provincia(mes, anio),
-            'resumen_nac':    lambda: db_helper.get_resumen_lima(mes, anio, dia=dia, base_dias=base_dias),
-            'tabla_agencias': lambda: db_helper.get_tabla_agencias_lima(mes, anio, dia=dia),
-            'pivot_agencias': lambda: db_helper.get_pivot_planes_agencias_lima(mes, anio, dia=dia),
             'loc_lima':       lambda: db_helper.get_localizacion_lima(mes, anio, area=area),
             'puntos_mapa':    lambda: db_helper.get_puntos_mapa_lima(mes, anio, area=area),
         }
+        if area == 'Vertical':
+            _queries['pivot_agencia'] = lambda: db_helper.get_pivot_subagencias_lima(mes, anio, dia=dia)
+            _fecha_ayer = datetime.now() - timedelta(days=1)
+            _queries['pivot_agencia_cierre'] = lambda: db_helper.get_pivot_subagencias_lima(
+                _fecha_ayer.month, _fecha_ayer.year, dia=_fecha_ayer.day, cumul=False)
         db_data = {}
         with ThreadPoolExecutor(max_workers=6) as executor:
             futures = {executor.submit(fn): name for name, fn in _queries.items()}
@@ -220,32 +293,76 @@ def dashboard_ventas():
         _cache_set(cache_key, db_data)
 
     loc_lima = db_data.get('loc_lima')
+    fecha_cierre = (datetime.now() - timedelta(days=1)).strftime('%d/%m/%Y')
     return render_template('dashboard_ventas.html',
                            user=session['name'], role=session['role'],
                            mes_actual=mes, anio_actual=anio,
                            mes_nombre=mes_nombre, meses=meses, anios=anios,
-                           area=area, dia_actual=dia or 0, base_dias=base_dias,
+                           area=area, agencia=agencia, dia_actual=dia or 0, base_dias=base_dias,
+                           fecha_cierre=fecha_cierre,
+                           pivot_agencia_cierre=db_data.get('pivot_agencia_cierre'),
                            kpi_lima=db_data.get('kpi_lima'),
-                           kpi_prov=db_data.get('kpi_prov'),
                            trend_lima=db_data.get('trend_lima'),
-                           trend_prov=db_data.get('trend_prov'),
                            top_dist=db_data.get('top_dist'),
-                           tipo_vivienda=db_data.get('tipo_vivienda'),
                            dist_estados=db_data.get('dist_estados'),
-                           pivot_planes=db_data.get('pivot_planes'),
                            vel_planes=db_data.get('vel_planes'),
-                           tabla_prov=db_data.get('tabla_prov'),
-                           resumen_nac=db_data.get('resumen_nac'),
-                           tabla_agencias=db_data.get('tabla_agencias'),
-                           pivot_agencias=db_data.get('pivot_agencias'),
                            loc_lima=loc_lima,
                            loc_zonas=loc_lima['zonas'] if loc_lima else [],
-                           puntos_mapa=db_data.get('puntos_mapa'))
+                           puntos_mapa=db_data.get('puntos_mapa'),
+                           pivot_agencia=db_data.get('pivot_agencia'))
 
 @app.route('/ventas')
 @login_required
 def ventas():
-    return render_template('ventas.html', user=session['name'], role=session['role'])
+    hoy = datetime.now()
+    cache_key = ('equipo_ventas_kpis', hoy.month, hoy.year)
+    kpis = _cache_get(cache_key)
+    if kpis is None:
+        try:
+            kpis = db_helper.get_equipo_ventas_kpis(hoy.month, hoy.year)
+        except Exception as e:
+            print(f"[ventas] get_equipo_ventas_kpis: {e}")
+            kpis = None
+        _cache_set(cache_key, kpis)
+
+    cuotas_key = ('cuotas_lima_historial', hoy.year)
+    cuotas_historial = _cache_get(cuotas_key)
+    if cuotas_historial is None:
+        try:
+            cuotas_historial = db_helper.get_cuotas_lima_historial(hoy.year)
+        except Exception as e:
+            print(f"[ventas] get_cuotas_lima_historial: {e}")
+            cuotas_historial = []
+        _cache_set(cuotas_key, cuotas_historial)
+
+    return render_template('ventas.html', user=session['name'], role=session['role'],
+                           kpis=kpis, cuotas_historial=cuotas_historial, anio_actual=hoy.year)
+
+
+@app.route('/ventas/cuota', methods=['POST'])
+@login_required
+def ventas_cuota_guardar():
+    if session.get('role') != 'admin':
+        return jsonify({'ok': False, 'error': 'Solo el administrador puede modificar cuotas.'}), 403
+    data = request.get_json(silent=True) or {}
+    try:
+        mes = int(data.get('mes'))
+        vertical = int(data.get('vertical'))
+        horizontal = int(data.get('horizontal'))
+    except (TypeError, ValueError):
+        return jsonify({'ok': False, 'error': 'Mes, vertical y horizontal deben ser números enteros.'}), 400
+    if vertical < 0 or horizontal < 0:
+        return jsonify({'ok': False, 'error': 'Los valores no pueden ser negativos.'}), 400
+    try:
+        resultado = db_helper.set_cuota_lima(mes, vertical, horizontal)
+    except ValueError as e:
+        return jsonify({'ok': False, 'error': str(e)}), 400
+    except Exception as e:
+        print(f"[ventas_cuota_guardar] {e}")
+        return jsonify({'ok': False, 'error': 'No se pudo guardar la cuota.'}), 500
+
+    _dashboard_cache.clear()
+    return jsonify({'ok': True, 'cuota': resultado})
 
 @app.route('/operaciones')
 @login_required
@@ -288,7 +405,7 @@ def guardar_usuario():
         return redirect(url_for('usuarios'))
     data = {
         'vendedor':        request.form.get('vendedor', '').strip(),
-        'nombre_completo': request.form.get('nombre_completo', '').strip(),
+        'nombre_aliv':     request.form.get('nombre_aliv', '').strip(),
         'cargo':           request.form.get('cargo', 'Vendedor'),
         'agencia':         request.form.get('agencia', '').strip(),
         'supervisor':      request.form.get('supervisor', '').strip(),
@@ -321,15 +438,12 @@ def eliminar_usuario(uid):
 def pipeline():
     return render_template('pipeline.html',
                            user=session['name'], role=session['role'],
-                           corriendo=_pipeline_running,
-                           is_render=bool(os.environ.get('RENDER')))
+                           corriendo=_pipeline_running)
 
 
 @app.route('/pipeline/ejecutar', methods=['POST'])
 @login_required
 def pipeline_ejecutar():
-    global _pipeline_running, _pipeline_proc, _pipeline_log
-
     if session.get('role') != 'admin':
         return jsonify({'ok': False, 'error': 'Sin permisos de administrador'}), 403
     if _pipeline_running:
@@ -339,38 +453,7 @@ def pipeline_ejecutar():
     if fase not in _FASES_VALIDAS:
         return jsonify({'ok': False, 'error': 'Fase inválida'}), 400
 
-    _pipeline_log = []
-    _pipeline_running = True
-
-    def _run():
-        global _pipeline_running, _pipeline_proc
-        try:
-            args = [sys.executable, _PIPELINE_SCRIPT]
-            if fase != 'bd':
-                args.append(fase)
-            proc = subprocess.Popen(
-                args,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                encoding='utf-8',
-                errors='replace',
-                cwd=_PIPELINE_DIR,
-            )
-            _pipeline_proc = proc
-            for line in proc.stdout:
-                entry = ('line', line.rstrip())
-                _pipeline_log.append(entry)
-            proc.wait()
-            _pipeline_log.append(('done', proc.returncode))
-        except Exception as exc:
-            _pipeline_log.append(('error', str(exc)))
-            _pipeline_log.append(('done', 1))
-        finally:
-            _pipeline_running = False
-            _pipeline_proc = None
-
-    threading.Thread(target=_run, daemon=True).start()
+    _ejecutar_fase_bg(fase)
     return jsonify({'ok': True})
 
 
@@ -424,6 +507,47 @@ def pipeline_cancelar():
         _pipeline_proc.terminate()
         return jsonify({'ok': True})
     return jsonify({'ok': False, 'error': 'No hay proceso activo'})
+
+
+def _api_key_valida():
+    clave = request.headers.get('X-API-Key', '')
+    esperada = os.environ.get('PIPELINE_API_KEY', '')
+    return bool(esperada) and clave == esperada
+
+
+@app.route('/api/pipeline/trigger', methods=['POST'])
+def api_pipeline_trigger():
+    """Igual que /pipeline/ejecutar pero autenticado por API key (X-API-Key)
+    en vez de sesion, para que herramientas externas (n8n, cron, etc.)
+    puedan disparar una fase sin loguearse."""
+    if not _api_key_valida():
+        return jsonify({'ok': False, 'error': 'API key invalida o ausente'}), 401
+
+    data = request.get_json(silent=True) or request.form
+    fase = (data.get('fase') or '').strip()
+    if fase not in _FASES_VALIDAS:
+        return jsonify({'ok': False, 'error': 'Fase invalida'}), 400
+    if _pipeline_running:
+        return jsonify({'ok': False, 'error': 'Ya hay un proceso en ejecucion'}), 409
+
+    _ejecutar_fase_bg(fase)
+    return jsonify({'ok': True, 'fase': fase})
+
+
+@app.route('/api/pipeline/status')
+def api_pipeline_status():
+    if not _api_key_valida():
+        return jsonify({'ok': False, 'error': 'API key invalida o ausente'}), 401
+
+    ultimo_ok = None
+    if _pipeline_log and _pipeline_log[-1][0] == 'done':
+        ultimo_ok = _pipeline_log[-1][1] == 0
+
+    return jsonify({
+        'ok': True,
+        'corriendo': _pipeline_running,
+        'terminado_ok': ultimo_ok,
+    })
 
 
 @app.route('/api/lima-distritos-geo')
@@ -702,22 +826,31 @@ def api_resumen_tabla():
     from datetime import timedelta
     hoy  = datetime.now()
     _base = request.args.get('base', 25, type=int)
-    base_dias = _base if _base in (25, 26, 28, 30) else 25
+    base_dias = _base if _base in (25, 26, 28, 29, 30, 31) else 25
     ref = request.args.get('ref', 'hoy')  # 'hoy' o 'ayer'
 
     if ref == 'ayer':
         fecha_ref = hoy - timedelta(days=1)
         mes_q, anio_q, dia_q = fecha_ref.month, fecha_ref.year, fecha_ref.day
+        dia_corte = dia_q
         def _kpi(area):
             return db_helper.get_kpi_lima(mes_q, anio_q, area=area, base_dias=base_dias, dia=dia_q, cumul=True) or {}
     else:
         mes_q, anio_q = request.args.get('mes', hoy.month, type=int), request.args.get('anio', hoy.year, type=int)
+        dia_corte = hoy.day
         def _kpi(area):
             return db_helper.get_kpi_lima(mes_q, anio_q, area=area, base_dias=base_dias) or {}
+
+    import calendar as _cal
+    dias_mes = _cal.monthrange(anio_q, mes_q)[1]
 
     filas = []
     for area, label in [('Vertical', 'Vertical'), ('Horizontal', 'Horizontal'), ('', 'TOTAL')]:
         kpi = _kpi(area)
+        bac_total = sum(db_helper.get_bac_lima(mes_q, anio_q, dia_corte, area=area).values())
+        dias_trans = kpi.get('dias_trans', dia_corte)
+        dias_rest = max(base_dias - dias_trans, 1)
+        faltante_neto = max(kpi.get('faltantes', 0) - bac_total, 0)
         filas.append({
             'area':            label,
             'altas':           kpi.get('altas', 0),
@@ -728,19 +861,145 @@ def api_resumen_tabla():
             'ritmo_actual':    kpi.get('ritmo_actual', 0.0),
             'ritmo_necesario': kpi.get('ritmo_necesario', 0.0),
             'faltantes':       kpi.get('faltantes', 0),
+            'bac':             bac_total,
+            'faltante_neto':   faltante_neto,
+            'ritmo_necesario_neto': round(faltante_neto / dias_rest),
         })
-    return jsonify({'ok': True, 'mes': mes_q, 'anio': anio_q, 'base': base_dias, 'ref': ref, 'filas': filas})
+    return jsonify({'ok': True, 'mes': mes_q, 'anio': anio_q, 'base': base_dias, 'ref': ref,
+                     'dia_corte': dia_corte, 'dias_mes': dias_mes, 'filas': filas})
+
+
+@app.route('/api/proyeccion-cierre')
+@login_required
+def api_proyeccion_cierre():
+    from datetime import timedelta
+    hoy = datetime.now()
+    _base = request.args.get('base', 25, type=int)
+    base_dias = _base if _base in (25, 26, 28, 29, 30, 31) else 25
+    ref = request.args.get('ref', 'hoy')
+    _area = request.args.get('area', '')
+    area = _area if _area in ('Vertical', 'Horizontal') else ''
+
+    if ref == 'ayer':
+        fecha_ref = hoy - timedelta(days=1)
+        mes_q, anio_q, dia_q = fecha_ref.month, fecha_ref.year, fecha_ref.day
+    else:
+        mes_q, anio_q = request.args.get('mes', hoy.month, type=int), request.args.get('anio', hoy.year, type=int)
+        dia_q = None
+
+    data = db_helper.get_proyeccion_cierre_lima(mes_q, anio_q, dia_ref=dia_q, base_dias=base_dias, area=area)
+    if data is None:
+        return jsonify({'ok': False, 'error': 'No se pudo calcular la proyección'}), 500
+    return jsonify({'ok': True, 'mes': mes_q, 'anio': anio_q, **data})
+
+
+@app.route('/api/avance-horario')
+@login_required
+def api_avance_horario():
+    """Cuadro de avance del día: necesidad vs. ALTAS EJECUTADAS (instalaciones,
+    no ventas registradas), repartidas por turno (Mañana/Mediodía/Tarde — el
+    único corte horario real que trae la data, vía [Tramo Horario]; el sistema
+    no guarda la hora exacta de ejecución).
+    La 'necesidad' del día es el ritmo necesario BRUTO — el mismo campo que
+    se ve en la columna 'RITMO NEC.' de Resumen Lima: (cuota 100% − altas) ÷
+    días restantes, sin descontar BAC — repartido en partes iguales entre los
+    3 turnos. ref=hoy usa datos en vivo; ref=ayer usa el corte de ayer, igual
+    que el selector de Resumen Lima, para poder comparar 1 a 1."""
+    from datetime import timedelta
+    hoy = datetime.now()
+    _base = request.args.get('base', 25, type=int)
+    base_dias = _base if _base in (25, 26, 28, 29, 30, 31) else 25
+    ref = request.args.get('ref', 'hoy')
+
+    if ref == 'ayer':
+        fecha_ref = hoy - timedelta(days=1)
+        mes_q, anio_q, dia_q = fecha_ref.month, fecha_ref.year, fecha_ref.day
+        fecha_objetivo = fecha_ref.date()
+        def _kpi(area):
+            return db_helper.get_kpi_lima(mes_q, anio_q, area=area, base_dias=base_dias, dia=dia_q, cumul=True) or {}
+        turno_actual = None
+    else:
+        mes_q, anio_q, dia_q = hoy.month, hoy.year, hoy.day
+        fecha_objetivo = hoy.date()
+        def _kpi(area):
+            return db_helper.get_kpi_lima(mes_q, anio_q, area=area, base_dias=base_dias) or {}
+        turno_actual = 0 if hoy.hour < 12 else (1 if hoy.hour < 16 else 2)
+
+    def _meta_dia(area):
+        # Ritmo necesario BRUTO — el mismo campo que se ve en la columna
+        # "RITMO NEC." de Resumen Lima: (cuota 100% − altas) ÷ días restantes,
+        # sin descontar BAC.
+        kpi = _kpi(area)
+        return kpi.get('ritmo_necesario', 0)
+
+    meta_ventas_hoy = _meta_dia('')
+    meta_vertical = _meta_dia('Vertical')
+    meta_horizontal = _meta_dia('Horizontal')
+
+    activaciones = db_helper.get_activaciones_hoy(fecha=fecha_objetivo)
+    turnos_data = activaciones.get('turnos', [])
+    n_turnos = len(turnos_data) or 3
+
+    filas = []
+    acum = acum_v = acum_h = 0
+    for i, t in enumerate(turnos_data):
+        acum += t['ejecutadas']
+        acum_v += t['ejecutadas_vertical']
+        acum_h += t['ejecutadas_horizontal']
+        frac = (i + 1) / n_turnos
+        necesidad = round(meta_ventas_hoy * frac)
+        necesidad_v = round(meta_vertical * frac)
+        necesidad_h = round(meta_horizontal * frac)
+        filas.append({
+            'turno': t['turno'], 'indice': i,
+            'necesidad_acum': necesidad, 'avance_acum': acum, 'diferencia': acum - necesidad,
+            'necesidad_vertical': necesidad_v, 'avance_vertical': acum_v, 'diferencia_vertical': acum_v - necesidad_v,
+            'necesidad_horizontal': necesidad_h, 'avance_horizontal': acum_h, 'diferencia_horizontal': acum_h - necesidad_h,
+        })
+
+    return jsonify({
+        'ok': True, 'base': base_dias, 'ref': ref, 'meta_ventas_hoy': meta_ventas_hoy,
+        'meta_vertical': meta_vertical, 'meta_horizontal': meta_horizontal,
+        'avance_hoy_total': activaciones.get('ejecutadas', 0),
+        'avance_hoy_vertical': activaciones.get('ejecutadas_vertical', 0),
+        'avance_hoy_horizontal': activaciones.get('ejecutadas_horizontal', 0),
+        'turno_actual': turno_actual, 'turnos': filas, 'activaciones': activaciones,
+    })
 
 
 @app.route('/reporte-gerente')
 @login_required
 def reporte_gerente():
-    mes  = request.args.get('mes',  datetime.now().month, type=int)
-    anio = request.args.get('anio', datetime.now().year,  type=int)
-    _dia = request.args.get('dia', 0, type=int)
-    dia  = _dia if _dia and 1 <= _dia <= 31 else None
+    from datetime import timedelta
+    hoy_real = datetime.now()
     _base     = request.args.get('base', 30, type=int)
-    base_dias = _base if _base in (25, 26, 28, 30) else 30
+    base_dias = _base if _base in range(25, 32) else 30
+    _area     = request.args.get('area', '')
+    area      = _area if _area in ('Vertical', 'Horizontal') else ''
+    _ref      = request.args.get('ref', 'hoy')
+    ref       = _ref if _ref in ('hoy', 'ayer') else 'hoy'
+    _dia_pick = request.args.get('dia', 0, type=int)
+    dia_pick  = _dia_pick if _dia_pick and 1 <= _dia_pick <= 31 else 0
+
+    _mes_arg  = request.args.get('mes',  type=int)
+    _anio_arg = request.args.get('anio', type=int)
+    mes  = _mes_arg  if _mes_arg  else hoy_real.month
+    anio = _anio_arg if _anio_arg else hoy_real.year
+
+    if dia_pick:
+        # Día específico: ventas/altas exactas de ese día (no acumulado), tiene
+        # prioridad sobre el toggle Ayer/Hoy.
+        dia, _cumul = dia_pick, False
+    elif ref == 'ayer':
+        fecha_ayer = hoy_real - timedelta(days=1)
+        # El corte "ayer" solo tiene sentido cuando el mes/año elegido es el
+        # mes en curso; un mes ya cerrado se ve igual con Hoy o Ayer.
+        if mes == fecha_ayer.month and anio == fecha_ayer.year:
+            dia, _cumul = fecha_ayer.day, True
+        else:
+            dia, _cumul = None, False
+    else:
+        dia, _cumul = None, False
 
     meses = [
         {'id': 1, 'nombre': 'Enero'},    {'id': 2, 'nombre': 'Febrero'},
@@ -752,16 +1011,13 @@ def reporte_gerente():
     ]
     mes_nombre = next((m['nombre'] for m in meses if m['id'] == mes), '')
 
-    _cumul = bool(dia)
     kpi_t = db_helper.get_kpi_lima(mes, anio, area='',           dia=dia, cumul=_cumul, base_dias=base_dias) or {}
     kpi_v = db_helper.get_kpi_lima(mes, anio, area='Vertical',   dia=dia, cumul=_cumul, base_dias=base_dias) or {}
     kpi_h = db_helper.get_kpi_lima(mes, anio, area='Horizontal', dia=dia, cumul=_cumul, base_dias=base_dias) or {}
+    k = kpi_v if area == 'Vertical' else (kpi_h if area == 'Horizontal' else kpi_t)
 
-    tabla_agencias = db_helper.get_tabla_agencias_lima(mes, anio, dia=dia)
-    top_vendedores = db_helper.get_top_vendedores_lima(mes, anio, top=10, dia=dia)
-
-    planes_v_raw = db_helper.get_velocidad_planes_lima(mes, anio, area='Vertical',   dia=dia)
-    planes_h_raw = db_helper.get_velocidad_planes_lima(mes, anio, area='Horizontal', dia=dia)
+    planes_v_raw = db_helper.get_velocidad_planes_lima(mes, anio, area='Vertical',   dia=dia, cumul=_cumul)
+    planes_h_raw = db_helper.get_velocidad_planes_lima(mes, anio, area='Horizontal', dia=dia, cumul=_cumul)
     _pm = {}
     for p in planes_v_raw:
         _pm[p['velocidad']] = {'velocidad': p['velocidad'], 'v_altas': p['altas'], 'v_pct': p['pct'], 'h_altas': 0, 'h_pct': 0.0}
@@ -775,24 +1031,38 @@ def reporte_gerente():
     for p in planes_merged:
         p['total'] = p['v_altas'] + p['h_altas']
 
-    top_distritos = db_helper.get_top_distritos_lima(mes, anio, top=10, dia=dia)
-    dist_estados  = db_helper.get_distribucion_estados_lima(mes, anio, dia=dia)
-    tramos        = db_helper.get_tramo_dias_lima(mes, anio)
+    top_distritos = db_helper.get_top_distritos_lima(mes, anio, top=10, dia=dia, cumul=_cumul)
+    pivot_sub = db_helper.get_pivot_subagencias_lima(mes, anio, dia=dia, cumul=_cumul)
     anios = list(range(2024, datetime.now().year + 2))
+
+    # Instalaciones del día: si hay un Día específico elegido, la vista operativa
+    # se mueve a ese día del mes/año filtrado; si no, sigue el corte Ayer/Hoy real.
+    if dia_pick:
+        import calendar
+        _dias_en_mes = calendar.monthrange(anio, mes)[1]
+        fecha_avance = datetime(anio, mes, min(dia_pick, _dias_en_mes)).date()
+        avance_label = f'Día {dia_pick}'
+    elif ref == 'ayer':
+        fecha_avance = (hoy_real - timedelta(days=1)).date()
+        avance_label = 'Ayer'
+    else:
+        fecha_avance = hoy_real.date()
+        avance_label = 'Hoy'
+    activaciones_hoy = db_helper.get_activaciones_hoy(fecha=fecha_avance)
+    activaciones_hoy['agendadas_vertical']   = activaciones_hoy['ejecutadas_vertical']   + activaciones_hoy['pendientes_vertical']
+    activaciones_hoy['agendadas_horizontal'] = activaciones_hoy['ejecutadas_horizontal'] + activaciones_hoy['pendientes_horizontal']
 
     return render_template(
         'reporte_gerente.html',
         user=session['name'], role=session['role'],
         mes_actual=mes, anio_actual=anio,
         mes_nombre=mes_nombre, meses=meses, anios=anios,
-        dia_actual=dia or 0, base_dias=base_dias,
-        kpi_t=kpi_t, kpi_v=kpi_v, kpi_h=kpi_h,
-        tabla_agencias=tabla_agencias,
-        top_vendedores=top_vendedores,
+        dia_actual=dia or 0, dia_pick=dia_pick, base_dias=base_dias, area=area, ref=ref,
+        kpi_t=kpi_t, kpi_v=kpi_v, kpi_h=kpi_h, k=k,
         planes_merged=planes_merged,
         top_distritos=top_distritos,
-        dist_estados=dist_estados,
-        tramos=tramos,
+        pivot_sub=pivot_sub,
+        activaciones_hoy=activaciones_hoy, fecha_avance=fecha_avance, avance_label=avance_label,
         generado=datetime.now().strftime('%d/%m/%Y %H:%M'),
     )
 
@@ -997,10 +1267,257 @@ def api_mora_pagos_acumulado():
         return jsonify({'error': str(e)}), 500
 
 
+# --- CONSULTAS SQL ---
+_SQL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'SQL')
+
+try:
+    import db_config
+except ImportError:
+    from . import db_config
+
+@app.route('/queries')
+@login_required
+def queries():
+    sql_tree = {}
+    if os.path.exists(_SQL_DIR):
+        for root, dirs, files in os.walk(_SQL_DIR):
+            rel_dir = os.path.relpath(root, _SQL_DIR)
+            if rel_dir == '.':
+                rel_dir = ''
+            sql_files = [f for f in files if f.endswith('.sql')]
+            if sql_files:
+                folder_name = rel_dir.replace('\\', '/') if rel_dir else 'Raíz'
+                sql_tree[folder_name] = []
+                for f in sorted(sql_files):
+                    rel_path = os.path.relpath(os.path.join(root, f), _SQL_DIR).replace('\\', '/')
+                    sql_tree[folder_name].append({
+                        'name': f,
+                        'path': rel_path
+                    })
+    
+    sorted_tree = dict(sorted(sql_tree.items()))
+    return render_template('queries.html',
+                           user=session['name'],
+                           role=session['role'],
+                           sql_tree=sorted_tree)
+
+
+@app.route('/queries/get_content')
+@login_required
+def queries_get_content():
+    file_path = request.args.get('path')
+    if not file_path:
+        return jsonify({'error': 'No se especificó la ruta'}), 400
+    
+    # Prevenir path traversal
+    safe_path = os.path.normpath(os.path.join(_SQL_DIR, file_path))
+    if not safe_path.startswith(os.path.normpath(_SQL_DIR)):
+        return jsonify({'error': 'Ruta de archivo no permitida'}), 403
+        
+    if not os.path.exists(safe_path) or not os.path.isfile(safe_path):
+        return jsonify({'error': 'El archivo no existe'}), 404
+        
+    try:
+        with open(safe_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        return jsonify({'content': content})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/queries/run', methods=['POST'])
+@login_required
+def queries_run():
+    data = request.get_json() or {}
+    sql = data.get('sql', '').strip()
+    if not sql:
+        return jsonify({'error': 'El script SQL está vacío'}), 400
+        
+    try:
+        from decimal import Decimal
+        from datetime import datetime, date
+        
+        engine = db_config.get_engine()
+
+        conn = engine.raw_connection()
+        tables = []
+        try:
+            cursor = conn.cursor()
+            cursor.execute(sql)
+
+            while True:
+                if cursor.description:
+                    columns = [desc[0] for desc in cursor.description]
+                    rows = cursor.fetchall()
+
+                    formatted_rows = []
+                    for row in rows:
+                        formatted_row = []
+                        for val in row:
+                            if isinstance(val, (datetime, date)):
+                                formatted_row.append(val.isoformat())
+                            elif isinstance(val, Decimal):
+                                formatted_row.append(float(val))
+                            elif isinstance(val, bytes):
+                                formatted_row.append(val.hex())
+                            else:
+                                formatted_row.append(val)
+                        formatted_rows.append(formatted_row)
+
+                    tables.append({
+                        'columns': columns,
+                        'rows': formatted_rows
+                    })
+                
+                try:
+                    if not cursor.nextset():
+                        break
+                except Exception:
+                    break
+        finally:
+            conn.close()
+            
+        return jsonify({'ok': True, 'tables': tables})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route('/api/queries/run', methods=['POST'])
+def api_queries_run():
+    """Igual que /queries/run pero autenticado por API key, y devuelve las
+    filas como lista de objetos (una fila = un item) para que herramientas
+    externas (n8n -> Google Sheets, etc.) las consuman directo sin cabecera."""
+    if not _api_key_valida():
+        return jsonify({'ok': False, 'error': 'API key invalida o ausente'}), 401
+
+    from decimal import Decimal
+    from datetime import datetime, date
+
+    data = request.get_json(silent=True) or {}
+    sql = (data.get('sql') or '').strip()
+    if not sql:
+        return jsonify({'ok': False, 'error': 'El script SQL esta vacio'}), 400
+
+    try:
+        engine = db_config.get_engine()
+        conn = engine.raw_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute(sql)
+
+            columns = [desc[0] for desc in cursor.description] if cursor.description else []
+            rows = cursor.fetchall() if cursor.description else []
+
+            registros = []
+            for row in rows:
+                registro = {}
+                for col, val in zip(columns, row):
+                    if isinstance(val, (datetime, date)):
+                        registro[col] = val.isoformat()
+                    elif isinstance(val, Decimal):
+                        registro[col] = float(val)
+                    elif isinstance(val, bytes):
+                        registro[col] = val.hex()
+                    else:
+                        registro[col] = val
+                registros.append(registro)
+        finally:
+            conn.close()
+
+        return jsonify({'ok': True, 'columnas': columns, 'filas': registros})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route('/queries/export', methods=['POST'])
+@login_required
+def queries_export():
+    import io
+    import pandas as pd
+    from decimal import Decimal
+    from datetime import datetime, date
+    
+    sql = request.form.get('sql', '').strip()
+    filename = request.form.get('filename', 'consulta_sql').strip()
+    
+    filename = "".join([c for c in filename if c.isalnum() or c in (' ', '_', '-')]).rstrip()
+    if not filename:
+        filename = 'consulta_sql'
+        
+    if not sql:
+        return "El script SQL está vacío", 400
+        
+    try:
+        engine = db_config.get_engine()
+
+        conn = engine.raw_connection()
+        tables = []
+        try:
+            cursor = conn.cursor()
+            cursor.execute(sql)
+
+            while True:
+                if cursor.description:
+                    columns = [desc[0] for desc in cursor.description]
+                    rows = cursor.fetchall()
+
+                    formatted_rows = []
+                    for row in rows:
+                        formatted_row = []
+                        for val in row:
+                            if isinstance(val, Decimal):
+                                formatted_row.append(float(val))
+                            else:
+                                formatted_row.append(val)
+                        formatted_rows.append(formatted_row)
+
+                    df = pd.DataFrame(formatted_rows, columns=columns)
+                    tables.append(df)
+                
+                try:
+                    if not cursor.nextset():
+                        break
+                except Exception:
+                    break
+        finally:
+            conn.close()
+            
+        if not tables:
+            return "No se encontraron tablas de resultados en la consulta para exportar.", 400
+            
+        buf = io.BytesIO()
+        with pd.ExcelWriter(buf, engine='openpyxl') as writer:
+            for idx, df in enumerate(tables):
+                sheet_name = f"Resultados {idx + 1}"
+                df.to_excel(writer, index=False, sheet_name=sheet_name)
+                ws = writer.sheets[sheet_name]
+                for col in ws.columns:
+                    max_len = max((len(str(c.value or '')) for c in col), default=10)
+                    ws.column_dimensions[col[0].column_letter].width = min(max_len + 2, 40)
+                    
+        buf.seek(0)
+        fname = f"{filename}_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
+        return Response(
+            buf.getvalue(),
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            headers={'Content-Disposition': f'attachment; filename="{fname}"'}
+        )
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return f"Error al generar el Excel: {str(e)}", 500
+
+
 if __name__ == '__main__':
-    # Usar el puerto que asigna Render o el 5001 por defecto
     port = int(os.environ.get("PORT", 5001))
     debug_mode = os.environ.get('FLASK_DEBUG', 'True').lower() in ['true', '1']
-    if os.environ.get('RENDER'):
-        debug_mode = False
+
+    # Con el reloader de debug, este modulo se importa 2 veces (proceso monitor
+    # + proceso worker). Arrancamos el scheduler solo en el worker real para
+    # no duplicar los jobs programados.
+    if not debug_mode or os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+        scheduler.start()
+
     app.run(debug=debug_mode, host='0.0.0.0', port=port)

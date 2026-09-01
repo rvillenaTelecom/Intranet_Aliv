@@ -3,7 +3,7 @@
 {% block page_title %}Dashboards{% endblock %}
 
 {% block content %}
-<div class="welcome-banner" style="background: linear-gradient(135deg, #064e3b 0%, #065f46 50%, #047857 100%);">
+<div class="welcome-banner">
     <div class="welcome-title"><i class="fa-solid fa-gauge-high" style="margin-right:10px;"></i>Dashboards y KPIs</div>
     <div class="welcome-sub">Accede a los paneles de métricas y reportes en tiempo real de AlivTelecom.</div>
 </div>
@@ -15,52 +15,67 @@
 
 <div class="cards-grid">
 
-    <!-- Dashboard 1: Dashboard Interno SQL -->
-    <div class="card card-link" onclick="window.location.href='{{ url_for('dashboard_ventas') }}'">
-        <div class="card-icon teal"><i class="fa-solid fa-chart-pie"></i></div>
-        <div class="card-title">Dashboard Ventas (Live)</div>
-        <div class="card-desc">Métricas en tiempo real consultadas directamente desde SQL Server. Ventas, Altas y Conversión.</div>
+    <!-- Ejecutivo -->
+    <div class="card card-link" onclick="window.location.href='{{ url_for('reporte_gerente') }}'">
+        <div class="card-icon teal"><i class="fa-solid fa-briefcase"></i></div>
+        <div class="card-title">Ejecutivo</div>
+        <div class="card-desc">Resumen gerencial: avance de cuota, proyección de cierre y morosidad, listo para imprimir.</div>
         <div class="card-footer">
             <span class="badge badge-teal"><i class="fa-solid fa-database"></i> SQL Live</span>
-            <button class="btn btn-outline" onclick="event.stopPropagation(); window.open('https://app.powerbi.com/groups/me/reports/your-report-id', '_blank')">
-                <i class="fa-brands fa-microsoft"></i> Ir a Power BI
+            <button class="btn btn-outline" onclick="event.stopPropagation(); window.location.href='{{ url_for('reporte_gerente') }}'">
+                <i class="fa-solid fa-arrow-up-right-from-square"></i> Abrir
             </button>
         </div>
     </div>
 
-    <div class="card card-link" onclick="alert('Configura la URL del dashboard en dashboards.html')">
+    <!-- Vertical -->
+    <div class="card card-link" onclick="window.location.href='{{ url_for('dashboard_ventas') }}?area=Vertical'">
+        <div class="card-icon blue"><i class="fa-solid fa-building"></i></div>
+        <div class="card-title">Vertical</div>
+        <div class="card-desc">Ventas, altas y conversión de condominios y edificios, en tiempo real desde SQL Server.</div>
+        <div class="card-footer">
+            <span class="badge badge-teal"><i class="fa-solid fa-database"></i> SQL Live</span>
+            <button class="btn btn-outline" onclick="event.stopPropagation(); window.location.href='{{ url_for('dashboard_ventas') }}?area=Vertical'">
+                <i class="fa-solid fa-arrow-up-right-from-square"></i> Abrir
+            </button>
+        </div>
+    </div>
+
+    <!-- Horizontal Sub -->
+    <div class="card card-link" onclick="window.location.href='{{ url_for('dashboard_ventas') }}?area=Horizontal&agencia=Sub'">
+        <div class="card-icon orange"><i class="fa-solid fa-people-group"></i></div>
+        <div class="card-title">Horizontal Sub</div>
+        <div class="card-desc">Ventas, altas y conversión de casas y quintas vendidas por subagencias (Dezanet, Sipion, Lottus, etc.).</div>
+        <div class="card-footer">
+            <span class="badge badge-teal"><i class="fa-solid fa-database"></i> SQL Live</span>
+            <button class="btn btn-outline" onclick="event.stopPropagation(); window.location.href='{{ url_for('dashboard_ventas') }}?area=Horizontal&agencia=Sub'">
+                <i class="fa-solid fa-arrow-up-right-from-square"></i> Abrir
+            </button>
+        </div>
+    </div>
+
+    <!-- Horizontal Aliv -->
+    <div class="card card-link" onclick="window.location.href='{{ url_for('dashboard_ventas') }}?area=Horizontal&agencia=Aliv'">
+        <div class="card-icon green"><i class="fa-solid fa-house-chimney"></i></div>
+        <div class="card-title">Horizontal Aliv</div>
+        <div class="card-desc">Ventas, altas y conversión de casas y quintas vendidas por la fuerza propia de Aliv.</div>
+        <div class="card-footer">
+            <span class="badge badge-teal"><i class="fa-solid fa-database"></i> SQL Live</span>
+            <button class="btn btn-outline" onclick="event.stopPropagation(); window.location.href='{{ url_for('dashboard_ventas') }}?area=Horizontal&agencia=Aliv'">
+                <i class="fa-solid fa-arrow-up-right-from-square"></i> Abrir
+            </button>
+        </div>
+    </div>
+
+    <div class="card card-link" onclick="window.open('https://www.google.com/maps/d/u/0/viewer?mid=1baLxEyfemW0DQaYEu8U_tn_ZrVjlRpU&ll=-12.065574034240687%2C-76.92864361624619&z=11', '_blank')">
         <div class="card-icon green"><i class="fa-solid fa-map-location-dot"></i></div>
         <div class="card-title">Mapa de Cobertura</div>
         <div class="card-desc">Visualización geográfica de zonas, distritos y cobertura de red por departamento.</div>
         <div class="card-footer">
             <span class="badge badge-green"><i class="fa-solid fa-map"></i> GIS</span>
-            <button class="btn btn-outline" onclick="event.stopPropagation(); alert('Agrega la URL del dashboard aquí')">
+            <a href="https://www.google.com/maps/d/u/0/viewer?mid=1baLxEyfemW0DQaYEu8U_tn_ZrVjlRpU&ll=-12.065574034240687%2C-76.92864361624619&z=11" target="_blank" class="btn btn-outline" onclick="event.stopPropagation()">
                 <i class="fa-solid fa-arrow-up-right-from-square"></i> Abrir
-            </button>
-        </div>
-    </div>
-
-    <div class="card card-link" onclick="window.location.href='/morosidad'">
-        <div class="card-icon orange"><i class="fa-solid fa-file-invoice-dollar"></i></div>
-        <div class="card-title">Morosidad y Cobros</div>
-        <div class="card-desc">Estado de deuda, pagos vencidos y evolución de recibos por agencia y supervisor.</div>
-        <div class="card-footer">
-            <span class="badge badge-orange"><i class="fa-solid fa-chart-bar"></i> Reportes</span>
-            <button class="btn btn-outline" onclick="event.stopPropagation(); window.location.href='/morosidad'">
-                <i class="fa-solid fa-arrow-up-right-from-square"></i> Abrir
-            </button>
-        </div>
-    </div>
-
-    <div class="card card-link" onclick="alert('Configura la URL del dashboard en dashboards.html')">
-        <div class="card-icon blue"><i class="fa-solid fa-users"></i></div>
-        <div class="card-title">Performance Equipos</div>
-        <div class="card-desc">Indicadores de desempeño por equipo, cumplimiento de cuotas y ranking de supervisores.</div>
-        <div class="card-footer">
-            <span class="badge badge-blue"><i class="fa-solid fa-ranking-star"></i> KPIs</span>
-            <button class="btn btn-outline" onclick="event.stopPropagation(); alert('Agrega la URL del dashboard aquí')">
-                <i class="fa-solid fa-arrow-up-right-from-square"></i> Abrir
-            </button>
+            </a>
         </div>
     </div>
 
@@ -78,9 +93,9 @@
 </div>
 <div class="card">
     <div style="font-size:13px; color:var(--text-secondary); line-height:1.7;">
-        Para agregar un nuevo dashboard, edita <code style="background:#F0F4F8; padding:2px 6px; border-radius:4px; font-family:monospace;">Intranet/templates/dashboards.html</code>
-        y reemplaza el <code style="background:#F0F4F8; padding:2px 6px; border-radius:4px; font-family:monospace;">alert()</code> con la URL real del panel
-        (Power BI, Looker Studio, Metabase, Tableau, etc.). Puedes usar <code style="background:#F0F4F8; padding:2px 6px; border-radius:4px; font-family:monospace;">window.open('URL', '_blank')</code>.
+        Para agregar un nuevo dashboard, edita <code>Intranet/templates/dashboards.html</code>
+        y reemplaza el <code>alert()</code> con la URL real del panel
+        (Power BI, Looker Studio, Metabase, Tableau, etc.). Puedes usar <code>window.open('URL', '_blank')</code>.
     </div>
 </div>
 {% endblock %}

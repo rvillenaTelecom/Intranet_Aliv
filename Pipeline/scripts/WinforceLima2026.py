@@ -18,16 +18,24 @@ import os
 import sys
 import time
 from datetime import datetime
+from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright
+
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
 
 def descargar_reporte_winforce():
     # ---------------------------------------------------------
-    # CONFIGURACIÓN (Deberás rellenar estos datos con los reales)
+    # CONFIGURACIÓN — usuario/clave vienen de Pipeline/scripts/.env
+    # (WINFORCE_USUARIO, WINFORCE_PASSWORD), nunca hardcodeados aquí.
     # ---------------------------------------------------------
-    URL_LOGIN = "https://accesoventas.win.pe/" # Cambia por la URL real
-    USUARIO = "backoffice11@alivtelecom.pe"
-    PASSWORD = "***REMOVED-WINFORCE-PASSWORD***"
-    
+    URL_LOGIN = "https://accesoventas.win.pe/"
+    USUARIO = os.environ.get('WINFORCE_USUARIO')
+    PASSWORD = os.environ.get('WINFORCE_PASSWORD')
+    if not USUARIO or not PASSWORD:
+        raise RuntimeError(
+            "Faltan WINFORCE_USUARIO / WINFORCE_PASSWORD en Pipeline/scripts/.env"
+        )
+
     # Carpeta de descargas siempre relativa al directorio Pipeline/ (padre de scripts/)
     CARPETA_DESCARGA = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "descargas_winforce_Dept")
     os.makedirs(CARPETA_DESCARGA, exist_ok=True)

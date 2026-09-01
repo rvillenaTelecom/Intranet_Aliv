@@ -3,9 +3,13 @@
 
 {% block content %}
 <style>
+:root {
+    --kpi-teal: #3FBFAD;
+    --kpi-purple: #9C8CF0;
+}
 /* ── Tabs ─────────────────────────────────────────────────── */
 .tab-nav {
-    display: flex; gap: 4px; background: #f1f5f9;
+    display: flex; gap: 4px; background: var(--bg-inset);
     padding: 5px; border-radius: 10px; width: fit-content;
 }
 .tab-btn {
@@ -13,7 +17,7 @@
     font-size: 13px; font-weight: 600; color: var(--text-secondary);
     background: transparent; transition: all .2s;
 }
-.tab-btn.active { background: #fff; color: var(--primary); box-shadow: 0 1px 4px #0001; }
+.tab-btn.active { background: var(--bg-card); color: var(--brand); box-shadow: 0 1px 4px rgba(0,0,0,.3); }
 .tab-content { display: none; }
 .tab-content.active { display: block; }
 
@@ -21,27 +25,39 @@
 .filter-bar {
     display: flex; align-items: center; justify-content: space-between;
     margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
-    background: #fff; border-radius: 11px; padding: 12px 16px;
-    box-shadow: 0 1px 4px #0001; border: 1px solid var(--border);
+    background: var(--bg-card); border-radius: 11px; padding: 12px 16px;
+    box-shadow: var(--shadow); border: 1px solid var(--border);
 }
 .filter-left  { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .filter-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .filter-label { font-size: 12px; font-weight: 700; color: var(--text-secondary); white-space: nowrap; }
 .fsel {
     padding: 6px 12px; border: 1px solid var(--border); border-radius: 7px;
-    font-size: 13px; background: #fff; color: var(--text-primary); cursor: pointer; outline: none;
+    font-size: 13px; background: var(--bg-main); color: var(--text-primary); cursor: pointer; outline: none;
 }
-.fsel:focus { border-color: var(--primary); }
+.fsel:focus { border-color: var(--brand); }
 .btn-apply {
-    padding: 7px 16px; background: var(--primary); color: #fff;
+    padding: 7px 16px; background: var(--brand); color: var(--on-brand);
     border: none; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer;
     transition: background .2s;
 }
-.btn-apply:hover { background: #0055aa; }
+.btn-apply:hover { background: var(--brand-hover); }
 .period-badge {
-    font-size: 12px; color: var(--text-secondary); background: #f1f5f9;
+    font-size: 12px; color: var(--text-secondary); background: var(--bg-inset);
     padding: 4px 10px; border-radius: 20px; font-weight: 600;
 }
+.btn-print, .btn-reporte-diario {
+    padding: 7px 16px; background: var(--bg-inset); color: var(--text-primary);
+    border: 1px solid var(--border-strong); border-radius: 7px; font-size: 13px; font-weight: 600;
+    display: inline-flex; align-items: center; gap: 7px; cursor: pointer; transition: background .2s;
+}
+.btn-print:hover, .btn-reporte-diario:hover { background: var(--bg-card-hover); }
+.btn-reporte-diario:disabled { opacity: .5; cursor: not-allowed; }
+.pdf-group { display: flex; align-items: center; gap: 8px; padding-left: 12px; border-left: 1px solid var(--border-strong); }
+.pdf-group-label { font-size: 10px; font-weight: 700; color: var(--text-light); text-transform: uppercase; letter-spacing: .4px; white-space: nowrap; }
+.pdf-status { font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
+.pdf-status.ok  { color: var(--success); }
+.pdf-status.err { color: var(--danger); }
 
 /* ── KPI Cards ───────────────────────────────────────────── */
 .kpi-row { display: grid; gap: 14px; margin-bottom: 16px; }
@@ -51,17 +67,17 @@
 .kpi-row.cols-3 { grid-template-columns: repeat(3, 1fr); }
 
 .kcard {
-    background: #fff; border-radius: 11px; padding: 16px 18px;
-    border-left: 4px solid #e2e8f0; box-shadow: 0 1px 4px #0001;
+    background: var(--bg-card); border-radius: 11px; padding: 16px 18px;
+    border-left: 4px solid var(--border-strong); box-shadow: var(--shadow);
     position: relative; overflow: hidden;
 }
-.kcard.blue   { border-color: var(--primary); }
-.kcard.green  { border-color: #10b981; }
-.kcard.orange { border-color: #f97316; }
-.kcard.red    { border-color: #ef4444; }
-.kcard.purple { border-color: #8b5cf6; }
-.kcard.teal   { border-color: #14b8a6; }
-.kcard.gray   { border-color: #94a3b8; }
+.kcard.blue   { border-color: var(--brand); }
+.kcard.green  { border-color: var(--success); }
+.kcard.orange { border-color: var(--warning); }
+.kcard.red    { border-color: var(--danger); }
+.kcard.purple { border-color: var(--kpi-purple); }
+.kcard.teal   { border-color: var(--kpi-teal); }
+.kcard.gray   { border-color: var(--slate); }
 
 .kcard-label { font-size: 10px; font-weight: 700; text-transform: uppercase;
                color: var(--text-secondary); letter-spacing: .5px; margin-bottom: 6px; }
@@ -70,21 +86,22 @@
 .kcard-sub b { color: var(--text-secondary); }
 .kcard-bg-icon {
     position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
-    font-size: 36px; opacity: .06; color: #000;
+    font-size: 36px; opacity: .08; color: var(--text-primary);
 }
-.kcard-bar-wrap { margin-top: 8px; background: #f1f5f9; border-radius: 4px; height: 5px; }
+.kcard-bar-wrap { margin-top: 8px; background: var(--bg-inset); border-radius: 4px; height: 5px; }
 .kcard-bar { height: 5px; border-radius: 4px; transition: width .6s; }
 
 /* ── Paneles ─────────────────────────────────────────────── */
 .panel {
-    background: #fff; border-radius: 11px; padding: 20px;
-    box-shadow: 0 1px 4px #0001; border: 1px solid var(--border);
+    background: var(--bg-card); border-radius: 11px; padding: 20px;
+    box-shadow: var(--shadow); border: 1px solid var(--border);
+    min-width: 0;
 }
 .panel-title {
     font-size: 14px; font-weight: 700; color: var(--text-primary);
     margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
 }
-.panel-title i { color: var(--primary); }
+.panel-title i { color: var(--brand); }
 
 /* ── Grid layouts ────────────────────────────────────────── */
 .grid-2-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 16px; }
@@ -95,24 +112,24 @@
 /* ── Tabla de datos ──────────────────────────────────────── */
 .data-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .data-table th {
-    background: #f8fafc; padding: 9px 12px; text-align: left;
+    background: var(--bg-card-hover); padding: 9px 12px; text-align: left;
     font-size: 11px; font-weight: 700; text-transform: uppercase;
     color: var(--text-secondary); border-bottom: 2px solid var(--border);
 }
-.data-table td { padding: 9px 12px; border-bottom: 1px solid #f1f5f9; color: var(--text-primary); }
-.data-table tr:hover td { background: #fafbff; }
-.agencias-tfoot tr:hover td { background: #1e3a5f !important; }
+.data-table td { padding: 9px 12px; border-bottom: 1px solid var(--border); color: var(--text-primary); }
+.data-table tr:hover td { background: var(--bg-card-hover); }
+.agencias-tfoot tr:hover td { background: var(--brand-glow-soft) !important; }
 .data-table .num { text-align: right; font-variant-numeric: tabular-nums; }
 .data-table .rank { color: var(--text-light); font-weight: 700; text-align: center; width: 28px; }
 
 /* Semáforo badges */
-.badge-meta   { background: #d1fae5; color: #065f46; padding: 2px 9px; border-radius: 12px; font-size: 11px; font-weight: 700; }
-.badge-riesgo { background: #fef3c7; color: #92400e; padding: 2px 9px; border-radius: 12px; font-size: 11px; font-weight: 700; }
-.badge-bajo   { background: #fee2e2; color: #991b1b; padding: 2px 9px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+.badge-meta   { background: var(--success-glow); color: #6EE7C0; padding: 2px 9px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+.badge-riesgo { background: var(--warning-glow); color: #FFC876; padding: 2px 9px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+.badge-bajo   { background: var(--danger-glow); color: #FF9E9A; padding: 2px 9px; border-radius: 12px; font-size: 11px; font-weight: 700; }
 
 /* Barra de alcance en tabla */
 .alcance-bar-wrap { display: flex; align-items: center; gap: 6px; }
-.alcance-bar-bg   { flex: 1; background: #f1f5f9; border-radius: 3px; height: 6px; }
+.alcance-bar-bg   { flex: 1; background: var(--bg-inset); border-radius: 3px; height: 6px; }
 .alcance-bar-fill { height: 6px; border-radius: 3px; }
 .alcance-val      { font-size: 12px; font-weight: 700; min-width: 40px; text-align: right; }
 
@@ -134,7 +151,7 @@
 .hbar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; }
 .hbar-rank { font-size: 11px; font-weight: 700; color: var(--text-secondary); min-width: 18px; text-align: right; }
 .hbar-label { font-size: 12px; color: var(--text-primary); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.hbar-bg { flex: 2; background: #f1f5f9; border-radius: 4px; height: 10px; }
+.hbar-bg { flex: 2; background: var(--bg-inset); border-radius: 4px; height: 10px; }
 .hbar-fill { height: 10px; border-radius: 4px; transition: width .5s; }
 .hbar-val { font-size: 12px; font-weight: 700; min-width: 30px; text-align: right; }
 
@@ -142,41 +159,68 @@
 .zona-row { display: flex; gap: 8px; flex-direction: column; }
 .zona-item { display: flex; align-items: center; gap: 8px; }
 .zona-label { font-size: 12px; color: var(--text-secondary); min-width: 160px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.zona-bar-bg  { flex: 1; background: #f1f5f9; border-radius: 3px; height: 10px; }
-.zona-bar-fill { height: 10px; border-radius: 3px; background: var(--primary); }
+.zona-bar-bg  { flex: 1; background: var(--bg-inset); border-radius: 3px; height: 10px; }
+.zona-bar-fill { height: 10px; border-radius: 3px; background: var(--brand); }
 .zona-cnt  { font-size: 12px; font-weight: 700; min-width: 36px; text-align: right; }
 
 .p2-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .p2-box { border-radius: 10px; padding: 16px; text-align: center; border: 2px solid transparent; }
-.p2-box.antes   { background: #eff6ff; border-color: #bfdbfe; }
-.p2-box.despues { background: #fff7ed; border-color: #fed7aa; }
+.p2-box.antes   { background: var(--slate-glow); border-color: rgba(124,139,153,.35); }
+.p2-box.despues { background: var(--brand-glow-soft); border-color: rgba(244,121,32,.3); }
 .p2-box-title { font-size: 11px; font-weight: 700; text-transform: uppercase;
                 color: var(--text-secondary); margin-bottom: 6px; }
 .p2-box-val   { font-size: 28px; font-weight: 800; }
 .p2-box-sub   { font-size: 11px; color: var(--text-light); margin-top: 4px; }
 .caida-badge  { margin-top: 10px; padding: 6px 14px; border-radius: 20px;
                 font-size: 13px; font-weight: 700; display: inline-block; }
-.caida-neg { background: #fee2e2; color: #991b1b; }
-.caida-pos { background: #d1fae5; color: #065f46; }
+.caida-neg { background: var(--danger-glow); color: #FF9E9A; }
+.caida-pos { background: var(--success-glow); color: #6EE7C0; }
 
 /* ── Mapa: tooltip distritos ─────────────────────────────── */
 .dist-tooltip {
-    background: rgba(15,23,42,0.88) !important;
-    color: #fff !important;
-    border: none !important;
+    background: rgba(10,10,11,0.95) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-strong) !important;
     border-radius: 6px !important;
     padding: 5px 10px !important;
     font-size: 12px !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,.3) !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,.5) !important;
     white-space: nowrap !important;
 }
 .dist-tooltip::before { display:none !important; }
 .mapa-hint {
     position: absolute; bottom: 10px; left: 10px; z-index: 999;
-    background: rgba(255,255,255,.92); border-radius: 8px;
-    padding: 5px 10px; font-size: 11px; color: #475569;
-    box-shadow: 0 1px 4px rgba(0,0,0,.15); pointer-events: none;
+    background: rgba(19,19,22,.92); border: 1px solid var(--border-strong); border-radius: 8px;
+    padding: 5px 10px; font-size: 11px; color: var(--text-secondary);
+    box-shadow: 0 1px 4px rgba(0,0,0,.35); pointer-events: none;
     display: flex; align-items: center; gap: 5px;
+}
+
+/* ── Impresión / PDF ─────────────────────────────────────── */
+@media print {
+    html, body { height: auto !important; }
+    .layout { display: block !important; height: auto !important; overflow: visible !important; }
+    .main-content { display: block !important; height: auto !important; overflow: visible !important; margin: 0 !important; padding: 0 !important; }
+    .content-area { height: auto !important; overflow: visible !important; padding: 0 !important; }
+    .sidebar, .topbar, .filter-bar { display: none !important; }
+    body, .content-area, .main-content { background: #fff !important; }
+    #tab-localizacion { display: none !important; }
+    .kcard, .panel {
+        background: #fff !important; border: 1px solid #c8cfd8 !important;
+        box-shadow: none !important; break-inside: avoid;
+    }
+    .kcard-main, .panel-title, .data-table td { color: #1a1a1a !important; }
+    .kcard-label, .kcard-sub { color: #555 !important; }
+    .data-table th {
+        background: #1a2535 !important; color: #fff !important;
+        -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    .data-table tr:nth-child(even) td { background: #f5f7fa !important; }
+    .grid-2-1, .grid-1-1, .grid-3-2 { grid-template-columns: 1fr !important; }
+    [style*="overflow-x:auto"] { overflow: visible !important; }
+    .data-table th, .data-table td { padding: 5px 7px !important; font-size: 10.5px !important; }
+    .kpi-row.cols-6, .kpi-row.cols-5, .kpi-row.cols-4, .kpi-row.cols-3 { grid-template-columns: repeat(3, 1fr); }
+    * { box-shadow: none !important; }
 }
 
 /* ── Responsive ──────────────────────────────────────────── */
@@ -189,6 +233,16 @@
 }
 @media (max-width: 640px) {
     .kpi-row.cols-6, .kpi-row.cols-5, .kpi-row.cols-4, .kpi-row.cols-3 { grid-template-columns: repeat(2, 1fr); }
+    .filter-bar > div { flex-direction: column; align-items: stretch; }
+    .filter-right, .filter-right form, .filter-left { flex-direction: column; align-items: stretch; width: 100%; }
+    .fsel, .btn-apply, .btn-print, .btn-reporte-diario { width: 100%; }
+    .tab-nav { width: 100%; }
+    .tab-btn { flex: 1; }
+    .period-badge { width: 100%; box-sizing: border-box; text-align: center; }
+    .pdf-group { flex-wrap: wrap; padding-left: 0; border-left: none; border-top: 1px solid var(--border-strong); padding-top: 8px; width: 100%; }
+}
+@media (max-width: 420px) {
+    .kpi-row.cols-6, .kpi-row.cols-5, .kpi-row.cols-4, .kpi-row.cols-3 { grid-template-columns: 1fr; }
 }
 </style>
 
@@ -201,9 +255,6 @@
         <div class="tab-nav">
             <button class="tab-btn active" onclick="switchTab('lima',this)">
                 <i class="fa-solid fa-city"></i> Lima
-            </button>
-            <button class="tab-btn" onclick="switchTab('aliv',this)">
-                <i class="fa-solid fa-building"></i> Aliv
             </button>
             <button class="tab-btn" onclick="switchTab('localizacion',this)">
                 <i class="fa-solid fa-location-dot"></i> Localización
@@ -223,12 +274,22 @@
                     <option value="{{ y }}" {% if anio_actual == y %}selected{% endif %}>{{ y }}</option>
                     {% endfor %}
                 </select>
+                {% if area != 'Vertical' %}
                 <span class="filter-label" id="areaLabel">Área:</span>
                 <select name="area" class="fsel" id="areaSelect">
                     <option value="" {% if not area %}selected{% endif %}>Todas</option>
                     <option value="Vertical" {% if area == 'Vertical' %}selected{% endif %}>Vertical</option>
                     <option value="Horizontal" {% if area == 'Horizontal' %}selected{% endif %}>Horizontal</option>
                 </select>
+                <span class="filter-label" id="agenciaLabel">Canal:</span>
+                <select name="agencia" class="fsel" id="agenciaSelect">
+                    <option value="" {% if not agencia %}selected{% endif %}>Todos</option>
+                    <option value="Aliv" {% if agencia == 'Aliv' %}selected{% endif %}>Aliv directo</option>
+                    <option value="Sub" {% if agencia == 'Sub' %}selected{% endif %}>Subagencias</option>
+                </select>
+                {% else %}
+                <input type="hidden" name="area" value="Vertical">
+                {% endif %}
                 <span class="filter-label">Día:</span>
                 <select name="dia" class="fsel" style="min-width:70px;">
                     <option value="0" {% if not dia_actual %}selected{% endif %}>Todos</option>
@@ -238,8 +299,9 @@
                 </select>
                 <span class="filter-label">Base:</span>
                 <select name="base" class="fsel" style="min-width:60px;" title="Base de días para proyección">
-                    <option value="30" {% if base_dias == 30 %}selected{% endif %}>30d</option>
-                    <option value="28" {% if base_dias == 28 %}selected{% endif %}>28d</option>
+                    {% for b in range(25, 32) %}
+                    <option value="{{ b }}" {% if base_dias == b %}selected{% endif %}>{{ b }}d</option>
+                    {% endfor %}
                 </select>
                 <button type="submit" class="btn-apply">
                     <i class="fa-solid fa-magnifying-glass"></i> Aplicar
@@ -250,12 +312,25 @@
                 <i class="fa-solid fa-calendar-days"></i>
                 {% if dia_actual %}Día {{ dia_actual }} · {% endif %}{{ mes_nombre }} {{ anio_actual }}
                 <span style="margin-left:6px; opacity:0.7;">· Base {{ base_dias }}d</span>
+                {% if agencia %}<span style="margin-left:6px; opacity:0.7;">· {{ 'Aliv directo' if agencia == 'Aliv' else 'Subagencias' }}</span>{% endif %}
             </span>
+            <button type="button" class="btn-print" onclick="window.print()">
+                <i class="fa-solid fa-print"></i> Imprimir / PDF
+            </button>
+            {% if role == 'admin' and area == 'Vertical' %}
+            <div class="pdf-group">
+                <span class="pdf-group-label">PDF oficial</span>
+                <button type="button" id="dvBtnReporteDiario" class="btn-reporte-diario" onclick="dvEjecutarReporte('reporte_diario', this)" title="Genera el PDF del reporte diario Vertical (Pipeline, ~2-3 min)">
+                    <i class="fa-solid fa-file-pdf"></i> Reporte diario
+                </button>
+                <span id="dvPdfStatus" class="pdf-status"></span>
+            </div>
+            {% endif %}
         </div>
     </div>
 
     <!-- Fila 2: filtros de cliente (solo tab Localización) -->
-    <div id="locFiltrosBar" style="display:none; border-top:1px solid #f1f5f9; margin-top:10px; padding-top:10px; align-items:center; gap:10px; flex-wrap:wrap;">
+    <div id="locFiltrosBar" style="display:none; border-top:1px solid var(--border); margin-top:10px; padding-top:10px; align-items:center; gap:10px; flex-wrap:wrap;">
         <span class="filter-label">Distrito:</span>
         <select id="distritoFilter" class="fsel" style="min-width:170px;" onchange="filtrarMapa()">
             <option value="">Todos los distritos</option>
@@ -265,7 +340,7 @@
                style="min-width:220px;" autocomplete="off">
         <span id="locStats" style="font-size:12px; color:var(--text-secondary); white-space:nowrap; margin-left:4px;">
             <b id="statPuntos" style="color:var(--primary);">—</b> instalaciones
-            &nbsp;<b id="statDistritos" style="color:#10b981;">—</b> distritos
+            &nbsp;<b id="statDistritos" style="color:var(--success);">—</b> distritos
         </span>
     </div>
 
@@ -280,7 +355,7 @@
 {% set k = kpi_lima %}
 
 <!-- KPIs Lima — Fila 1: Volumen y avance -->
-<div class="kpi-row cols-6">
+<div class="kpi-row cols-5">
     <div class="kcard blue">
         <div class="kcard-label">Total Ventas</div>
         <div class="kcard-main">{{ "{:,}".format(k.ventas) }}</div>
@@ -289,22 +364,22 @@
     </div>
     <div class="kcard green">
         <div class="kcard-label">Altas Instaladas</div>
-        <div class="kcard-main" style="color:#10b981;">{{ "{:,}".format(k.altas) }}</div>
-        <div class="kcard-sub">{% if k.cuota %}Cuota: <b>{{ "{:,}".format(k.cuota) }}</b>{% else %}<span style="color:#f97316;">Sin cuota definida</span>{% endif %}</div>
+        <div class="kcard-main" style="color:var(--success);">{{ "{:,}".format(k.altas) }}</div>
+        <div class="kcard-sub">{% if k.cuota %}Cuota: <b>{{ "{:,}".format(k.cuota) }}</b>{% else %}<span style="color:var(--warning);">Sin cuota definida</span>{% endif %}</div>
         <div class="kcard-bar-wrap">
-            <div class="kcard-bar" style="width:{{ [k.alcance,100]|min }}%; background:#10b981;"></div>
+            <div class="kcard-bar" style="width:{{ [k.alcance,100]|min }}%; background:var(--success);"></div>
         </div>
         <i class="fa-solid fa-plug kcard-bg-icon"></i>
     </div>
     <div class="kcard {% if k.cuota %}orange{% else %}gray{% endif %}">
         <div class="kcard-label">Proyección Cierre</div>
-        <div class="kcard-main" style="color:{% if k.cuota %}#f97316{% else %}#94a3b8{% endif %};">{{ "{:,}".format(k.proyeccion) }}</div>
+        <div class="kcard-main" style="color:{% if k.cuota %}var(--warning){% else %}var(--slate){% endif %};">{{ "{:,}".format(k.proyeccion) }}</div>
         <div class="kcard-sub">{% if k.cuota %}{{ k.pct_proyeccion }}% de la cuota{% else %}Sin cuota definida{% endif %}</div>
         <i class="fa-solid fa-chart-line kcard-bg-icon"></i>
     </div>
     <div class="kcard {% if not k.cuota %}gray{% elif k.alcance >= k.alcance_ideal %}green{% else %}red{% endif %}">
         <div class="kcard-label">Alcance Actual</div>
-        <div class="kcard-main" style="color:{% if not k.cuota %}#94a3b8{% elif k.alcance >= k.alcance_ideal %}#10b981{% else %}#ef4444{% endif %};">{% if k.cuota %}{{ k.alcance }}%{% else %}—{% endif %}</div>
+        <div class="kcard-main" style="color:{% if not k.cuota %}var(--slate){% elif k.alcance >= k.alcance_ideal %}var(--success){% else %}var(--danger){% endif %};">{% if k.cuota %}{{ k.alcance }}%{% else %}—{% endif %}</div>
         <div class="kcard-sub">{% if k.cuota %}Ideal hoy: <b>{{ k.alcance_ideal }}%</b>{% else %}Sin cuota definida{% endif %}</div>
         <i class="fa-solid fa-gauge-high kcard-bg-icon"></i>
     </div>
@@ -314,35 +389,168 @@
         <div class="kcard-sub">altas / día{% if k.cuota %} · nec. <b>{{ k.ritmo_necesario }}</b>{% endif %}</div>
         <i class="fa-solid fa-bolt kcard-bg-icon"></i>
     </div>
-    <div class="kcard {% if not k.cuota %}gray{% elif k.faltantes == 0 %}green{% else %}red{% endif %}">
-        <div class="kcard-label">Altas Faltantes</div>
-        <div class="kcard-main" style="color:{% if not k.cuota %}#94a3b8{% elif k.faltantes == 0 %}#10b981{% else %}#ef4444{% endif %};">{% if k.cuota %}{{ "{:,}".format(k.faltantes) }}{% else %}—{% endif %}</div>
-        <div class="kcard-sub">Días: <b>{{ k.dias_trans }}/{{ k.dias_tot }}</b></div>
-        <i class="fa-solid fa-flag-checkered kcard-bg-icon"></i>
+</div>
+
+<!-- Embudo de Conversión — solo Vertical -->
+<div class="panel mb16">
+    <div class="panel-title"><i class="fa-solid fa-diagram-project" style="color:var(--brand);"></i> Embudo de Conversión</div>
+    <div class="kpi-row cols-3" style="margin-bottom:0;">
+        <div class="kcard blue">
+            <div class="kcard-label">Preventa → Alta</div>
+            <div class="kcard-main" style="color:var(--primary);">{{ k.get('conversion', 0) }}%</div>
+            <div class="kcard-sub">{{ "{:,}".format(k.get('altas', 0)) }} altas / {{ "{:,}".format(k.get('ventas', 0)) }} preventas</div>
+            <i class="fa-solid fa-route kcard-bg-icon"></i>
+        </div>
+        <div class="kcard purple">
+            <div class="kcard-label">Preventa → Venta</div>
+            <div class="kcard-main" style="color:var(--kpi-purple);">{{ k.get('conv_preventa_venta', 0) }}%</div>
+            <div class="kcard-sub">{{ "{:,}".format(k.get('validado', 0)) }} validadas / {{ "{:,}".format(k.get('ventas', 0)) }} preventas</div>
+            <i class="fa-solid fa-file-signature kcard-bg-icon"></i>
+        </div>
+        <div class="kcard teal">
+            <div class="kcard-label">Venta → Alta</div>
+            <div class="kcard-main" style="color:var(--kpi-teal);">{{ k.get('conv_venta_alta', 0) }}%</div>
+            <div class="kcard-sub">{{ "{:,}".format(k.get('altas', 0)) }} altas / {{ "{:,}".format(k.get('validado', 0)) }} validadas</div>
+            <i class="fa-solid fa-rotate kcard-bg-icon"></i>
+        </div>
     </div>
 </div>
 
-<!-- KPIs Lima — Fila 2: Calidad y eficiencia -->
-<div class="kpi-row cols-3">
-    <div class="kcard teal">
-        <div class="kcard-label">Conversión Venta → Alta</div>
-        <div class="kcard-main" style="color:#14b8a6;">{{ k.conversion }}%</div>
-        <div class="kcard-sub">{{ "{:,}".format(k.altas) }} altas / {{ "{:,}".format(k.ventas) }} ventas</div>
-        <i class="fa-solid fa-rotate kcard-bg-icon"></i>
+<!-- Necesidad para cerrar el mes: 100% y meta adicional editable -->
+{% if k.cuota %}
+<div class="panel proy-cuota-block" style="margin-bottom:20px;"
+     data-cuota="{{ k.cuota }}" data-altas-ayer="{{ k.altas_ayer }}" data-altas-hoy="{{ k.altas }}"
+     data-conversion="{{ k.conversion_ayer }}" data-dias-default="{{ k.dias_rest_incl_hoy }}" data-basis="ayer">
+    <div class="panel-title"><i class="fa-solid fa-bullseye"></i> ¿Qué necesito para llegar a la cuota?</div>
+    <div style="font-size:12px; color:var(--text-secondary); margin:-6px 0 12px;">
+        Conversión a cierre de ayer: <b style="color:var(--text-primary);">{{ k.conversion_ayer }}%</b>
+        <span style="opacity:0.75;">· MTD (incluye hoy): {{ k.conversion }}%</span>
     </div>
-    <div class="kcard gray">
-        <div class="kcard-label">Anulaciones</div>
-        <div class="kcard-main" style="color:#64748b;">{{ "{:,}".format(k.anulaciones) }}</div>
-        <div class="kcard-sub">Órdenes anuladas acumuladas</div>
-        <i class="fa-solid fa-ban kcard-bg-icon"></i>
+    <div class="proy-controls" style="display:flex; flex-wrap:wrap; gap:16px; align-items:center; margin-bottom:12px; font-size:12px; color:var(--text-secondary);">
+        <label style="display:flex; align-items:center; gap:6px;">
+            Días restantes:
+            <input type="number" class="proy-dias-input" value="{{ k.dias_rest_incl_hoy }}" step="0.5" min="0.5"
+                   style="width:64px; background:var(--bg-card-hover); border:1px solid var(--border); border-radius:6px; color:var(--text-primary); padding:4px 6px; font-size:12px;"
+                   oninput="proyRecalc(this.closest('.proy-cuota-block'))">
+        </label>
+        <button type="button" class="btn btn-outline" style="font-size:11px; padding:3px 10px;" onclick="proyResetDias(this)">Restablecer</button>
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+            <input type="checkbox" class="proy-extra-toggle" checked onchange="proyRecalc(this.closest('.proy-cuota-block'))"> Meta adicional:
+            <input type="number" class="proy-extra-pct" value="110" min="1" step="1"
+                   style="width:56px; background:var(--bg-card-hover); border:1px solid var(--border); border-radius:6px; color:var(--text-primary); padding:4px 6px; font-size:12px;"
+                   oninput="proyRecalc(this.closest('.proy-cuota-block'))">%
+        </label>
+        <div style="display:flex; align-items:center; gap:6px;">
+            Altas con corte a:
+            <div style="display:flex; border:1px solid var(--border); border-radius:6px; overflow:hidden;">
+                <button type="button" class="proy-basis-btn active" data-basis="ayer" onclick="proySetBasis(this,'ayer')"
+                        style="padding:4px 12px; font-size:12px; border:none; cursor:pointer; background:var(--primary); color:#fff;">Ayer</button>
+                <button type="button" class="proy-basis-btn" data-basis="hoy" onclick="proySetBasis(this,'hoy')"
+                        style="padding:4px 12px; font-size:12px; border:none; cursor:pointer; background:var(--bg-card-hover); color:var(--text-secondary);">Hoy</button>
+            </div>
+        </div>
     </div>
-    <div class="kcard purple">
-        <div class="kcard-label">Instalados Mismo Día</div>
-        <div class="kcard-main" style="color:#8b5cf6;">{{ "{:,}".format(k.instalados_mismo_dia) }}</div>
-        <div class="kcard-sub">Registro = Fecha programación</div>
-        <i class="fa-solid fa-calendar-check kcard-bg-icon"></i>
+    <div style="overflow-x:auto;">
+    <table class="data-table" style="min-width:520px;">
+        <thead>
+            <tr>
+                <th style="min-width:150px;">Meta</th>
+                <th class="num">Cuota</th>
+                <th class="num proy-th-altas">Altas (cierre ayer)</th>
+                <th class="num proy-th-faltan">Faltan a cierre de ayer</th>
+                <th class="num">Altas / día necesarias</th>
+                <th class="num">Ventas / día necesarias</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr class="proy-row-100">
+                <td style="font-weight:700;">100% <span style="color:var(--text-secondary); font-weight:400;">(cuota oficial)</span></td>
+                <td class="num">{{ "{:,}".format(k.cuota) }}</td>
+                <td class="num proy-altas-base">{{ "{:,}".format(k.altas_ayer) }}</td>
+                <td class="num proy-faltan-100" style="{% if k.faltantes_ayer_100 == 0 %}color:var(--success);{% endif %}">{{ "{:,}".format(k.faltantes_ayer_100) }}</td>
+                <td class="num proy-altas-100" style="font-weight:700; color:var(--warning);">{{ k.altas_nec_100 }}</td>
+                <td class="num proy-ventas-100" style="font-weight:700; color:var(--primary);">{{ k.ventas_nec_100 if k.ventas_nec_100 is not none else '—' }}</td>
+            </tr>
+            <tr class="proy-row-extra">
+                <td style="font-weight:700;"><span class="proy-label-extra">110%</span> <span style="color:var(--text-secondary); font-weight:400;">(meta adicional)</span></td>
+                <td class="num proy-cuota-extra">{{ "{:,}".format(k.cuota_110) }}</td>
+                <td class="num proy-altas-base">{{ "{:,}".format(k.altas_ayer) }}</td>
+                <td class="num proy-faltan-extra">{{ "{:,}".format(k.faltantes_ayer_110) }}</td>
+                <td class="num proy-altas-extra" style="font-weight:700; color:var(--warning);">{{ k.altas_nec_110 }}</td>
+                <td class="num proy-ventas-extra" style="font-weight:700; color:var(--primary);">{{ k.ventas_nec_110 if k.ventas_nec_110 is not none else '—' }}</td>
+            </tr>
+        </tbody>
+    </table>
+    </div>
+    <div style="font-size:11px; color:var(--text-secondary); margin-top:10px;">
+        Por defecto todo se calcula con el cierre de ayer (hoy todavía está a medio registrar/ejecutar en WinForce) — hoy es el primer día disponible para cerrar esa brecha, por eso "días restantes" sí lo incluye. Cambia a "Hoy" para ver el acumulado en vivo, ajusta "Días restantes" a mano si un día pesa menos (ej. domingo), o cambia el % de la meta adicional.
+        {% if k.ventas_nec_100 is none %}Aún no hay ventas registradas este mes para calcular la conversión.{% endif %}
     </div>
 </div>
+<script>
+function proyFmt(n) { return Math.round(n).toLocaleString('en-US'); }
+
+function proyRecalc(block) {
+    var dias = parseFloat(block.querySelector('.proy-dias-input').value);
+    if (!dias || dias <= 0) return;
+    var cuota = parseFloat(block.dataset.cuota) || 0;
+    var conversion = parseFloat(block.dataset.conversion) / 100;
+    var basis = block.dataset.basis || 'ayer';
+    var altasBase = basis === 'hoy'
+        ? (parseFloat(block.dataset.altasHoy) || 0)
+        : (parseFloat(block.dataset.altasAyer) || 0);
+
+    var thAltas = block.querySelector('.proy-th-altas');
+    var thFaltan = block.querySelector('.proy-th-faltan');
+    if (thAltas) thAltas.textContent = basis === 'hoy' ? 'Altas (hoy en vivo)' : 'Altas (cierre ayer)';
+    if (thFaltan) thFaltan.textContent = basis === 'hoy' ? 'Faltan a hoy' : 'Faltan a cierre de ayer';
+    block.querySelectorAll('.proy-altas-base').forEach(function (cell) {
+        cell.textContent = proyFmt(altasBase);
+    });
+
+    // Fila 100% (cuota oficial, fija)
+    var faltan100 = Math.max(cuota - altasBase, 0);
+    var altasNec100 = faltan100 / dias;
+    var ventasNec100 = conversion > 0 ? altasNec100 / conversion : null;
+    block.querySelector('.proy-faltan-100').textContent = proyFmt(faltan100);
+    block.querySelector('.proy-altas-100').textContent = altasNec100.toFixed(1);
+    block.querySelector('.proy-ventas-100').textContent = (ventasNec100 !== null && isFinite(ventasNec100)) ? ventasNec100.toFixed(1) : '—';
+
+    // Fila meta adicional (% editable)
+    var extraOn = block.querySelector('.proy-extra-toggle').checked;
+    var extraRow = block.querySelector('.proy-row-extra');
+    extraRow.style.display = extraOn ? '' : 'none';
+    if (extraOn) {
+        var pct = parseFloat(block.querySelector('.proy-extra-pct').value) || 100;
+        var cuotaExtra = Math.round(cuota * pct / 100);
+        var faltanExtra = Math.max(cuotaExtra - altasBase, 0);
+        var altasNecExtra = faltanExtra / dias;
+        var ventasNecExtra = conversion > 0 ? altasNecExtra / conversion : null;
+        block.querySelector('.proy-label-extra').textContent = pct + '%';
+        block.querySelector('.proy-cuota-extra').textContent = proyFmt(cuotaExtra);
+        block.querySelector('.proy-faltan-extra').textContent = proyFmt(faltanExtra);
+        block.querySelector('.proy-altas-extra').textContent = altasNecExtra.toFixed(1);
+        block.querySelector('.proy-ventas-extra').textContent = (ventasNecExtra !== null && isFinite(ventasNecExtra)) ? ventasNecExtra.toFixed(1) : '—';
+    }
+}
+function proyResetDias(btn) {
+    var block = btn.closest('.proy-cuota-block');
+    block.querySelector('.proy-dias-input').value = block.dataset.diasDefault;
+    proyRecalc(block);
+}
+function proySetBasis(btn, basis) {
+    var block = btn.closest('.proy-cuota-block');
+    block.dataset.basis = basis;
+    block.querySelectorAll('.proy-basis-btn').forEach(function (b) {
+        var active = b.dataset.basis === basis;
+        b.classList.toggle('active', active);
+        b.style.background = active ? 'var(--primary)' : 'var(--bg-card-hover)';
+        b.style.color = active ? '#fff' : 'var(--text-secondary)';
+    });
+    proyRecalc(block);
+}
+</script>
+{% endif %}
 
 <!-- Registros Diarios + Avance Cuota -->
 <div class="grid-2-1">
@@ -374,7 +582,7 @@
                 {% endfor %}
             </tbody>
             <tfoot>
-                <tr style="font-weight:800; background:#f8fafc;">
+                <tr style="font-weight:800; background:var(--bg-card-hover);">
                     <td style="border-top:2px solid var(--border);">Total</td>
                     <td class="num" style="border-top:2px solid var(--border);">{{ "{:,}".format(tot_reg.val) }}</td>
                     <td class="num" style="border-top:2px solid var(--border);">100.00 %</td>
@@ -385,8 +593,34 @@
     {% endif %}
 </div>
 
-<!-- Top Distritos + Tramo Días -->
+{% if area == 'Vertical' and pivot_agencia_cierre and pivot_agencia %}
+{% set ac = pivot_agencia_cierre.altas.vertical %}
+{% set av = pivot_agencia.altas.vertical %}
+{% set vv = pivot_agencia.ventas.vertical %}
+{% set dt = k.dias_trans if k.dias_trans and k.dias_trans > 0 else 1 %}
+{% set _agencias = [('ALIV','aliv'), ('DEZANET','dezanet'), ('LOTTUS','lottus'), ('SIPION','sipion'), ('SUB-AGENCIAS','sub_agencias'), ('SUB-AGENCIAS 2','sub_agencias_2')] %}
+
+<!-- Cierre Vertical (ayer) + Top Distritos -->
 <div class="grid-1-1">
+    <div class="panel">
+        <div class="panel-title"><i class="fa-solid fa-calendar-day"></i> Cierre Vertical — {{ fecha_cierre }}</div>
+        <p style="font-size:11px; color:var(--text-secondary); margin-top:-10px; margin-bottom:10px;">Altas ejecutadas ese día, por agencia</p>
+        <table class="data-table">
+            <thead><tr><th>Agencia</th><th class="num">Altas</th></tr></thead>
+            <tbody>
+                {% for label, key in _agencias %}
+                <tr><td style="font-weight:600;">{{ label }}</td><td class="num">{{ "{:,}".format(ac[key]) }}</td></tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr style="font-weight:800; background:var(--bg-card-hover);">
+                    <td style="border-top:2px solid var(--border);">Total</td>
+                    <td class="num" style="border-top:2px solid var(--border);">{{ "{:,}".format(ac.total) }}</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
     {% if top_dist %}
     <div class="panel">
         <div class="panel-title"><i class="fa-solid fa-ranking-star"></i> Top 10 Distritos por Altas</div>
@@ -403,52 +637,74 @@
         {% endfor %}
     </div>
     {% endif %}
+</div>
 
-    <!-- Tipo de Vivienda -->
-    {% if tipo_vivienda %}
+<!-- Altas y Ventas — Proyección por Agencia -->
+<div class="grid-1-1">
     <div class="panel">
-        <div class="panel-title"><i class="fa-solid fa-house-chimney"></i> Tipo de Vivienda</div>
-        <p style="font-size:11px; color:var(--text-secondary); margin-top:-10px; margin-bottom:10px;">Altas y % Instalación mismo día</p>
+        <div class="panel-title"><i class="fa-solid fa-chart-line"></i> Vertical — Altas y Proyección por Agencia</div>
+        <p style="font-size:11px; color:var(--text-secondary); margin-top:-10px; margin-bottom:10px;">Días transcurridos: <b>{{ dt }}</b> · Proyección a base <b>{{ base_dias }}d</b></p>
         <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Vivienda</th>
-                    <th class="num">Ventas</th>
-                    <th class="num">Altas</th>
-                    <th class="num">% Inst. Mismo Día</th>
-                    <th class="num">Inst. Mismo Día</th>
-                </tr>
-            </thead>
+            <thead><tr><th>Agencia</th><th class="num">Altas</th><th class="num">Proyección</th></tr></thead>
             <tbody>
-                {% set tot_v = namespace(val=0) %}
-                {% set tot_a = namespace(val=0) %}
-                {% set tot_imd = namespace(val=0) %}
-                {% for v in tipo_vivienda %}
-                {% set tot_v.val = tot_v.val + v.ventas %}
-                {% set tot_a.val = tot_a.val + v.altas %}
-                {% set tot_imd.val = tot_imd.val + v.inst_mismo_dia %}
+                {% for label, key in _agencias %}
                 <tr>
-                    <td style="font-weight:600;">{{ v.vivienda }}</td>
-                    <td class="num">{{ "{:,}".format(v.ventas) }}</td>
-                    <td class="num">{{ "{:,}".format(v.altas) }}</td>
-                    <td class="num">{{ "{:.2f}".format(v.pct_mismo_dia) }} %</td>
-                    <td class="num">{{ "{:,}".format(v.inst_mismo_dia) }}</td>
+                    <td style="font-weight:600;">{{ label }}</td>
+                    <td class="num">{{ "{:,}".format(av[key]) }}</td>
+                    <td class="num">{{ "{:,}".format((av[key] / dt * base_dias) | round | int) }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
             <tfoot>
-                <tr style="font-weight:800; background:#f8fafc;">
+                <tr style="font-weight:800; background:var(--bg-card-hover);">
                     <td style="border-top:2px solid var(--border);">Total</td>
-                    <td class="num" style="border-top:2px solid var(--border);">{{ "{:,}".format(tot_v.val) }}</td>
-                    <td class="num" style="border-top:2px solid var(--border);">{{ "{:,}".format(tot_a.val) }}</td>
-                    <td class="num" style="border-top:2px solid var(--border);">{{ "{:.2f}".format(tot_imd.val / tot_a.val * 100) if tot_a.val > 0 else "0.00" }} %</td>
-                    <td class="num" style="border-top:2px solid var(--border);">{{ "{:,}".format(tot_imd.val) }}</td>
+                    <td class="num" style="border-top:2px solid var(--border);">{{ "{:,}".format(av.total) }}</td>
+                    <td class="num" style="border-top:2px solid var(--border);">{{ "{:,}".format((av.total / dt * base_dias) | round | int) }}</td>
                 </tr>
             </tfoot>
         </table>
     </div>
-    {% endif %}
+    <div class="panel">
+        <div class="panel-title"><i class="fa-solid fa-file-signature"></i> Vertical — Ventas y Proyección por Agencia</div>
+        <p style="font-size:11px; color:var(--text-secondary); margin-top:-10px; margin-bottom:10px;">Días transcurridos: <b>{{ dt }}</b> · Proyección a base <b>{{ base_dias }}d</b></p>
+        <table class="data-table">
+            <thead><tr><th>Agencia</th><th class="num">Ventas</th><th class="num">Proyección</th></tr></thead>
+            <tbody>
+                {% for label, key in _agencias %}
+                <tr>
+                    <td style="font-weight:600;">{{ label }}</td>
+                    <td class="num">{{ "{:,}".format(vv[key]) }}</td>
+                    <td class="num">{{ "{:,}".format((vv[key] / dt * base_dias) | round | int) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr style="font-weight:800; background:var(--bg-card-hover);">
+                    <td style="border-top:2px solid var(--border);">Total</td>
+                    <td class="num" style="border-top:2px solid var(--border);">{{ "{:,}".format(vv.total) }}</td>
+                    <td class="num" style="border-top:2px solid var(--border);">{{ "{:,}".format((vv.total / dt * base_dias) | round | int) }}</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
 </div>
+{% elif top_dist %}
+<!-- Top Distritos (fuera de Vertical, sin Cierre a su lado) -->
+<div class="panel mb16">
+    <div class="panel-title"><i class="fa-solid fa-ranking-star"></i> Top 10 Distritos por Altas</div>
+    {% set max_d = top_dist[0].altas %}
+    {% for d in top_dist %}
+    <div class="hbar-row">
+        <span class="hbar-rank">{{ loop.index }}</span>
+        <span class="hbar-label" title="{{ d.Distrito }}">{{ d.Distrito }}</span>
+        <div class="hbar-bg">
+            <div class="hbar-fill" style="width:{{ (d.altas / max_d * 100)|round }}%; background:var(--primary);"></div>
+        </div>
+        <span class="hbar-val">{{ d.altas }}</span>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
 
 <!-- Velocidad Planes -->
 {% if vel_planes %}
@@ -463,7 +719,7 @@
             <div class="hbar-row">
                 <span class="hbar-label" style="min-width:56px; max-width:56px; font-weight:700;">{{ v.velocidad }}</span>
                 <div class="hbar-bg" style="flex:3;">
-                    <div class="hbar-fill" style="width:{{ (v.altas / vel_max * 100)|round }}%; background:#f97316;"></div>
+                    <div class="hbar-fill" style="width:{{ (v.altas / vel_max * 100)|round }}%; background:var(--warning);"></div>
                 </div>
                 <span class="hbar-val" style="min-width:44px;">{{ "{:,}".format(v.altas) }}</span>
                 <span style="font-size:11px; color:var(--text-secondary); min-width:52px; text-align:right;">{{ v.pct }}%</span>
@@ -482,41 +738,38 @@
 </div>
 {% endif %}
 
-<!-- Planes vs Agencias (Ancho Completo) -->
-<div class="panel">
-    <div class="panel-title"><i class="fa-solid fa-boxes-stacked"></i> Altas por Plan y Agencia</div>
-    <div class="table-container" style="overflow-x:auto;">
-            <table class="data-table" style="font-size:11px;">
-                <thead>
-                    <tr>
-                        {% for col in pivot_planes.columns %}
-                        <th {% if col == 'PLAN' %}style="position:sticky; left:0; background:#f8fafc; z-index:1;"{% endif %} class="{% if col != 'PLAN' %}num{% endif %}">{{ col }}</th>
-                        {% endfor %}
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for row in pivot_planes.rows %}
-                    <tr>
-                        <td style="font-weight:700; position:sticky; left:0; background:white; z-index:1; border-right:1px solid var(--border);">{{ row.PLAN }}</td>
-                        {% for col in pivot_planes.columns if col != 'PLAN' %}
-                        <td class="num" {% if col == 'TOTAL' %}style="font-weight:700; background:#f8fafc;"{% endif %}>
-                            {{ "{:,}".format(row[col]) if row[col] > 0 else '-' }}
-                        </td>
-                        {% endfor %}
-                    </tr>
-                    {% endfor %}
-                </tbody>
-                <tfoot>
-                    <tr style="background:#f1f5f9; font-weight:800;">
-                        <td style="position:sticky; left:0; background:#f1f5f9; z-index:1; border-right:1px solid var(--border);">TOTAL</td>
-                        {% for col in pivot_planes.columns if col != 'PLAN' %}
-                        <td class="num">{{ "{:,}".format(pivot_planes.totals[col]) }}</td>
-                        {% endfor %}
-                    </tr>
-                </tfoot>
-            </table>
-        </div>
+<!-- Resumen Lima — Vertical (usa los filtros de la página: Mes/Año/Día/Base) -->
+{% if area == 'Vertical' %}
+<div class="panel mb16">
+    <div class="panel-title"><i class="fa-solid fa-table-columns" style="color:var(--success);"></i> Resumen Lima — Vertical</div>
+    <div style="overflow-x:auto;">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Área</th><th class="num">Altas</th><th class="num">Meta</th><th class="num">Proyección</th>
+                <th class="num">Proy/Meta</th><th class="num">% Logrado</th><th class="num">Ritmo/d</th><th class="num">Ritmo Nec.</th><th class="num">Faltantes</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td style="font-weight:700;">Vertical</td>
+                <td class="num" style="font-weight:700; color:var(--success);">{{ "{:,}".format(k.altas) }}</td>
+                <td class="num">{{ "{:,}".format(k.cuota) if k.cuota else '—' }}</td>
+                <td class="num">{{ "{:,}".format(k.proyeccion) }}</td>
+                <td class="num"><span class="{% if k.pct_proyeccion >= 100 %}badge-meta{% elif k.pct_proyeccion >= 80 %}badge-riesgo{% else %}badge-bajo{% endif %}">{{ k.pct_proyeccion }}%</span></td>
+                <td class="num">{{ k.alcance }}%</td>
+                <td class="num">{{ k.ritmo_actual }}/d</td>
+                <td class="num" style="color:var(--warning); font-weight:600;">{{ k.ritmo_necesario }}/d</td>
+                <td class="num">{{ "{:,}".format(k.faltantes) }}</td>
+            </tr>
+        </tbody>
+    </table>
     </div>
+    <p style="font-size:11px; color:var(--text-light); margin-top:10px; line-height:1.5;">
+        <i class="fa-solid fa-circle-info"></i> PROY. = altas ÷ días × base {{ base_dias }}d &nbsp;·&nbsp; PROY/META = PROY ÷ META &nbsp;·&nbsp; % LOGRADO = altas ÷ META
+    </p>
+</div>
+{% endif %}
 
 {% else %}
 <div class="panel" style="text-align:center; padding:40px; color:var(--text-light);">
@@ -525,236 +778,6 @@
 </div>
 {% endif %}
 </div><!-- /tab-lima -->
-
-
-<!-- ═══════════════════════════════════════════════════════════
-     TAB 2 — ALIV
-════════════════════════════════════════════════════════════ -->
-<div id="tab-aliv" class="tab-content">
-{% if resumen_nac and resumen_nac.rows %}
-
-{% set lima_row = resumen_nac.rows | selectattr('nivel', 'equalto', 'lima') | list | first %}
-
-<!-- KPI summary cards -->
-<div class="kpi-row cols-4 mb16">
-    <div class="kcard blue">
-        <div class="kcard-label">Altas Día {{ "%02d" % resumen_nac.dia_col }}.{{ "%02d" % mes_actual }}</div>
-        <div class="kcard-main">{{ lima_row.altas_dia if lima_row else '—' }}</div>
-        <div class="kcard-sub">Lima instalado ese día</div>
-        <i class="fa-solid fa-calendar-day kcard-bg-icon"></i>
-    </div>
-    <div class="kcard green">
-        <div class="kcard-label">Altas Acum. {{ mes_nombre }}</div>
-        <div class="kcard-main" style="color:#10b981;">{{ "{:,}".format(lima_row.altas_acum) if lima_row else '—' }}</div>
-        <div class="kcard-sub">Cuota: <b>{{ "{:,}".format(lima_row.cuota) if lima_row else '—' }}</b></div>
-        <i class="fa-solid fa-plug kcard-bg-icon"></i>
-    </div>
-    <div class="kcard orange">
-        <div class="kcard-label">Proyección Cierre</div>
-        <div class="kcard-main" style="color:#f97316;">{{ "{:,}".format(lima_row.proyeccion) if lima_row else '—' }}</div>
-        <div class="kcard-sub">Estimado al cierre del mes</div>
-        <i class="fa-solid fa-chart-line kcard-bg-icon"></i>
-    </div>
-    <div class="kcard {% if lima_row and lima_row.alcance >= 100 %}green{% elif lima_row and lima_row.alcance >= 80 %}orange{% else %}red{% endif %}">
-        <div class="kcard-label">Alcance Lima</div>
-        <div class="kcard-main" style="color:{% if lima_row and lima_row.alcance >= 100 %}#10b981{% elif lima_row and lima_row.alcance >= 80 %}#f97316{% else %}#ef4444{% endif %};">
-            {{ lima_row.alcance if lima_row else '—' }}%
-        </div>
-        <div class="kcard-sub">Faltantes: <b>{{ lima_row.faltantes if lima_row else '—' }}</b></div>
-        <i class="fa-solid fa-bullseye kcard-bg-icon"></i>
-    </div>
-</div>
-
-<!-- Tabla Lima -->
-<div class="panel">
-    <div class="panel-title">
-        <i class="fa-solid fa-city"></i>
-        Lima — Altas {{ mes_nombre }} {{ anio_actual }}
-        <span style="font-size:11px; font-weight:400; color:var(--text-light); margin-left:6px;">
-            · Día {{ resumen_nac.dia_col }}
-        </span>
-    </div>
-    <div style="overflow-x:auto;">
-    <table class="data-table" style="min-width:600px;">
-        <thead>
-            <tr>
-                <th style="min-width:160px;">ÁREA</th>
-                {% if dia_actual > 0 %}
-                <th class="num">ALTAS {{ "%02d" % resumen_nac.dia_col }}.{{ "%02d" % mes_actual }}</th>
-                {% endif %}
-                <th class="num">ALTAS ACUM {{ mes_nombre[:3]|upper }}</th>
-                <th class="num">PROY. CIERRE</th>
-                <th class="num">CUOTA</th>
-                <th style="min-width:150px;">ALCANCE (%)</th>
-            </tr>
-        </thead>
-        <tbody>
-        {% for row in resumen_nac.rows %}
-        <tr {% if row.nivel == 'lima' %}style="background:#eff6ff; font-weight:700;"
-            {% elif row.nivel == 'lima_sub' %}style="background:#f8fafc; font-size:12px; color:var(--text-secondary);"
-            {% endif %}>
-            <td {% if row.nivel == 'lima_sub' %}style="padding-left:28px;"{% endif %}>
-                {% if row.nivel == 'lima' %}<i class="fa-solid fa-city" style="color:var(--primary); margin-right:6px;"></i>{% endif %}
-                {{ row.departamento }}
-            </td>
-            {% if dia_actual > 0 %}
-            <td class="num" {% if row.nivel == 'lima' %}style="font-weight:800;"{% endif %}>{{ row.altas_dia }}</td>
-            {% endif %}
-            <td class="num" {% if row.nivel == 'lima' %}style="font-weight:800;"{% endif %}>{{ "{:,}".format(row.altas_acum) }}</td>
-            <td class="num">{{ "{:,}".format(row.proyeccion) }}</td>
-            <td class="num">{% if row.cuota > 0 %}{{ "{:,}".format(row.cuota) }}{% else %}—{% endif %}</td>
-            <td>
-                {% if row.cuota > 0 %}
-                <div class="alcance-bar-wrap">
-                    <div class="alcance-bar-bg">
-                        <div class="alcance-bar-fill" style="width:{{ [row.alcance, 100]|min }}%; background:{% if row.alcance >= 100 %}#10b981{% elif row.alcance >= 80 %}#f97316{% else %}#ef4444{% endif %};"></div>
-                    </div>
-                    <span class="alcance-val" style="color:{% if row.alcance >= 100 %}#10b981{% elif row.alcance >= 80 %}#f97316{% else %}#ef4444{% endif %};">
-                        {{ row.alcance }}%
-                    </span>
-                </div>
-                {% else %}—{% endif %}
-            </td>
-        </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-    </div>
-</div>
-
-<!-- Tabla por Agencia Comercial -->
-<div class="panel" style="margin-top:16px;">
-    <div class="panel-title">
-        <i class="fa-solid fa-store"></i>
-        Altas por Agencia Comercial — {{ mes_nombre }} {{ anio_actual }}
-    </div>
-    {% if tabla_agencias and tabla_agencias.rows %}
-    {% set lima = tabla_agencias.rows | selectattr('nivel', 'equalto', 'lima') | list | first %}
-    <div style="overflow-x:auto;">
-    <table class="data-table" style="min-width:900px; font-size:13px;">
-        <thead>
-            <tr>
-                <th style="min-width:130px;">DEPARTAMENTO</th>
-                <th class="num">ALIV</th>
-                <th class="num">DEZANET</th>
-                <th class="num">GYA</th>
-                <th class="num">SIPION</th>
-                <th class="num">LOTTUS</th>
-                <th class="num">SUB-AGENCIAS</th>
-                <th class="num" style="border-left:2px solid #cbd5e1;">TOTAL</th>
-                <th class="num">TOTAL SUB-AG.</th>
-                <th class="num" style="border-left:2px solid #cbd5e1; color:#f97316;">PROY. CIERRE SUB</th>
-                <th class="num" style="color:#f97316;">PROY. CIERRE DEZANET</th>
-                <th class="num" style="color:#f97316;">PROY. CIERRE ALIV</th>
-            </tr>
-        </thead>
-        <tbody>
-        {% for row in tabla_agencias.rows %}
-        <tr {% if row.nivel == 'lima' %}style="background:#eff6ff; font-weight:700;"
-            {% else %}style="background:#f8fafc; font-size:12px; color:var(--text-secondary);"{% endif %}>
-            <td {% if row.nivel == 'lima_sub' %}style="padding-left:28px;"{% endif %}>
-                {% if row.nivel == 'lima' %}<i class="fa-solid fa-city" style="color:var(--primary); margin-right:6px;"></i>{% endif %}
-                {{ row.label }}
-            </td>
-            <td class="num" {% if row.nivel == 'lima' %}style="font-weight:800;"{% endif %}>{{ row.aliv }}</td>
-            <td class="num">{{ row.dezanet }}</td>
-            <td class="num">{{ row.gya }}</td>
-            <td class="num">{{ row.sipion }}</td>
-            <td class="num">{{ row.lottus }}</td>
-            <td class="num">{{ row.sub_ag }}</td>
-            <td class="num" style="border-left:2px solid #cbd5e1; {% if row.nivel == 'lima' %}font-weight:800;{% endif %}">{{ row.total }}</td>
-            <td class="num" {% if row.nivel == 'lima' %}style="font-weight:800;"{% endif %}>{{ row.sub_total }}</td>
-            {% if row.nivel == 'lima' %}
-            <td class="num" style="border-left:2px solid #cbd5e1; color:#f97316; font-weight:800;">{{ "{:,}".format(tabla_agencias.proy_sub) }}</td>
-            <td class="num" style="color:#f97316; font-weight:800;">{{ "{:,}".format(tabla_agencias.proy_dezanet) }}</td>
-            <td class="num" style="color:#f97316; font-weight:800;">{{ "{:,}".format(tabla_agencias.proy_aliv) }}</td>
-            {% else %}
-            <td class="num" style="border-left:2px solid #cbd5e1; color:var(--text-light);">—</td>
-            <td class="num" style="color:var(--text-light);">—</td>
-            <td class="num" style="color:var(--text-light);">—</td>
-            {% endif %}
-        </tr>
-        {% endfor %}
-        </tbody>
-        <tfoot class="agencias-tfoot">
-        <tr style="background:#1e3a5f; font-weight:700;">
-            <td style="color:#fff;">TOTAL</td>
-            <td class="num" style="color:#fff;">{{ lima.aliv }}</td>
-            <td class="num" style="color:#fff;">{{ lima.dezanet }}</td>
-            <td class="num" style="color:#fff;">{{ lima.gya }}</td>
-            <td class="num" style="color:#fff;">{{ lima.sipion }}</td>
-            <td class="num" style="color:#fff;">{{ lima.lottus }}</td>
-            <td class="num" style="color:#fff;">{{ lima.sub_ag }}</td>
-            <td class="num" style="color:#fff; border-left:2px solid rgba(255,255,255,0.15);">{{ lima.total }}</td>
-            <td class="num" style="color:#fff;">{{ lima.sub_total }}</td>
-            <td class="num" style="color:#fff; border-left:2px solid rgba(255,255,255,0.15);">{{ "{:,}".format(tabla_agencias.proy_sub) }}</td>
-            <td class="num" style="color:#fff;">{{ "{:,}".format(tabla_agencias.proy_dezanet) }}</td>
-            <td class="num" style="color:#fff;">{{ "{:,}".format(tabla_agencias.proy_aliv) }}</td>
-        </tr>
-        </tfoot>
-    </table>
-    </div>
-    {% else %}
-    <p style="color:var(--text-light); padding:20px; text-align:center;">Sin datos para este período.</p>
-    {% endif %}
-</div>
-
-<!-- ── Pivot Planes × Agencias ───────────────────────────────────────── -->
-{% if pivot_agencias %}
-{% set _ag_cols = ['ALIV','DEZANET','GYA','SIPION','LOTTUS','SUB-AGENCIAS'] %}
-<div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px;">
-{% for tipo, data in [('Altas', pivot_agencias.altas), ('Ventas', pivot_agencias.ventas)] %}
-<div class="panel" style="overflow-x:auto; min-width:0;">
-    <div class="panel-title">
-        <i class="fa-solid fa-{% if tipo == 'Altas' %}house-signal{% else %}handshake{% endif %}"></i>
-        {{ tipo }} por Plan y Agencia{% if dia_actual %} · Día 1–{{ dia_actual }}{% endif %}
-    </div>
-    {% if data and data.rows %}
-    <table class="data-table" style="width:100%; font-size:12px;">
-        <thead>
-            <tr>
-                <th style="min-width:140px;">Plan</th>
-                {% for ag in _ag_cols %}<th class="num">{{ ag }}</th>{% endfor %}
-                <th class="num" style="border-left:2px solid #cbd5e1; color:var(--primary); font-weight:800;">Total</th>
-            </tr>
-        </thead>
-        <tbody>
-        {% for row in data.rows %}
-        <tr>
-            <td>{{ row.PLAN }}</td>
-            {% for ag in _ag_cols %}
-            <td class="num">{% if row[ag] %}{{ row[ag] }}{% endif %}</td>
-            {% endfor %}
-            <td class="num" style="border-left:2px solid #cbd5e1; font-weight:700;">{{ row.TOTAL }}</td>
-        </tr>
-        {% endfor %}
-        </tbody>
-        <tfoot class="agencias-tfoot">
-        <tr style="background:#1e3a5f; font-weight:700;">
-            <td style="color:#fff;">Total</td>
-            {% for ag in _ag_cols %}
-            <td class="num" style="color:#fff;">{{ data.totals[ag] }}</td>
-            {% endfor %}
-            <td class="num" style="color:#fff; border-left:2px solid rgba(255,255,255,0.15);">{{ data.totals.TOTAL }}</td>
-        </tr>
-        </tfoot>
-    </table>
-    {% else %}
-    <p style="color:var(--text-light); padding:20px; text-align:center;">Sin datos.</p>
-    {% endif %}
-</div>
-{% endfor %}
-</div>
-{% endif %}
-
-{% else %}
-<div class="panel" style="text-align:center; padding:60px; color:var(--text-light);">
-    <i class="fa-solid fa-circle-exclamation" style="font-size:32px; margin-bottom:10px;"></i>
-    <p>No se pudieron cargar los datos para este período.</p>
-</div>
-{% endif %}
-</div><!-- /tab-aliv -->
-
 
 <!-- Leaflet CSS -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -770,7 +793,7 @@
 <div class="panel mb16" style="padding:0; overflow:hidden; height:520px; position:relative;">
     <div id="mapaLima" style="height:100%; width:100%; border-radius:11px;"></div>
     <div class="mapa-hint" id="mapaHint">
-        <i class="fa-solid fa-hand-pointer" style="color:#0066CC;"></i>
+        <i class="fa-solid fa-hand-pointer" style="color:var(--brand);"></i>
         Haz clic en un área coloreada para filtrar por distrito
     </div>
 </div>
@@ -790,8 +813,8 @@
                 <span class="zona-label" title="{{ z.zona }}">{{ z.zona }}</span>
                 <div class="zona-bar-bg">
                     <div class="zona-bar-fill" style="width:{{ (z.cnt / max_zona * 100)|round }}%; background:
-                        {% if 'P2' in z.zona %}#8b5cf6
-                        {% elif 'No Venta' in z.zona %}#ef4444
+                        {% if 'P2' in z.zona %}var(--kpi-purple)
+                        {% elif 'No Venta' in z.zona %}var(--danger)
                         {% else %}var(--primary){% endif %};"></div>
                 </div>
                 <span class="zona-cnt">{{ "{:,}".format(z.cnt) }}</span>
@@ -820,6 +843,112 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script>
+// Chart.js en tema oscuro: texto/ejes/leyendas claros, grilla sutil.
+if (window.Chart) {
+    Chart.defaults.color = 'rgba(242,240,236,0.75)';
+    Chart.defaults.borderColor = 'rgba(255,255,255,0.08)';
+    Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(10,10,11,0.95)';
+    Chart.defaults.plugins.tooltip.titleColor = '#F2F0EC';
+    Chart.defaults.plugins.tooltip.bodyColor = '#F2F0EC';
+    Chart.defaults.plugins.tooltip.borderColor = 'rgba(255,255,255,0.12)';
+    Chart.defaults.plugins.tooltip.borderWidth = 1;
+}
+
+// ── Generar PDF del reporte diario Vertical (mismo pipeline que la página Pipeline) ─
+var _dvPdfSSE = null;
+
+function dvEjecutarReporte(fase, btn) {
+    var status = document.getElementById('dvPdfStatus');
+    var b = document.getElementById('dvBtnReporteDiario');
+
+    b.disabled = true;
+    status.className = 'pdf-status';
+    status.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Generando reporte diario…';
+
+    var fd = new FormData();
+    fd.append('fase', fase);
+
+    fetch('/pipeline/ejecutar', { method: 'POST', body: fd })
+        .then(function (r) { return r.json().then(function (data) { return { status: r.status, data: data }; }); })
+        .then(function (res) {
+            if (!res.data.ok) {
+                status.className = 'pdf-status err';
+                status.textContent = res.data.error || 'No se pudo iniciar';
+                b.disabled = false;
+                return;
+            }
+            dvSeguirPdfSSE();
+        })
+        .catch(function (err) {
+            status.className = 'pdf-status err';
+            status.textContent = 'Error de red: ' + err;
+            b.disabled = false;
+        });
+}
+
+function dvSeguirPdfSSE() {
+    var status = document.getElementById('dvPdfStatus');
+    var b = document.getElementById('dvBtnReporteDiario');
+
+    if (_dvPdfSSE) _dvPdfSSE.close();
+    _dvPdfSSE = new EventSource('/pipeline/stream');
+
+    _dvPdfSSE.onmessage = function (e) {
+        var msg = JSON.parse(e.data);
+        if (msg.t === 'done') {
+            var ok = msg.code === 0;
+            status.className = 'pdf-status ' + (ok ? 'ok' : 'err');
+            status.innerHTML = ok
+                ? '<i class="fa-solid fa-circle-check"></i> PDF generado'
+                : '<i class="fa-solid fa-circle-xmark"></i> Falló (código ' + msg.code + ')';
+            b.disabled = false;
+            _dvPdfSSE.close();
+        } else if (msg.t === 'idle') {
+            status.className = 'pdf-status';
+            status.textContent = '';
+            b.disabled = false;
+            _dvPdfSSE.close();
+        } else if (msg.t === 'err') {
+            status.className = 'pdf-status err';
+            status.textContent = msg.v;
+        }
+    };
+    _dvPdfSSE.onerror = function () {
+        status.className = 'pdf-status err';
+        status.textContent = 'Conexión interrumpida';
+        b.disabled = false;
+    };
+}
+
+// ── Colores de gráficas listos para imprimir (fondo blanco en PDF) ─
+var _dvCharts = [];
+var _dvPrintMode = false;
+var _DV_COLOR_SCREEN = 'rgba(242,240,236,0.75)';
+var _DV_COLOR_PRINT  = '#333333';
+
+function _dvSetChartPrintMode(isPrint) {
+    _dvPrintMode = isPrint;
+    Chart.defaults.color = isPrint ? _DV_COLOR_PRINT : _DV_COLOR_SCREEN;
+    _dvCharts.forEach(function (c) {
+        var color = isPrint ? _DV_COLOR_PRINT : _DV_COLOR_SCREEN;
+        if (c.options.scales && c.options.scales.x) c.options.scales.x.ticks.color = color;
+        if (c.options.scales && c.options.scales.y) c.options.scales.y.ticks.color = color;
+        if (c.options.plugins && c.options.plugins.legend && c.options.plugins.legend.labels) {
+            c.options.plugins.legend.labels.color = color;
+        }
+        c.resize();
+        c.update('none');
+    });
+}
+window.addEventListener('beforeprint', function () { _dvSetChartPrintMode(true); });
+window.addEventListener('afterprint', function () { _dvSetChartPrintMode(false); });
+if (window.matchMedia) {
+    var _dvMql = window.matchMedia('print');
+    var _dvMqlHandler = function (e) { _dvSetChartPrintMode(e.matches); };
+    if (_dvMql.addEventListener) _dvMql.addEventListener('change', _dvMqlHandler);
+    else if (_dvMql.addListener) _dvMql.addListener(_dvMqlHandler);
+}
+
 let _mapaLima = null;
 window.filtrarMapa = function() {};
 
@@ -830,8 +959,10 @@ function switchTab(name, btn) {
     btn.classList.add('active');
     const isLima = name === 'lima';
     const isLoc  = name === 'localizacion';
-    document.getElementById('areaLabel').style.display  = isLima ? '' : 'none';
-    document.getElementById('areaSelect').style.display = isLima ? '' : 'none';
+    ['areaLabel', 'areaSelect', 'agenciaLabel', 'agenciaSelect'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.style.display = isLima ? '' : 'none';
+    });
     const locBar = document.getElementById('locFiltrosBar');
     locBar.style.display = isLoc ? 'flex' : 'none';
     document.getElementById('tabInput').value = name;
@@ -861,7 +992,7 @@ const chartDefaults = {
     maintainAspectRatio: false,
     plugins: { legend: { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } },
     scales: {
-        y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 11 } } },
+        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.08)' }, ticks: { font: { size: 11 } } },
         x: { grid: { display: false }, ticks: { font: { size: 11 } } }
     }
 };
@@ -869,7 +1000,7 @@ const chartDefaults = {
 // ── Gráfica diaria Lima ──────────────────────────────────
 const trendLima = {{ trend_lima | tojson }};
 if (trendLima.length) {
-    new Chart(document.getElementById('chartLima'), {
+    _dvCharts.push(new Chart(document.getElementById('chartLima'), {
         type: 'bar',
         data: {
             labels: trendLima.map(d => d.dia),
@@ -882,26 +1013,26 @@ if (trendLima.length) {
             ]
         },
         options: { ...chartDefaults, interaction: { mode: 'index', intersect: false } }
-    });
+    }));
 }
 
 // ── Donut Velocidad Planes ───────────────────────────────
 const velData = {{ vel_planes | tojson }};
 if (velData.length) {
     const velColors = ['#f97316','#0066CC','#10b981','#8b5cf6','#f59e0b','#14b8a6','#ef4444','#94a3b8','#64748b'];
-    new Chart(document.getElementById('chartVelocidad'), {
+    _dvCharts.push(new Chart(document.getElementById('chartVelocidad'), {
         type: 'doughnut',
         data: {
             labels: velData.map(v => v.velocidad + ' Mbps'),
             datasets: [{ data: velData.map(v => v.altas),
-                         backgroundColor: velColors, borderWidth: 2, borderColor: '#fff' }]
+                         backgroundColor: velColors, borderWidth: 2, borderColor: '#1B1B1F' }]
         },
         options: {
             maintainAspectRatio: false,
             plugins: { legend: { display: true, position: 'bottom',
                                  labels: { boxWidth: 10, font: { size: 10 } } } }
         }
-    });
+    }));
 }
 
 // ── Donut Zona KML ───────────────────────────────────────
@@ -915,7 +1046,7 @@ if (zonasData.length) {
             data: {
                 labels: zonasData.map(z => z.zona),
                 datasets: [{ data: zonasData.map(z => z.cnt),
-                             backgroundColor: colors, borderWidth: 2, borderColor: '#fff' }]
+                             backgroundColor: colors, borderWidth: 2, borderColor: '#1B1B1F' }]
             },
             options: {
                 maintainAspectRatio: false,
@@ -941,11 +1072,11 @@ function initMapaLima() {
     }).addTo(_mapaLima);
 
     function _clusterStyle(n) {
-        if (n < 20)  return { bg: '#ef4444', s: 32 };
-        if (n < 80)  return { bg: '#f97316', s: 36 };
+        if (n < 20)  return { bg: 'var(--danger)', s: 32 };
+        if (n < 80)  return { bg: 'var(--warning)', s: 36 };
         if (n < 200) return { bg: '#eab308', s: 40 };
         if (n < 500) return { bg: '#84cc16', s: 44 };
-        return                { bg: '#10b981', s: 48 };
+        return                { bg: 'var(--success)', s: 48 };
     }
     const clusterGroup = L.markerClusterGroup({
         chunkedLoading: true,
@@ -954,7 +1085,7 @@ function initMapaLima() {
             const n = cluster.getChildCount();
             const { bg, s } = _clusterStyle(n);
             return L.divIcon({
-                html: '<div style="background:' + bg + ';color:#fff;border-radius:50%;width:' + s + 'px;height:' + s + 'px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,.3);">' + n + '</div>',
+                html: '<div style="background:' + bg + ';color:var(--text-primary);border-radius:50%;width:' + s + 'px;height:' + s + 'px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,.3);">' + n + '</div>',
                 className: '',
                 iconSize: [s, s],
                 iconAnchor: [s / 2, s / 2]
@@ -987,11 +1118,11 @@ function initMapaLima() {
     // ── Límites distritales oficiales (GeoJSON GADM) ─────────
     function _distHeatColor(rank, total) {
         const p = rank / (total - 1 || 1);
-        if (p < 0.2) return '#10b981';
+        if (p < 0.2) return 'var(--success)';
         if (p < 0.4) return '#84cc16';
         if (p < 0.6) return '#eab308';
-        if (p < 0.8) return '#f97316';
-        return '#ef4444';
+        if (p < 0.8) return 'var(--warning)';
+        return 'var(--danger)';
     }
     function _normDist(s) {
         return (s || '').toUpperCase()
@@ -1025,7 +1156,7 @@ function initMapaLima() {
                     if (label) {
                         layer.bindTooltip(
                             '<b>' + label + '</b>' +
-                            (cnt ? '<br><span style="color:#94a3b8;">Click para filtrar</span> · ' + cnt + ' altas' : ''),
+                            (cnt ? '<br><span style="color:var(--slate);">Click para filtrar</span> · ' + cnt + ' altas' : ''),
                             { sticky: false, className: 'dist-tooltip' }
                         );
                     }
@@ -1051,7 +1182,7 @@ function initMapaLima() {
         .catch(function(e) {
             console.warn('GeoJSON distritos no disponible. Ejecuta generar_lima_geo.py', e);
             const hint = document.getElementById('mapaHint');
-            if (hint) { hint.innerHTML = '<i class="fa-solid fa-triangle-exclamation" style="color:#f97316;"></i> Ejecuta generar_lima_geo.py para ver los límites distritales'; hint.style.display = 'flex'; }
+            if (hint) { hint.innerHTML = '<i class="fa-solid fa-triangle-exclamation" style="color:var(--warning);"></i> Ejecuta generar_lima_geo.py para ver los límites distritales'; hint.style.display = 'flex'; }
         });
 
     function addMarkers(pts) {
@@ -1059,19 +1190,19 @@ function initMapaLima() {
         pts.forEach(p => {
             if (!p.lat || !p.lon) return;
             const scoreColor = {
-                'Cumple':    '#10b981',
-                'No cumple': '#ef4444',
-                'Sin score': '#94a3b8',
-                'No Venta':  '#f97316'
-            }[p.score_zona] || '#64748b';
+                'Cumple':    'var(--success)',
+                'No cumple': 'var(--danger)',
+                'Sin score': 'var(--slate)',
+                'No Venta':  'var(--warning)'
+            }[p.score_zona] || 'var(--slate)';
             const m = L.marker([p.lat, p.lon]);
             m.bindPopup(
                 `<div style="min-width:200px; font-size:12px; line-height:1.7;">
                     <b style="font-size:13px; color:var(--primary);">${p.distrito}</b><br>
-                    ${p.geofinder ? `<span style="color:#0066CC; font-size:11px;"><i class="fa-solid fa-location-dot"></i> ${p.geofinder}</span><br>` : ''}
-                    ${p.direccion && p.direccion !== p.geofinder ? `<span style="color:#94a3b8; font-size:11px;">${p.direccion}</span><br>` : ''}
-                    <span style="color:#f97316; font-weight:700;">${p.plan || '—'}</span>
-                    <span style="color:#64748b; margin-left:6px; font-size:11px;">${p.tipo || ''}</span>
+                    ${p.geofinder ? `<span style="color:var(--brand); font-size:11px;"><i class="fa-solid fa-location-dot"></i> ${p.geofinder}</span><br>` : ''}
+                    ${p.direccion && p.direccion !== p.geofinder ? `<span style="color:var(--slate); font-size:11px;">${p.direccion}</span><br>` : ''}
+                    <span style="color:var(--warning); font-weight:700;">${p.plan || '—'}</span>
+                    <span style="color:var(--slate); margin-left:6px; font-size:11px;">${p.tipo || ''}</span>
                     ${p.score_zona ? `<br><span style="font-size:11px; font-weight:700; color:${scoreColor};">⬤ ${p.score_zona}</span>` : ''}
                 </div>`
             );
@@ -1089,17 +1220,17 @@ function initMapaLima() {
             const esc = d.replace(/'/g, "\\'");
             return `<div onclick="filtrarMapa('${esc}')"
                          style="padding:6px 4px; cursor:pointer; border-radius:5px;
-                                background:${isActive ? '#eff6ff' : 'transparent'};
-                                border-left:3px solid ${isActive ? '#0066CC' : 'transparent'};
+                                background:${isActive ? 'var(--brand-glow-soft)' : 'transparent'};
+                                border-left:3px solid ${isActive ? 'var(--brand)' : 'transparent'};
                                 margin-bottom:2px; padding-left:7px;">
                 <div style="display:flex; justify-content:space-between; margin-bottom:3px;">
                     <span style="font-weight:600; color:var(--text-primary);
                                  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
                                  max-width:170px;" title="${d}">${i+1}. ${d}</span>
-                    <span style="font-weight:700; color:#f97316; white-space:nowrap; margin-left:4px;">${cnt}</span>
+                    <span style="font-weight:700; color:var(--warning); white-space:nowrap; margin-left:4px;">${cnt}</span>
                 </div>
-                <div style="background:#f1f5f9; border-radius:3px; height:4px;">
-                    <div style="width:${barW}%; background:#f97316; height:4px; border-radius:3px;"></div>
+                <div style="background:var(--bg-inset); border-radius:3px; height:4px;">
+                    <div style="width:${barW}%; background:var(--warning); height:4px; border-radius:3px;"></div>
                 </div>
             </div>`;
         }).join('');

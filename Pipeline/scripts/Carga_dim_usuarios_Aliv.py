@@ -49,8 +49,8 @@ def cargar_dim_usuarios():
         return s
 
     df_up = pd.DataFrame({
-        "vendedor":        df["Usuario Winforce"].str.strip(),
-        "nombre_completo": df["Vendedor (nombre limpio)"].str.strip(),
+        "vendedor":        df["Usuario Winforce"].str.strip().str.title(),
+        "nombre_aliv":     df["Vendedor (nombre limpio)"].str.strip().str.title(),
         "cargo":           "Vendedor",
         "agencia":         df["Agencia"].apply(_clean),
         "supervisor":      df["Supervisor"].apply(_clean),
@@ -74,7 +74,7 @@ def cargar_dim_usuarios():
             if existing:
                 conn.execute(sa.text(f"""
                     UPDATE {TABLE}
-                    SET nombre_completo = :n,
+                    SET nombre_aliv = :n,
                         cargo           = :c,
                         agencia         = :ag,
                         supervisor      = :sv,
@@ -82,7 +82,7 @@ def cargar_dim_usuarios():
                         estado          = :es
                     WHERE vendedor = :v
                 """), {
-                    "v": row["vendedor"], "n": row["nombre_completo"],
+                    "v": row["vendedor"], "n": row["nombre_aliv"],
                     "c": row["cargo"],    "ag": row["agencia"],
                     "sv": row["supervisor"], "ca": row["canal"], "es": row["estado"],
                 })
@@ -90,10 +90,10 @@ def cargar_dim_usuarios():
             else:
                 conn.execute(sa.text(f"""
                     INSERT INTO {TABLE}
-                        (vendedor, nombre_completo, cargo, agencia, supervisor, canal, estado, fecha_registro)
+                        (vendedor, nombre_aliv, cargo, agencia, supervisor, canal, estado, fecha_registro)
                     VALUES (:v, :n, :c, :ag, :sv, :ca, :es, :fr)
                 """), {
-                    "v": row["vendedor"], "n": row["nombre_completo"],
+                    "v": row["vendedor"], "n": row["nombre_aliv"],
                     "c": row["cargo"],    "ag": row["agencia"],
                     "sv": row["supervisor"], "ca": row["canal"],
                     "es": row["estado"],  "fr": row["fecha_registro"],

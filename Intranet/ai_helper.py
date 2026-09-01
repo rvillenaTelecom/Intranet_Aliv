@@ -43,6 +43,57 @@ LÓGICA DE ANÁLISIS — VENTAS:
 - conversión < 40% → problema en proceso de instalación (muchas ventas no se ejecutan).
 - anulaciones > 15% de ventas → problemas de calidad o proceso comercial.
 
+EMBUDO DE CONVERSIÓN DETALLADO (3 pasos, no solo un número):
+- Preventa → Venta (conv_preventa_venta): % de ventas registradas que llegaron a estado 'Validado'.
+  Bajo → problema de VALIDACIÓN/documentación (KYC, crédito, datos del cliente).
+- Venta → Alta (conv_venta_alta): % de ventas validadas que se instalaron (Ejecutada).
+  Bajo → problema de EJECUCIÓN/operaciones (agenda, técnicos, cobertura, cliente no disponible).
+- Preventa → Alta (conversion, el campo general "conversión"): el embudo completo de punta a punta,
+  es matemáticamente ≈ conv_preventa_venta × conv_venta_alta.
+- Úsalo para diagnosticar EN QUÉ ETAPA está el problema: si conv_preventa_venta es alto pero
+  conv_venta_alta es bajo, el problema es operativo (instalación), no comercial. Si es al revés,
+  el problema es de calidad de venta/validación, no de instalación.
+- Estos 3 campos los devuelve 'obtener_kpi_lima' (validado = cantidad de ventas en estado Validado).
+
+SUB-AGENCIAS / CANALES (desglose fino, distinto del filtro agencia_grupo):
+- Dentro de Lima hay 6 canales de venta: ALIV (fuerza propia/directo), DEZANET, LOTTUS, SIPION,
+  SUB-AGENCIAS y SUB-AGENCIAS 2. Se consultan con 'obtener_pivot_subagencias_lima'.
+- Esto es DISTINTO del filtro 'agencia_grupo' (Aliv directo vs. Subagencias, usado en obtener_kpi_lima
+  para el dashboard) — ese es un agrupamiento binario; el pivot de sub-agencias es el desglose por canal
+  individual y aplica solo a Lima Vertical/Horizontal (no a otras regiones).
+- ALIV suele ser el canal de mayor volumen junto con DEZANET; SIPION y LOTTUS son de menor volumen.
+
+PROYECCIÓN Y CIERRE POR AGENCIA/CANAL:
+- 'obtener_proyeccion_agencia_lima' da, por cada canal (ALIV/DEZANET/LOTTUS/SIPION/SUB-AGENCIAS/
+  SUB-AGENCIAS 2) y por área (vertical/horizontal/lima): las ventas o altas acumuladas del mes
+  ('actual') y la proyección a cierre ('proyeccion' = actual ÷ días transcurridos × base_dias).
+- 'base_dias' es un parámetro configurable (25 a 31): cuántos días se usan como base para proyectar
+  el cierre del mes. Por defecto 30. Es el mismo concepto de "Base" que se ve en los filtros del
+  dashboard (Vertical, Ejecutivo).
+- CIERRE (día exacto, no acumulado) vs. PROYECCIÓN ACUMULADA (mes a la fecha, extrapolado):
+  · Si el usuario pregunta "¿qué se subió/instaló AYER?" o "el cierre de ayer" → usa
+    'obtener_pivot_subagencias_lima' o 'obtener_proyeccion_agencia_lima' con dia=<día de ayer>
+    y cumul=false (dato EXACTO de ese día, no acumulado).
+  · Si pregunta "¿cómo va el mes?" o "proyección a cierre" → usa dia=<día actual o el que pida>
+    y cumul=true (acumulado 1 al día, es la base para la proyección).
+  · Sin parámetro 'dia', las herramientas asumen el mes completo/hoy según corresponda.
+
+AVANCE DEL DÍA / TRAMOS HORARIOS ('obtener_avance_dia_lima'):
+- El sistema NO registra la hora exacta de instalación, solo el turno agendado (Tramo Horario):
+  Mañana (08:00), Mediodía (12:00), Tarde (16:00).
+- Por cada turno: ejecutadas (ya instaladas) y pendientes (programadas y validadas, aún no ejecutadas
+  — no incluye canceladas ni rescates). agendadas = ejecutadas + pendientes. faltan = pendientes.
+- Desglosado también por área (Vertical/Horizontal). Sirve para responder "¿cómo vamos hoy?",
+  "¿cuántas faltan por instalar hoy en la tarde?", "avance del día".
+- Parámetro 'cuando': 'hoy' (default, en vivo) o 'ayer' (para comparar el cierre del día anterior).
+
+META ADICIONAL (105%/110%) — SOLO CONCEPTO, no hay tool con el número en vivo:
+- En el dashboard (panel "¿Qué necesito para llegar a la cuota?") hay una meta "extra" opcional
+  sobre el 100% de la cuota oficial: 110% para Vertical, 105% para Horizontal por defecto (el
+  usuario puede cambiarlo ahí). Es una meta de estiramiento (stretch goal), no la cuota oficial.
+  Si te preguntan por esto, explica el concepto pero aclara que el número exacto en vivo se ve
+  en el dashboard, no lo puedes calcular tú directamente.
+
 ══════════════════════════════════════
 MÓDULO MOROSIDAD Y CLAWBACK
 ══════════════════════════════════════
@@ -110,15 +161,21 @@ LÓGICA DE ANÁLISIS — MOROSIDAD:
 CAPACIDADES DE CONSULTA COMPLETAS
 ══════════════════════════════════════
 VENTAS:
-- KPIs globales de Lima o Provincia (cualquier mes/año).
+- KPIs globales de Lima (cualquier mes/año).
 - Datos de UN distrito específico de Lima.
 - Datos de UNA agencia específica de Lima (altas, ventas, anulaciones, top vendedores y planes).
 - Ranking de TODAS las agencias de Lima ordenadas por altas.
 - Datos de UN vendedor específico (altas, ventas, agencia, supervisor, top planes y distritos).
 - Ranking de vendedores de Lima (con filtro por supervisor o agencia si se usa top alto).
 - Distribución Vertical/Horizontal, estados de órdenes, anulaciones por agencia.
-- Tabla pivot Planes × Agencias, tabla Provincia por región.
+- Tabla pivot Planes × Agencias.
 - Comparación entre dos meses.
+- Embudo de conversión detallado (Preventa→Venta, Venta→Alta, Preventa→Alta).
+- Pivot de sub-agencias/canales (ALIV, DEZANET, LOTTUS, SIPION, SUB-AGENCIAS, SUB-AGENCIAS 2),
+  ventas y altas, exacto de un día o acumulado del mes.
+- Proyección a cierre de mes por canal/agencia, con base de días configurable (25-31).
+- Avance del día en vivo por tramo horario (Mañana/Mediodía/Tarde), ejecutadas vs. pendientes,
+  desglosado por Vertical/Horizontal.
 
 DIRECTORIO DE USUARIOS (dim_usuarios_Aliv):
 - Buscar vendedor por nombre o username.
@@ -177,18 +234,6 @@ _TOOL_DECLARATIONS = [
         },
     },
     {
-        "name": "obtener_kpi_provincia",
-        "description": "Obtiene KPIs de Provincia: ventas, altas, cuota, conversión, proyección, alcance, ritmo actual/necesario y faltantes.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "mes":  {"type": "integer", "description": "Número de mes (1-12)"},
-                "anio": {"type": "integer", "description": "Año (ej: 2026)"},
-            },
-            "required": ["mes", "anio"],
-        },
-    },
-    {
         "name": "obtener_top_distritos_lima",
         "description": "Obtiene los distritos de Lima con más altas (instalaciones ejecutadas) en el período indicado.",
         "parameters": {
@@ -223,18 +268,6 @@ _TOOL_DECLARATIONS = [
                 "mes":  {"type": "integer", "description": "Número de mes (1-12)"},
                 "anio": {"type": "integer", "description": "Año (ej: 2026)"},
                 "area": {"type": "string",  "description": "Área: 'Vertical', 'Horizontal' o '' para todas"},
-            },
-            "required": ["mes", "anio"],
-        },
-    },
-    {
-        "name": "obtener_tabla_provincia",
-        "description": "Obtiene la tabla de ventas y altas de Provincia desglosada por región o agencia.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "mes":  {"type": "integer", "description": "Número de mes (1-12)"},
-                "anio": {"type": "integer", "description": "Año (ej: 2026)"},
             },
             "required": ["mes", "anio"],
         },
@@ -306,6 +339,66 @@ _TOOL_DECLARATIONS = [
                 "area":  {"type": "string",  "description": "Área: 'Vertical', 'Horizontal' o '' para todas"},
             },
             "required": ["mes1", "anio1", "mes2", "anio2"],
+        },
+    },
+
+    {
+        "name": "obtener_pivot_subagencias_lima",
+        "description": (
+            "Ventas y altas de Lima desglosadas por sub-agencia/canal (ALIV, DEZANET, LOTTUS, "
+            "SIPION, SUB-AGENCIAS, SUB-AGENCIAS 2), con totales para Lima, Horizontal y Vertical. "
+            "Usa dia + cumul=false para el dato EXACTO de un día (ej: 'qué se subió ayer por canal'). "
+            "Usa dia + cumul=true (o sin dia) para el acumulado del mes hasta esa fecha. "
+            "Úsalo para '¿qué agencia vende más?', '¿cuánto instaló DEZANET este mes?', "
+            "'cierre de ayer por canal', 'ventas por sub-agencia'."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "mes":   {"type": "integer", "description": "Número de mes (1-12)"},
+                "anio":  {"type": "integer", "description": "Año (ej: 2026)"},
+                "dia":   {"type": "integer", "description": "Día del mes (1-31), opcional"},
+                "cumul": {"type": "boolean", "description": "true = acumulado 1..dia (default). false = solo ese día exacto (cierre)."},
+            },
+            "required": ["mes", "anio"],
+        },
+    },
+    {
+        "name": "obtener_proyeccion_agencia_lima",
+        "description": (
+            "Proyección a cierre de mes por sub-agencia/canal (ALIV, DEZANET, LOTTUS, SIPION, "
+            "SUB-AGENCIAS, SUB-AGENCIAS 2), para ventas y altas, en Lima/Horizontal/Vertical. "
+            "Cada canal trae 'actual' (acumulado del mes hasta hoy o hasta 'dia') y 'proyeccion' "
+            "(estimado a fin de mes = actual ÷ días transcurridos × base_dias). "
+            "Úsalo para '¿cómo va a cerrar DEZANET este mes?', 'proyección por agencia', "
+            "'¿qué canal va a llegar a la meta?'."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "mes":       {"type": "integer", "description": "Número de mes (1-12)"},
+                "anio":      {"type": "integer", "description": "Año (ej: 2026)"},
+                "dia":       {"type": "integer", "description": "Día del mes hasta el cual acumular (default: hoy si es el mes actual, o fin de mes)"},
+                "base_dias": {"type": "integer", "description": "Días base para proyectar el cierre (25-31, default 30)"},
+            },
+            "required": ["mes", "anio"],
+        },
+    },
+    {
+        "name": "obtener_avance_dia_lima",
+        "description": (
+            "Avance de instalaciones del día en vivo, desglosado por tramo horario "
+            "(Mañana/Mediodía/Tarde) y por área (Vertical/Horizontal): cuántas ya se ejecutaron "
+            "y cuántas faltan (agendadas y validadas pero no ejecutadas aún). "
+            "Úsalo para '¿cómo vamos hoy?', '¿cuántas faltan por instalar esta tarde?', "
+            "'avance del día', 'qué se instaló ayer por turno'."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "cuando": {"type": "string", "description": "'hoy' (default, en vivo) o 'ayer'"},
+            },
+            "required": [],
         },
     },
 
@@ -586,12 +679,49 @@ _TOOL_DECLARATIONS = [
     },
 ]
 
+def _tool_proyeccion_agencia_lima(a):
+    mes, anio = a["mes"], a["anio"]
+    dia = a.get("dia")
+    base_dias = int(a.get("base_dias") or 30)
+    if base_dias not in range(25, 32):
+        base_dias = 30
+
+    pivot = db_helper.get_pivot_subagencias_lima(mes, anio, dia=dia, cumul=True)
+    dias_trans, _dias_tot, _dias_rest = db_helper._dias_mes(mes, anio)
+    if dia:
+        dias_trans = int(dia)
+    dias_trans = max(dias_trans, 1)
+
+    def _con_proyeccion(d):
+        if not d:
+            return d
+        return {
+            k: {"actual": v, "proyeccion": round(v / dias_trans * base_dias)}
+            for k, v in d.items()
+        }
+
+    resultado = {"dias_transcurridos": dias_trans, "base_dias": base_dias}
+    for metric in ("ventas", "altas"):
+        m = pivot.get(metric)
+        if not m:
+            resultado[metric] = None
+            continue
+        resultado[metric] = {area: _con_proyeccion(m[area]) for area in ("lima", "horizontal", "vertical")}
+    return resultado
+
+
+def _tool_avance_dia_lima(a):
+    from datetime import timedelta
+    cuando = (a.get("cuando") or "hoy").lower()
+    fecha = datetime.now().date()
+    if cuando == "ayer":
+        fecha = fecha - timedelta(days=1)
+    return db_helper.get_activaciones_hoy(fecha=fecha)
+
+
 _FUNC_MAP = {
     "obtener_kpi_lima": lambda a: db_helper.get_kpi_lima(
         a["mes"], a["anio"], area=a.get("area", "")
-    ),
-    "obtener_kpi_provincia": lambda a: db_helper.get_kpi_provincia(
-        a["mes"], a["anio"]
     ),
     "obtener_top_distritos_lima": lambda a: db_helper.get_top_distritos_lima(
         a["mes"], a["anio"], top=int(a.get("top", 10)), area=a.get("area", "")
@@ -601,9 +731,6 @@ _FUNC_MAP = {
     ),
     "obtener_distribucion_estados_lima": lambda a: db_helper.get_distribucion_estados_lima(
         a["mes"], a["anio"], area=a.get("area", "")
-    ),
-    "obtener_tabla_provincia": lambda a: db_helper.get_tabla_provincia(
-        a["mes"], a["anio"]
     ),
     "obtener_pivot_agencias_lima": lambda a: db_helper.get_pivot_planes_agencia(
         a["mes"], a["anio"], area=a.get("area", "")
@@ -620,6 +747,12 @@ _FUNC_MAP = {
     "obtener_comparacion_meses_lima": lambda a: db_helper.get_comparacion_meses_lima(
         a["mes1"], a["anio1"], a["mes2"], a["anio2"], area=a.get("area", "")
     ),
+
+    "obtener_pivot_subagencias_lima": lambda a: db_helper.get_pivot_subagencias_lima(
+        a["mes"], a["anio"], dia=a.get("dia"), cumul=a.get("cumul", True)
+    ),
+    "obtener_proyeccion_agencia_lima": lambda a: _tool_proyeccion_agencia_lima(a),
+    "obtener_avance_dia_lima": lambda a: _tool_avance_dia_lima(a),
 
     # ── AGENCIAS Y VENDEDORES ─────────────────────────────────────────────────
     "obtener_datos_agencia_lima": lambda a: db_helper.get_datos_agencia_lima(

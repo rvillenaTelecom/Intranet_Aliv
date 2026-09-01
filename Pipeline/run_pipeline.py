@@ -80,7 +80,6 @@ def main(fase: str = "bd"):
     if fase == "bd":
         separador("DESCARGA 2026 + ZONIFICACION + BD")
 
-        # Se desactivó Provincia temporalmente: ["WinforceLima2026.py", "WinforceProvincia2026.py", "Zonificación_Lima.py"]
         for script in ["WinforceLima2026.py", "Zonificación_Lima.py"]:
             ok = correr_script(script, critico=True, incremental=False)
             if not ok:
@@ -90,12 +89,11 @@ def main(fase: str = "bd"):
         log.info("Fase BD completada.")
 
     # ------------------------------------------------------------------
-    # FASE DESCARGAS — Solo descarga Lima + Provincia (sin Zonificacion ni BD)
+    # FASE DESCARGAS — Solo descarga Lima (sin Zonificacion ni BD)
     # ------------------------------------------------------------------
     if fase == "descargas":
-        separador("SOLO DESCARGAS (Lima + Provincia)")
+        separador("SOLO DESCARGAS (Lima)")
 
-        # Se desactivó Provincia temporalmente: ["WinforceLima2026.py", "WinforceProvincia2026.py"]
         for script in ["WinforceLima2026.py"]:
             ok = correr_script(script, critico=True, incremental=False)
             if not ok:
@@ -110,7 +108,6 @@ def main(fase: str = "bd"):
     if fase == "daily":
         separador("SEMANAL: ESTA SEMANA")
 
-        # Se desactivó Provincia temporalmente: ["WinforceLima2026.py", "WinforceProvincia2026.py", "Zonificación_Lima.py"]
         for script in ["WinforceLima2026.py", "Zonificación_Lima.py"]:
             ok = correr_script(script, critico=True, incremental=True)
             if not ok:
@@ -120,7 +117,7 @@ def main(fase: str = "bd"):
         log.info("Fase semanal completada.")
 
     # ------------------------------------------------------------------
-    # FASE CONSOLIDAR — Solo consolida ventas Lima + Provincia
+    # FASE CONSOLIDAR — Consolida ventas Lima
     # ------------------------------------------------------------------
     if fase == "consolidar":
         separador("CONSOLIDAR VENTAS")
@@ -133,11 +130,29 @@ def main(fase: str = "bd"):
         log.info("Consolidacion completada.")
 
     # ------------------------------------------------------------------
+    # FASE ACTUALIZAR VENTAS — Winforce incremental + Subida Aliv + Referidos
+    # ------------------------------------------------------------------
+    if fase == "actualizar_ventas":
+        separador("ACTUALIZAR VENTAS: WINFORCE + ALIV + REFERIDOS")
+
+        for script, incremental in [
+            ("WinforceLima2026.py", True),
+            ("Zonificación_Lima.py", True),
+            ("Subida_Aliv.py", False),
+            ("Subida_Referidos.py", False),
+        ]:
+            ok = correr_script(script, critico=True, incremental=incremental)
+            if not ok:
+                log.error("Pipeline detenido.")
+                sys.exit(1)
+
+        log.info("Actualizacion de ventas completada.")
+
+    # ------------------------------------------------------------------
     # FASE SUBIDA ALIV — Sube Aliv_ventas_activas.xls a SQL
     # ------------------------------------------------------------------
     if fase == "subida_aliv":
         separador("SUBIDA ALIV (ventas_aliv)")
-        log.info("IMPORTANTE: El archivo Aliv_ventas_activas.xls debe estar en descargas_winforce_Dept/")
 
         ok = correr_script("Subida_Aliv.py", critico=True)
         if not ok:
@@ -145,6 +160,19 @@ def main(fase: str = "bd"):
             sys.exit(1)
 
         log.info("Subida Aliv completada.")
+
+    # ------------------------------------------------------------------
+    # FASE SUBIDA REFERIDOS — Sube Ventas_Referidos.xls a SQL
+    # ------------------------------------------------------------------
+    if fase == "subida_referidos":
+        separador("SUBIDA REFERIDOS (ventas_referidos)")
+
+        ok = correr_script("Subida_Referidos.py", critico=True)
+        if not ok:
+            log.error("Pipeline detenido.")
+            sys.exit(1)
+
+        log.info("Subida Referidos completada.")
 
     # ------------------------------------------------------------------
     # FASE REPORTE DIARIO — Altas de ayer, promedio, top vendedores
@@ -185,6 +213,19 @@ def main(fase: str = "bd"):
 
         log.info("Reporte nocturno completado.")
 
+    # ------------------------------------------------------------------
+    # FASE REPORTE PROYECCIÓN — Metas, BAC y proyección de cierre (ayer)
+    # ------------------------------------------------------------------
+    if fase == "reporte_proyeccion":
+        separador("REPORTE DE PROYECCIÓN (ayer)")
+
+        ok = correr_script("Reporte_Proyección.py", critico=True)
+        if not ok:
+            log.error("Pipeline detenido.")
+            sys.exit(1)
+
+        log.info("Reporte de proyección completado.")
+
     separador("PIPELINE FINALIZADO")
     log.info(f"Log completo en: {log_file}")
 
@@ -197,13 +238,19 @@ if __name__ == "__main__":
         main("daily")
     elif arg == "consolidar":
         main("consolidar")
+    elif arg == "actualizar_ventas":
+        main("actualizar_ventas")
     elif arg == "subida_aliv":
         main("subida_aliv")
+    elif arg == "subida_referidos":
+        main("subida_referidos")
     elif arg == "reporte_diario":
         main("reporte_diario")
     elif arg == "reporte_gerente":
         main("reporte_gerente")
     elif arg == "reporte_nocturno":
         main("reporte_nocturno")
+    elif arg == "reporte_proyeccion":
+        main("reporte_proyeccion")
     else:
         main("bd")

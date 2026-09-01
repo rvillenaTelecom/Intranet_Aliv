@@ -5,7 +5,7 @@
 {% block content %}
 
 <!-- Banner -->
-<div class="welcome-banner" style="background: linear-gradient(135deg, #0a2540 0%, #0066CC 60%, #00C8DC 100%);">
+<div class="welcome-banner">
     <div class="welcome-title"><i class="fa-solid fa-users-gear" style="margin-right:10px;"></i>Usuarios y Jerarquías</div>
     <div class="welcome-sub">Directorio de vendedores, supervisores y agencias de AlivTelecom. Solo admin puede crear o editar.</div>
 </div>
@@ -90,7 +90,7 @@
                 <tr>
                     <th>#</th>
                     <th>Vendedor Win</th>
-                    <th>Nombre Completo</th>
+                    <th>Nombre Aliv</th>
                     <th>Cargo</th>
                     <th>Agencia</th>
                     <th>Supervisor ALIV</th>
@@ -105,8 +105,8 @@
                 {% for u in usuarios %}
                 <tr>
                     <td style="color:var(--text-light); font-size:12px;">{{ loop.index }}</td>
-                    <td style="font-weight:700; font-family:monospace; font-size:13px; white-space:nowrap;">{{ u.vendedor | upper }}</td>
-                    <td>{{ (u.nombre_completo | title) if u.nombre_completo else '—' }}</td>
+                    <td style="font-weight:700; font-family:monospace; font-size:13px; white-space:nowrap;">{{ u.vendedor | title }}</td>
+                    <td>{{ (u.nombre_aliv | title) if u.nombre_aliv else '—' }}</td>
                     <td>
                         {% if u.cargo == 'Supervisor' %}
                             <span class="u-badge u-badge-sup">{{ u.cargo }}</span>
@@ -188,12 +188,12 @@
 
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
                 <div class="form-group" style="margin:0;">
-                    <label>Vendedor Win <span style="color:#DC2626;">*</span></label>
-                    <input type="text" name="vendedor" id="fVendedor" class="u-input" placeholder="Username en Winforce" required>
+                    <label>Vendedor Win <span style="color:var(--danger);">*</span></label>
+                    <input type="text" name="vendedor" id="fVendedor" class="u-input" placeholder="Username en Winforce" style="text-transform:capitalize;" required>
                 </div>
                 <div class="form-group" style="margin:0;">
-                    <label>Nombre Completo</label>
-                    <input type="text" name="nombre_completo" id="fNombre" class="u-input" placeholder="Ej. Juan Pérez">
+                    <label>Nombre Aliv</label>
+                    <input type="text" name="nombre_aliv" id="fNombre" class="u-input" placeholder="Ej. Juan Pérez" style="text-transform:capitalize;">
                 </div>
                 <div class="form-group" style="margin:0;">
                     <label>Cargo</label>
@@ -269,7 +269,7 @@ function closeModal() {
 function editUsuario(u) {
     document.getElementById('fId').value        = u.id;
     document.getElementById('fVendedor').value  = u.vendedor || '';
-    document.getElementById('fNombre').value    = u.nombre_completo || '';
+    document.getElementById('fNombre').value    = u.nombre_aliv || '';
     document.getElementById('fCargo').value     = u.cargo || 'Vendedor';
     document.getElementById('fCanal').value     = u.canal || '';
     document.getElementById('fAgencia').value   = u.agencia || '';

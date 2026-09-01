@@ -3,7 +3,68 @@
 {% block page_title %}Equipo Ventas{% endblock %}
 
 {% block content %}
-<div class="welcome-banner" style="background: linear-gradient(135deg, #1e3a5f 0%, #1a56db 70%, #0ea5e9 100%);">
+<style>
+/* ── Cuotas Lima por mes (tabla editable) ─────────────────── */
+.cq-wrap { padding: 0; overflow: hidden; }
+.cq-table-scroll { overflow-x: auto; }
+.cq-table { min-width: 640px; }
+.cq-table .cq-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cq-table .cq-mes { font-weight: 600; white-space: nowrap; }
+.cq-action-col { width: 84px; text-align: right; white-space: nowrap; }
+
+.cq-tag-hoy {
+    display: inline-block; margin-left: 8px; padding: 1px 8px;
+    background: var(--brand-glow-soft); color: var(--brand);
+    border: 1px solid rgba(244,121,32,.35); border-radius: 20px;
+    font-size: 10px; font-weight: 700; letter-spacing: .4px; vertical-align: middle;
+}
+.cq-row-current { background: var(--brand-glow-soft); }
+.cq-row-current td { border-bottom-color: rgba(244,121,32,.18) !important; }
+
+.cq-badge-undef {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
+    color: var(--text-light); border: 1px dashed var(--border-strong);
+}
+.cq-badge-alcance {
+    display: inline-flex; padding: 2px 9px; border-radius: 12px;
+    font-size: 11px; font-weight: 700;
+}
+.cq-badge-alcance.cq-ok     { background: var(--success-glow); color: #6EE7C0; }
+.cq-badge-alcance.cq-riesgo { background: var(--warning-glow); color: #FFC876; }
+.cq-badge-alcance.cq-bajo   { background: var(--danger-glow);  color: #FF9E9A; }
+
+.cq-input {
+    width: 76px; padding: 5px 8px; text-align: right;
+    background: var(--bg-main); border: 1.5px solid var(--brand);
+    border-radius: 6px; color: var(--text-primary); font-size: 13px;
+    font-variant-numeric: tabular-nums; outline: none;
+}
+.cq-input:focus { box-shadow: 0 0 0 3px var(--brand-glow-soft); }
+
+.cq-btn-edit, .cq-btn-save, .cq-btn-cancel {
+    width: 26px; height: 26px; border-radius: 6px; border: 1px solid transparent;
+    cursor: pointer; font-size: 12px; display: inline-flex; align-items: center;
+    justify-content: center; transition: all var(--transition); margin-left: 4px;
+}
+.cq-btn-edit   { background: var(--slate-glow); color: var(--slate); }
+.cq-btn-edit:hover   { background: var(--brand-glow-soft); color: var(--brand); }
+.cq-btn-save   { background: var(--success-glow); color: var(--success); }
+.cq-btn-save:hover   { background: var(--success); color: #0A2019; }
+.cq-btn-save:disabled { opacity: .6; cursor: default; }
+.cq-btn-cancel { background: var(--danger-glow); color: var(--danger); }
+.cq-btn-cancel:hover { background: var(--danger); color: #fff; }
+
+.cq-row.cq-editing { background: var(--bg-card-hover); }
+
+@keyframes cqSavedFlash {
+    0%   { background: var(--success-glow); }
+    100% { background: transparent; }
+}
+.cq-row.cq-saved-flash { animation: cqSavedFlash .9s ease; }
+</style>
+
+<div class="welcome-banner">
     <div class="welcome-title"><i class="fa-solid fa-chart-line" style="margin-right:10px;"></i>Equipo Ventas</div>
     <div class="welcome-sub">Recursos, herramientas y accesos del equipo comercial de AlivTelecom.</div>
 </div>
@@ -15,28 +76,162 @@
 <div class="stats-row">
     <div class="stat-card">
         <span class="stat-label">Cuota Lima</span>
-        <span class="stat-value blue">—</span>
-        <span class="stat-change">Conectar con WinForce</span>
+        <span class="stat-value blue">{{ "{:,}".format(kpis.cuota_lima) if kpis and kpis.cuota_lima else '—' }}</span>
+        <span class="stat-change">{% if kpis and kpis.cuota_lima %}{{ "{:,}".format(kpis.altas_lima) }} altas ({{ kpis.alcance_lima }}%){% else %}Sin datos del mes{% endif %}</span>
     </div>
     <div class="stat-card">
-        <span class="stat-label">Cuota Provincias</span>
-        <span class="stat-value teal">—</span>
-        <span class="stat-change">Conectar con WinForce</span>
+        <span class="stat-label">Cuota Vertical</span>
+        <span class="stat-value teal">{{ "{:,}".format(kpis.cuota_vertical) if kpis and kpis.cuota_vertical else '—' }}</span>
+        <span class="stat-change">{% if kpis and kpis.cuota_vertical %}{{ "{:,}".format(kpis.altas_vertical) }} altas ({{ kpis.alcance_vertical }}%){% else %}Sin datos del mes{% endif %}</span>
     </div>
     <div class="stat-card">
-        <span class="stat-label">Supervisores activos</span>
-        <span class="stat-value green">—</span>
-        <span class="stat-change">Ver reporte semanal</span>
+        <span class="stat-label">Cuota Horizontal</span>
+        <span class="stat-value green">{{ "{:,}".format(kpis.cuota_horizontal) if kpis and kpis.cuota_horizontal else '—' }}</span>
+        <span class="stat-change">{% if kpis and kpis.cuota_horizontal %}{{ "{:,}".format(kpis.altas_horizontal) }} altas ({{ kpis.alcance_horizontal }}%){% else %}Sin datos del mes{% endif %}</span>
     </div>
     <div class="stat-card">
         <span class="stat-label">Zonas activas</span>
-        <span class="stat-value orange">—</span>
-        <span class="stat-change">Lima + Provincias</span>
+        <span class="stat-value orange">{{ kpis.zonas_activas if kpis else '—' }}</span>
+        <span class="stat-change">Distritos de Lima</span>
+    </div>
+</div>
+
+<!-- Necesidad para cerrar el mes: Vertical y Horizontal, 100% y 110% -->
+{% if kpis and (kpis.cuota_vertical or kpis.cuota_horizontal) %}
+<div class="section-header" style="margin-top:8px;">
+    <div class="section-title"><i class="fa-solid fa-bullseye"></i> ¿Qué necesito para llegar a la cuota?</div>
+</div>
+<div class="cards-grid" style="grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));">
+    {% for label, cuota, key in [('Vertical', kpis.cuota_vertical, 'proy_vertical'), ('Horizontal', kpis.cuota_horizontal, 'proy_horizontal')] %}
+    {% set p = kpis[key] %}
+    {% if cuota %}
+    <div class="card proy-cuota-block"
+         data-cuota="{{ cuota }}" data-altas-ayer="{{ p.altas_ayer }}" data-altas-hoy="{{ p.altas_hoy }}"
+         data-conversion="{{ p.conversion_ayer }}" data-dias-default="{{ p.dias_rest_incl_hoy }}" data-basis="ayer">
+        <div class="section-title" style="font-size:14px; margin-bottom:6px;">{{ label }}</div>
+        <div style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">
+            Conversión a cierre de ayer: <b style="color:var(--text-primary);">{{ p.conversion_ayer }}%</b>
+            <span style="opacity:0.75;">· MTD: {{ p.conversion }}%</span>
+        </div>
+        <div class="proy-controls" style="display:flex; flex-wrap:wrap; gap:14px; align-items:center; margin-bottom:12px; font-size:12px; color:var(--text-secondary);">
+            <label style="display:flex; align-items:center; gap:6px;">
+                Días restantes:
+                <input type="number" class="proy-dias-input" value="{{ p.dias_rest_incl_hoy }}" step="0.5" min="0.5"
+                       style="width:60px; background:var(--bg-secondary); border:1px solid var(--border); border-radius:6px; color:var(--text-primary); padding:4px 6px; font-size:12px;"
+                       oninput="proyRecalc(this.closest('.proy-cuota-block'))">
+            </label>
+            <button type="button" class="btn btn-outline" style="font-size:11px; padding:3px 10px;" onclick="proyResetDias(this)">Restablecer</button>
+            <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                <input type="checkbox" class="proy-extra-toggle" checked onchange="proyRecalc(this.closest('.proy-cuota-block'))"> Meta adicional:
+                <input type="number" class="proy-extra-pct" value="110" min="1" step="1"
+                       style="width:52px; background:var(--bg-secondary); border:1px solid var(--border); border-radius:6px; color:var(--text-primary); padding:4px 6px; font-size:12px;"
+                       oninput="proyRecalc(this.closest('.proy-cuota-block'))">%
+            </label>
+            <div style="display:flex; align-items:center; gap:6px;">
+                Altas con corte a:
+                <div style="display:flex; border:1px solid var(--border); border-radius:6px; overflow:hidden;">
+                    <button type="button" class="proy-basis-btn active" data-basis="ayer" onclick="proySetBasis(this,'ayer')"
+                            style="padding:4px 12px; font-size:12px; border:none; cursor:pointer; background:var(--primary); color:#fff;">Ayer</button>
+                    <button type="button" class="proy-basis-btn" data-basis="hoy" onclick="proySetBasis(this,'hoy')"
+                            style="padding:4px 12px; font-size:12px; border:none; cursor:pointer; background:var(--bg-secondary); color:var(--text-secondary);">Hoy</button>
+                </div>
+            </div>
+        </div>
+        <div style="overflow-x:auto;">
+        <table class="u-table cq-table">
+            <thead>
+                <tr>
+                    <th>Meta</th>
+                    <th class="cq-num">Cuota</th>
+                    <th class="cq-num proy-th-altas">Altas (cierre ayer)</th>
+                    <th class="cq-num proy-th-faltan">Faltan (cierre ayer)</th>
+                    <th class="cq-num">Altas/día</th>
+                    <th class="cq-num">Ventas/día</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="proy-row-100">
+                    <td style="font-weight:700;">100%</td>
+                    <td class="cq-num">{{ "{:,}".format(cuota) }}</td>
+                    <td class="cq-num proy-altas-base">{{ "{:,}".format(p.altas_ayer) }}</td>
+                    <td class="cq-num proy-faltan-100">{{ "{:,}".format(p.faltantes) }}</td>
+                    <td class="cq-num proy-altas-100" style="font-weight:700; color:var(--warning);">{{ p.altas_nec_100 }}</td>
+                    <td class="cq-num proy-ventas-100" style="font-weight:700; color:var(--primary);">{{ p.ventas_nec_100 if p.ventas_nec_100 is not none else '—' }}</td>
+                </tr>
+                <tr class="proy-row-extra">
+                    <td style="font-weight:700;"><span class="proy-label-extra">110%</span></td>
+                    <td class="cq-num proy-cuota-extra">{{ "{:,}".format(p.cuota_110) }}</td>
+                    <td class="cq-num proy-altas-base">{{ "{:,}".format(p.altas_ayer) }}</td>
+                    <td class="cq-num proy-faltan-extra">{{ "{:,}".format(p.faltantes_110) }}</td>
+                    <td class="cq-num proy-altas-extra" style="font-weight:700; color:var(--warning);">{{ p.altas_nec_110 }}</td>
+                    <td class="cq-num proy-ventas-extra" style="font-weight:700; color:var(--primary);">{{ p.ventas_nec_110 if p.ventas_nec_110 is not none else '—' }}</td>
+                </tr>
+            </tbody>
+        </table>
+        </div>
+    </div>
+    {% endif %}
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Cuotas Lima por mes -->
+<div class="section-header">
+    <div class="section-title"><i class="fa-solid fa-bullseye"></i> Cuotas Lima por mes ({{ anio_actual }})</div>
+    {% if role == 'admin' %}
+    <span style="font-size:12px; color:var(--text-secondary);"><i class="fa-solid fa-circle-info"></i> Haz clic en el lápiz para editar o definir la cuota de cualquier mes</span>
+    {% endif %}
+</div>
+<div class="card cq-wrap">
+    <div class="cq-table-scroll">
+    <table class="u-table cq-table">
+        <thead>
+            <tr>
+                <th>Mes</th>
+                <th class="cq-num">Vertical</th>
+                <th class="cq-num">Horizontal</th>
+                <th class="cq-num">Total</th>
+                <th class="cq-num">Altas</th>
+                <th class="cq-num">Alcance</th>
+                {% if role == 'admin' %}<th class="cq-action-col"></th>{% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in cuotas_historial %}
+            <tr class="cq-row {% if c.es_mes_actual %}cq-row-current{% endif %}"
+                data-mes="{{ c.mes }}" data-vertical="{{ c.cuota_vertical }}" data-horizontal="{{ c.cuota_horizontal }}">
+                <td class="cq-mes">
+                    {{ c.nombre }}
+                    {% if c.es_mes_actual %}<span class="cq-tag-hoy">HOY</span>{% endif %}
+                </td>
+                <td class="cq-num cq-view-vertical">{% if c.definida %}{{ "{:,}".format(c.cuota_vertical) }}{% else %}—{% endif %}</td>
+                <td class="cq-num cq-view-horizontal">{% if c.definida %}{{ "{:,}".format(c.cuota_horizontal) }}{% else %}—{% endif %}</td>
+                <td class="cq-num cq-view-total">
+                    {% if c.definida %}<strong>{{ "{:,}".format(c.cuota_total) }}</strong>
+                    {% else %}<span class="cq-badge-undef"><i class="fa-solid fa-circle-exclamation"></i> Sin definir</span>{% endif %}
+                </td>
+                <td class="cq-num">{{ "{:,}".format(c.altas_total) if c.altas_total else '—' }}</td>
+                <td class="cq-num">
+                    {% if c.alcance is not none %}
+                    <span class="cq-badge-alcance {% if c.alcance >= 100 %}cq-ok{% elif c.alcance >= 80 %}cq-riesgo{% else %}cq-bajo{% endif %}">{{ c.alcance }}%</span>
+                    {% else %}—{% endif %}
+                </td>
+                {% if role == 'admin' %}
+                <td class="cq-action-col">
+                    <button class="cq-btn-edit" onclick="cuotaEditar({{ c.mes }})" title="{% if c.definida %}Editar cuota{% else %}Definir cuota{% endif %}">
+                        <i class="fa-solid {% if c.definida %}fa-pen{% else %}fa-plus{% endif %}"></i>
+                    </button>
+                </td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
     </div>
 </div>
 
 <!-- Herramientas del equipo -->
-<div class="section-header">
+<div class="section-header" style="margin-top:8px;">
     <div class="section-title"><i class="fa-solid fa-toolbox"></i> Herramientas del equipo</div>
 </div>
 <div class="cards-grid">
@@ -52,7 +247,7 @@
     <div class="card card-link" onclick="alert('Próximamente')">
         <div class="card-icon orange"><i class="fa-solid fa-download"></i></div>
         <div class="card-title">Descargas WinForce</div>
-        <div class="card-desc">Descarga y procesa datos de WinForce para Lima y Provincias. Genera reportes semanales y mensuales.</div>
+        <div class="card-desc">Descarga y procesa datos de WinForce para Lima. Genera reportes semanales y mensuales.</div>
         <div class="card-footer">
             <span class="badge badge-orange">Script Python</span>
         </div>
@@ -70,14 +265,6 @@
         <div class="card-desc">Mapa de zonas y distritos de Lima. Incluye parámetros KML y asignación de supervisores.</div>
         <div class="card-footer">
             <span class="badge badge-teal">KML · Excel</span>
-        </div>
-    </div>
-    <div class="card">
-        <div class="card-icon green"><i class="fa-solid fa-map-location-dot"></i></div>
-        <div class="card-title">Zonificación Provincias</div>
-        <div class="card-desc">Datos geográficos y zonificación para operaciones en provincias. Cuotas por departamento.</div>
-        <div class="card-footer">
-            <span class="badge badge-green">KML · Excel</span>
         </div>
     </div>
     <div class="card">
@@ -105,4 +292,154 @@
         <i class="fa-solid fa-circle-info"></i> Edita ventas.html para agregar URLs reales a estos links.
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function proyFmt(n) { return Math.round(n).toLocaleString('en-US'); }
+
+function proyRecalc(block) {
+    var dias = parseFloat(block.querySelector('.proy-dias-input').value);
+    if (!dias || dias <= 0) return;
+    var cuota = parseFloat(block.dataset.cuota) || 0;
+    var conversion = parseFloat(block.dataset.conversion) / 100;
+    var basis = block.dataset.basis || 'ayer';
+    var altasBase = basis === 'hoy'
+        ? (parseFloat(block.dataset.altasHoy) || 0)
+        : (parseFloat(block.dataset.altasAyer) || 0);
+
+    var thAltas = block.querySelector('.proy-th-altas');
+    var thFaltan = block.querySelector('.proy-th-faltan');
+    if (thAltas) thAltas.textContent = basis === 'hoy' ? 'Altas (hoy en vivo)' : 'Altas (cierre ayer)';
+    if (thFaltan) thFaltan.textContent = basis === 'hoy' ? 'Faltan (hoy)' : 'Faltan (cierre ayer)';
+    block.querySelectorAll('.proy-altas-base').forEach(function (cell) {
+        cell.textContent = proyFmt(altasBase);
+    });
+
+    // Fila 100% (cuota oficial, fija)
+    var faltan100 = Math.max(cuota - altasBase, 0);
+    var altasNec100 = faltan100 / dias;
+    var ventasNec100 = conversion > 0 ? altasNec100 / conversion : null;
+    block.querySelector('.proy-faltan-100').textContent = proyFmt(faltan100);
+    block.querySelector('.proy-altas-100').textContent = altasNec100.toFixed(1);
+    block.querySelector('.proy-ventas-100').textContent = (ventasNec100 !== null && isFinite(ventasNec100)) ? ventasNec100.toFixed(1) : '—';
+
+    // Fila meta adicional (% editable)
+    var extraOn = block.querySelector('.proy-extra-toggle').checked;
+    var extraRow = block.querySelector('.proy-row-extra');
+    extraRow.style.display = extraOn ? '' : 'none';
+    if (extraOn) {
+        var pct = parseFloat(block.querySelector('.proy-extra-pct').value) || 100;
+        var cuotaExtra = Math.round(cuota * pct / 100);
+        var faltanExtra = Math.max(cuotaExtra - altasBase, 0);
+        var altasNecExtra = faltanExtra / dias;
+        var ventasNecExtra = conversion > 0 ? altasNecExtra / conversion : null;
+        block.querySelector('.proy-label-extra').textContent = pct + '%';
+        block.querySelector('.proy-cuota-extra').textContent = proyFmt(cuotaExtra);
+        block.querySelector('.proy-faltan-extra').textContent = proyFmt(faltanExtra);
+        block.querySelector('.proy-altas-extra').textContent = altasNecExtra.toFixed(1);
+        block.querySelector('.proy-ventas-extra').textContent = (ventasNecExtra !== null && isFinite(ventasNecExtra)) ? ventasNecExtra.toFixed(1) : '—';
+    }
+}
+function proySetBasis(btn, basis) {
+    var block = btn.closest('.proy-cuota-block');
+    block.dataset.basis = basis;
+    block.querySelectorAll('.proy-basis-btn').forEach(function (b) {
+        var active = b.dataset.basis === basis;
+        b.classList.toggle('active', active);
+        b.style.background = active ? 'var(--primary)' : 'var(--bg-secondary)';
+        b.style.color = active ? '#fff' : 'var(--text-secondary)';
+    });
+    proyRecalc(block);
+}
+function proyResetDias(btn) {
+    var block = btn.closest('.proy-cuota-block');
+    block.querySelector('.proy-dias-input').value = block.dataset.diasDefault;
+    proyRecalc(block);
+}
+
+function cuotaEditar(mes) {
+    const row = document.querySelector(`tr[data-mes="${mes}"]`);
+    if (!row || row.classList.contains('cq-editing')) return;
+    row.classList.add('cq-editing');
+
+    const tdV = row.querySelector('.cq-view-vertical');
+    const tdH = row.querySelector('.cq-view-horizontal');
+    const tdT = row.querySelector('.cq-view-total');
+    const tdAction = row.querySelector('.cq-action-col');
+
+    const curV = row.dataset.vertical || 0;
+    const curH = row.dataset.horizontal || 0;
+
+    tdV.dataset.prev = tdV.innerHTML;
+    tdH.dataset.prev = tdH.innerHTML;
+    tdT.dataset.prev = tdT.innerHTML;
+    tdAction.dataset.prev = tdAction.innerHTML;
+
+    tdV.innerHTML = `<input type="number" min="0" class="cq-input" id="cqV${mes}" value="${curV}" oninput="cuotaRecalc(${mes})">`;
+    tdH.innerHTML = `<input type="number" min="0" class="cq-input" id="cqH${mes}" value="${curH}" oninput="cuotaRecalc(${mes})">`;
+    tdT.innerHTML = `<strong id="cqT${mes}">${(parseInt(curV) + parseInt(curH)).toLocaleString('es-PE')}</strong>`;
+    tdAction.innerHTML = `
+        <button class="cq-btn-save" onclick="cuotaGuardar(${mes})" title="Guardar"><i class="fa-solid fa-check"></i></button>
+        <button class="cq-btn-cancel" onclick="cuotaCancelar(${mes})" title="Cancelar"><i class="fa-solid fa-xmark"></i></button>
+    `;
+    document.getElementById(`cqV${mes}`).focus();
+}
+
+function cuotaRecalc(mes) {
+    const v = parseInt(document.getElementById(`cqV${mes}`).value) || 0;
+    const h = parseInt(document.getElementById(`cqH${mes}`).value) || 0;
+    const totalEl = document.getElementById(`cqT${mes}`);
+    if (totalEl) totalEl.textContent = (v + h).toLocaleString('es-PE');
+}
+
+function cuotaCancelar(mes) {
+    const row = document.querySelector(`tr[data-mes="${mes}"]`);
+    row.querySelector('.cq-view-vertical').innerHTML   = row.querySelector('.cq-view-vertical').dataset.prev;
+    row.querySelector('.cq-view-horizontal').innerHTML = row.querySelector('.cq-view-horizontal').dataset.prev;
+    row.querySelector('.cq-view-total').innerHTML      = row.querySelector('.cq-view-total').dataset.prev;
+    row.querySelector('.cq-action-col').innerHTML      = row.querySelector('.cq-action-col').dataset.prev;
+    row.classList.remove('cq-editing');
+}
+
+function cuotaGuardar(mes) {
+    const v = parseInt(document.getElementById(`cqV${mes}`).value) || 0;
+    const h = parseInt(document.getElementById(`cqH${mes}`).value) || 0;
+    const row = document.querySelector(`tr[data-mes="${mes}"]`);
+    const btn = row.querySelector('.cq-btn-save');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i>';
+
+    fetch('/ventas/cuota', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mes: mes, vertical: v, horizontal: h })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (!data.ok) {
+            alert(data.error || 'No se pudo guardar la cuota.');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-check"></i>';
+            return;
+        }
+        const total = data.cuota.total;
+        row.dataset.vertical = v;
+        row.dataset.horizontal = h;
+        row.querySelector('.cq-view-vertical').innerHTML   = v.toLocaleString('es-PE');
+        row.querySelector('.cq-view-horizontal').innerHTML = h.toLocaleString('es-PE');
+        row.querySelector('.cq-view-total').innerHTML      = `<strong>${total.toLocaleString('es-PE')}</strong>`;
+        row.querySelector('.cq-action-col').innerHTML =
+            `<button class="cq-btn-edit" onclick="cuotaEditar(${mes})" title="Editar cuota"><i class="fa-solid fa-pen"></i></button>`;
+        row.classList.remove('cq-editing');
+        row.classList.add('cq-saved-flash');
+        setTimeout(() => row.classList.remove('cq-saved-flash'), 900);
+    })
+    .catch(err => {
+        alert('Error de red: ' + err);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-check"></i>';
+    });
+}
+</script>
 {% endblock %}

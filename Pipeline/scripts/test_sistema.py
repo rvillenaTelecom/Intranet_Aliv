@@ -14,7 +14,7 @@ def check(nombre, fn):
         print(f"[ERROR] {nombre}: {e}")
         err += 1
 
-check("Carga_SQL_to_Render", lambda: __import__("Carga_SQL_to_Render"))
+check("Carga_SQL", lambda: __import__("Carga_SQL"))
 check("playwright", lambda: __import__("playwright.sync_api"))
 check("shapely", lambda: __import__("shapely.geometry"))
 check("reportlab", lambda: __import__("reportlab.lib.pagesizes"))
@@ -24,7 +24,7 @@ check("pyodbc", lambda: __import__("pyodbc"))
 
 # Test conexion SQL
 def test_sql():
-    from Carga_SQL_to_Render import get_engine
+    from Carga_SQL import get_engine
     import sqlalchemy as sa
     engine = get_engine()
     with engine.connect() as conn:

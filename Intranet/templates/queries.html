@@ -1,0 +1,410 @@
+{% extends "base.html" %}
+{% block title %}Consultas SQL — Intranet AlivTelecom{% endblock %}
+{% block page_title %}Ejecutor de Consultas SQL{% endblock %}
+
+{% block content %}
+<!-- CodeMirror CSS y tema Dracula -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/dracula.min.css">
+
+<!-- Banner Principal -->
+<div class="welcome-banner" style="margin-bottom: 20px;">
+    <div class="welcome-title"><i class="fa-solid fa-database" style="margin-right:12px;"></i>Consultas SQL</div>
+    <div class="welcome-sub">Explora, edita y ejecuta scripts SQL guardados en el repositorio, copia resultados estructurados o expórtalos directamente a Excel.</div>
+</div>
+
+<div class="queries-layout">
+    <!-- Panel Izquierdo: Directorio de archivos SQL -->
+    <div class="queries-sidebar card">
+        <div class="sidebar-tree-title">
+            <i class="fa-solid fa-folder-tree"></i>
+            <span>Consultas Guardadas</span>
+        </div>
+        <div class="sql-tree">
+            {% for folder, files in sql_tree.items() %}
+            <div class="tree-folder">
+                <div class="folder-header" onclick="toggleFolder(this)">
+                    <i class="fa-solid fa-chevron-right folder-arrow"></i>
+                    <i class="fa-solid fa-folder folder-icon"></i>
+                    <span>{{ folder }}</span>
+                </div>
+                <div class="folder-files collapsed">
+                    {% for file in files %}
+                    <div class="file-item" onclick="loadFile('{{ file.path }}', this)">
+                        <i class="fa-solid fa-file-code file-icon"></i>
+                        <span class="file-name" title="{{ file.name }}">{{ file.name }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% else %}
+            <div class="no-files-msg">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <p>No se encontraron archivos .sql en la carpeta del repositorio.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Panel Derecho: Editor y Resultados -->
+    <div class="queries-main">
+        <!-- Editor de Código -->
+        <div class="card editor-card">
+            <div class="editor-header">
+                <div class="current-file-info">
+                    <i class="fa-solid fa-terminal text-primary"></i>
+                    <span id="activeFileName" class="active-file-name">Nueva Consulta</span>
+                </div>
+                <div class="editor-actions">
+                    <button class="btn btn-outline btn-sm" onclick="clearEditor()" title="Limpiar consulta y empezar de cero">
+                        <i class="fa-solid fa-eraser"></i> Limpiar
+                    </button>
+                    <button class="btn btn-primary btn-sm" onclick="runQuery()" id="btnRun">
+                        <i class="fa-solid fa-play"></i> Ejecutar Consulta
+                    </button>
+                </div>
+            </div>
+            <div class="editor-wrapper">
+                <textarea id="sqlCode" name="sqlCode"></textarea>
+            </div>
+        </div>
+
+        <!-- Spinner / Cargador de consulta -->
+        <div id="queryLoader" class="query-loader" style="display:none;">
+            <div class="spinner"></div>
+            <span>Procesando consulta... por favor espera</span>
+        </div>
+
+        <!-- Mensajes de Error de la Base de Datos -->
+        <div id="queryError" class="query-error-card" style="display:none;">
+            <div class="error-header">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <span>Error de Ejecución SQL</span>
+            </div>
+            <div class="error-body" id="errorMsg"></div>
+        </div>
+
+        <!-- Resultados de la Consulta -->
+        <div class="card results-card" id="resultsCard" style="display:none;">
+            <div class="results-header">
+                <div class="results-title">
+                    <i class="fa-solid fa-table-list text-primary"></i>
+                    <span>Resultados de la Consulta</span>
+                </div>
+                <div class="results-actions" id="resultActions" style="display:none;">
+                    <button class="btn btn-success btn-sm" onclick="copyActiveTable()" id="btnCopy">
+                        <i class="fa-solid fa-copy"></i> Copiar Tabla (TSV)
+                    </button>
+                    <button class="btn btn-excel btn-sm" onclick="downloadExcel()" id="btnExcel">
+                        <i class="fa-solid fa-file-excel"></i> Descargar en Excel
+                    </button>
+                </div>
+            </div>
+
+            <!-- Selector de múltiples tablas (Tabs) -->
+            <div id="resultsTabs" class="results-tabs" style="display:none;"></div>
+
+            <!-- Contenedores de Tablas -->
+            <div id="resultsContent" class="results-content"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Formulario Oculto para exportación a Excel vía POST -->
+<form id="exportForm" method="POST" action="{{ url_for('queries_export') }}" style="display:none;" target="_blank">
+    <input type="hidden" name="sql" id="exportSql">
+    <input type="hidden" name="filename" id="exportFilename">
+</form>
+{% endblock %}
+
+{% block scripts %}
+<!-- CodeMirror Core JS y SQL Mode -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/sql/sql.min.js"></script>
+
+<script>
+let editor;
+let activeFileRelativePath = '';
+let currentTablesData = [];
+let activeTableIndex = 0;
+
+document.addEventListener("DOMContentLoaded", function() {
+    // Inicializar editor CodeMirror
+    editor = CodeMirror.fromTextArea(document.getElementById("sqlCode"), {
+        mode: "text/x-sql",
+        theme: "dracula",
+        lineNumbers: true,
+        indentWithTabs: true,
+        smartIndent: true,
+        matchBrackets: true,
+        autofocus: true
+    });
+    
+    // Ajustar tamaño del editor
+    editor.setSize("100%", "280px");
+});
+
+// Expandir / colapsar carpetas del árbol SQL
+function toggleFolder(el) {
+    const parent = el.parentElement;
+    const filesContainer = parent.querySelector('.folder-files');
+    const arrow = el.querySelector('.folder-arrow');
+    
+    filesContainer.classList.toggle('collapsed');
+    
+    if (filesContainer.classList.contains('collapsed')) {
+        arrow.style.transform = 'rotate(0deg)';
+    } else {
+        arrow.style.transform = 'rotate(90deg)';
+    }
+}
+
+// Cargar contenido SQL de un archivo seleccionado
+function loadFile(path, el) {
+    // Resaltar elemento seleccionado
+    document.querySelectorAll('.file-item').forEach(item => item.classList.remove('active'));
+    el.classList.add('active');
+    
+    const fileName = el.querySelector('.file-name').innerText;
+    document.getElementById('activeFileName').innerText = fileName;
+    activeFileRelativePath = path;
+    
+    fetch(`/queries/get_content?path=${encodeURIComponent(path)}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.error) {
+                alert("Error al cargar el archivo: " + data.error);
+            } else {
+                editor.setValue(data.content);
+                // Ocultar resultados previos
+                document.getElementById('resultsCard').style.display = 'none';
+                document.getElementById('queryError').style.display = 'none';
+            }
+        })
+        .catch(err => {
+            alert("Error de conexión al cargar el archivo: " + err);
+        });
+}
+
+// Limpiar el editor
+function clearEditor() {
+    editor.setValue('');
+    document.getElementById('activeFileName').innerText = 'Nueva Consulta';
+    activeFileRelativePath = '';
+    document.querySelectorAll('.file-item').forEach(item => item.classList.remove('active'));
+    document.getElementById('resultsCard').style.display = 'none';
+    document.getElementById('queryError').style.display = 'none';
+}
+
+// Ejecutar consulta SQL en el servidor
+function runQuery() {
+    const sql = editor.getValue().trim();
+    if (!sql) {
+        alert("Por favor escribe una consulta SQL antes de ejecutar.");
+        return;
+    }
+    
+    // Configurar estado de UI cargando
+    document.getElementById('btnRun').disabled = true;
+    document.getElementById('queryLoader').style.display = 'flex';
+    document.getElementById('queryError').style.display = 'none';
+    document.getElementById('resultsCard').style.display = 'none';
+    
+    fetch('/queries/run', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ sql: sql })
+    })
+    .then(res => {
+        if (!res.ok) {
+            // Manejar errores de servidor (500)
+            return res.json().then(errData => {
+                throw new Error(errData.error || 'Error interno del servidor.');
+            });
+        }
+        return res.json();
+    })
+    .then(data => {
+        document.getElementById('btnRun').disabled = false;
+        document.getElementById('queryLoader').style.display = 'none';
+        
+        if (!data.ok) {
+            showError(data.error);
+            return;
+        }
+        
+        if (!data.tables || data.tables.length === 0) {
+            showSuccessNoData();
+            return;
+        }
+        
+        renderResults(data.tables);
+    })
+    .catch(err => {
+        document.getElementById('btnRun').disabled = false;
+        document.getElementById('queryLoader').style.display = 'none';
+        showError(err.message || err.toString());
+    });
+}
+
+// Mostrar tarjeta de error
+function showError(msg) {
+    document.getElementById('queryError').style.display = 'block';
+    document.getElementById('errorMsg').innerText = msg;
+    document.getElementById('resultsCard').style.display = 'none';
+}
+
+// Mostrar mensaje cuando la consulta se corre pero no retorna datos (ej. UPDATE/INSERT)
+function showSuccessNoData() {
+    document.getElementById('resultsCard').style.display = 'block';
+    document.getElementById('resultActions').style.display = 'none';
+    document.getElementById('resultsTabs').style.display = 'none';
+    document.getElementById('resultsContent').innerHTML = `
+        <div class="no-data-msg">
+            <i class="fa-solid fa-circle-check text-success" style="font-size: 32px; margin-bottom: 12px; color: var(--accent2);"></i>
+            <p style="font-size: 15px; font-weight: 600;">Consulta ejecutada correctamente.</p>
+            <p style="color: var(--text-secondary); margin-top: 4px;">La base de datos no retornó ningún conjunto de registros (0 columnas).</p>
+        </div>
+    `;
+}
+
+// Renderizar tablas de resultados
+function renderResults(tables) {
+    currentTablesData = tables;
+    activeTableIndex = 0;
+    
+    document.getElementById('resultsCard').style.display = 'block';
+    document.getElementById('resultActions').style.display = 'flex';
+    
+    const tabsContainer = document.getElementById('resultsTabs');
+    const contentContainer = document.getElementById('resultsContent');
+    
+    tabsContainer.innerHTML = '';
+    contentContainer.innerHTML = '';
+    
+    // Crear pestañas si hay múltiples result sets
+    if (tables.length > 1) {
+        tabsContainer.style.display = 'flex';
+        tables.forEach((table, idx) => {
+            const btn = document.createElement('button');
+            btn.className = `tab-btn ${idx === 0 ? 'active' : ''}`;
+            btn.innerHTML = `<i class="fa-solid fa-table"></i> Tabla ${idx + 1} (${table.rows.length} filas)`;
+            btn.onclick = () => switchTable(idx);
+            tabsContainer.appendChild(btn);
+        });
+    } else {
+        tabsContainer.style.display = 'none';
+    }
+    
+    // Crear contenedores de tablas
+    tables.forEach((table, idx) => {
+        const wrapper = document.createElement('div');
+        wrapper.className = `table-wrapper ${idx === 0 ? 'active' : ''}`;
+        wrapper.id = `table-wrap-${idx}`;
+        
+        if (table.rows.length === 0) {
+            wrapper.innerHTML = `
+                <div class="no-data-msg">
+                    <i class="fa-solid fa-inbox" style="font-size: 28px; margin-bottom: 8px; color: var(--text-light);"></i>
+                    <p style="font-weight: 500;">La tabla de resultados está vacía (0 filas).</p>
+                </div>
+            `;
+        } else {
+            let html = `<div class="results-table-container">`;
+            html += `<table class="u-table results-table" id="res-table-${idx}"><thead><tr>`;
+            table.columns.forEach(col => {
+                html += `<th>${escapeHtml(col)}</th>`;
+            });
+            html += `</tr></thead><tbody>`;
+            
+            table.rows.forEach(row => {
+                html += `<tr>`;
+                row.forEach(val => {
+                    const displayVal = val === null ? '' : val;
+                    html += `<td>${escapeHtml(displayVal.toString())}</td>`;
+                });
+                html += `</tr>`;
+            });
+            html += `</tbody></table></div>`;
+            wrapper.innerHTML = html;
+        }
+        contentContainer.appendChild(wrapper);
+    });
+}
+
+// Alternar entre pestañas de tablas
+function switchTable(idx) {
+    activeTableIndex = idx;
+    document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+        btn.classList.toggle('active', i === idx);
+    });
+    document.querySelectorAll('.table-wrapper').forEach((wrap, i) => {
+        wrap.classList.toggle('active', i === idx);
+    });
+}
+
+// Copiar tabla activa en formato TSV (para Excel)
+function copyActiveTable() {
+    const table = currentTablesData[activeTableIndex];
+    if (!table || table.rows.length === 0) {
+        alert("No hay datos para copiar.");
+        return;
+    }
+    
+    let tsv = table.columns.join('\t') + '\n';
+    table.rows.forEach(row => {
+        tsv += row.map(val => {
+            if (val === null) return '';
+            // Limpiar tabulaciones y saltos de línea para mantener estructura TSV
+            return val.toString().replace(/\t/g, ' ').replace(/\n/g, ' ');
+        }).join('\t') + '\n';
+    });
+    
+    navigator.clipboard.writeText(tsv)
+        .then(() => {
+            const btn = document.getElementById('btnCopy');
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = `<i class="fa-solid fa-circle-check"></i> ¡Copiado al Portapapeles!`;
+            btn.classList.add('btn-success-active');
+            setTimeout(() => {
+                btn.innerHTML = originalHtml;
+                btn.classList.remove('btn-success-active');
+            }, 2000);
+        })
+        .catch(err => {
+            alert("Error al copiar los datos: " + err);
+        });
+}
+
+// Descargar Excel con las tablas de resultados
+function downloadExcel() {
+    const sql = editor.getValue().trim();
+    if (!sql) {
+        alert("El script SQL está vacío.");
+        return;
+    }
+    
+    let filename = 'consulta_sql';
+    const activeFileText = document.getElementById('activeFileName').innerText;
+    if (activeFileText && activeFileText !== 'Nueva Consulta') {
+        filename = activeFileText.replace(/\.sql$/i, '');
+    }
+    
+    document.getElementById('exportSql').value = sql;
+    document.getElementById('exportFilename').value = filename;
+    document.getElementById('exportForm').submit();
+}
+
+// Escapar caracteres HTML para prevención XSS básica
+function escapeHtml(string) {
+    return String(string)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+</script>
+{% endblock %}

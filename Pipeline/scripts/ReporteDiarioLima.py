@@ -30,25 +30,12 @@ from reportlab.lib.enums import TA_CENTER
 sys.path.insert(0, os.path.dirname(__file__))
 from db_config import get_engine
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from cuotas_config import cuota_lima
+
 # ──────────────────────────────────────────────
 # CONFIGURACIÓN
 # ──────────────────────────────────────────────
-
-# Cuota C/E Habilitado por mes — actualizar cada mes
-CUOTA_POR_MES = {
-    1: 230,
-    2: 265,
-    3: 231,
-    4: 310,
-    5: 320,
-    6: 314,
-    7: 270,
-    8: 320,
-    9: 320,
-    10: 320,
-    11: 320,
-    12: 320,
-}
 
 TIPO_DOMICILIO = "Condominio/Edificio"
 
@@ -68,8 +55,8 @@ C_GRIS_CLARO = colors.HexColor("#AAAAAA")
 
 def extraer_datos(ayer: datetime.date) -> dict:
     mes_num      = ayer.month
-    cuota        = CUOTA_POR_MES.get(mes_num, 320)
-    dias_totales = 25
+    cuota        = cuota_lima(mes_num, 'Vertical')
+    dias_totales = 29
     primer_dia   = ayer.replace(day=1)
     dias_trans   = (ayer - primer_dia).days + 1
     dias_rest      = dias_totales - dias_trans
@@ -96,6 +83,8 @@ def extraer_datos(ayer: datetime.date) -> dict:
             WHERE [Estado orden] = 'Ejecutada'
             AND TRY_CONVERT(DATE, LEFT([Fecha programación], 10), 105) >= :primer_dia
             AND TRY_CONVERT(DATE, LEFT([Fecha programación], 10), 105) <= :ayer
+            AND Departamento IN ('LIMA', 'CALLAO')
+            AND LOWER(Distrito) NOT IN ('barranca', 'chancay', 'huacho', 'hualmay', 'huaral')
         """), {"primer_dia": primer_dia, "ayer": ayer}).fetchall()
 
     # Parse rows in Python

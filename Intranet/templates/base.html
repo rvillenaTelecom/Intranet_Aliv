@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
     <title>{% block title %}Intranet AlivTelecom{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
@@ -63,13 +67,9 @@
                 <i class="fa-solid fa-toolbox"></i>
                 <span>Herramientas</span>
             </a>
-            <a href="{{ url_for('dashboards') }}" class="nav-item {% if request.endpoint == 'dashboards' %}active{% endif %}">
+            <a href="{{ url_for('dashboards') }}" class="nav-item {% if request.endpoint in ['dashboards', 'reporte_gerente'] %}active{% endif %}">
                 <i class="fa-solid fa-gauge-high"></i>
                 <span>Dashboards</span>
-            </a>
-            <a href="{{ url_for('reporte_gerente') }}" class="nav-item {% if request.endpoint == 'reporte_gerente' %}active{% endif %}">
-                <i class="fa-solid fa-file-lines"></i>
-                <span>Rep. Gerencial</span>
             </a>
 
             <div class="nav-section-label">Gestión</div>
@@ -81,6 +81,10 @@
                 <i class="fa-solid fa-terminal"></i>
                 <span>Pipeline</span>
             </a>
+            <a href="{{ url_for('queries') }}" class="nav-item {% if request.endpoint in ['queries','queries_get_content','queries_run','queries_export'] %}active{% endif %}">
+                <i class="fa-solid fa-database"></i>
+                <span>Consultas SQL</span>
+            </a>
         </nav>
 
         <div class="sidebar-footer">
@@ -91,10 +95,16 @@
         </div>
     </aside>
 
+    <!-- Fondo oscuro que cierra el menú al tocar fuera (solo móvil/tablet) -->
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
     <!-- Main content -->
     <main class="main-content">
         <header class="topbar">
             <div class="topbar-left">
+                <button class="mobile-menu-btn" id="mobileMenuBtn" type="button" aria-label="Abrir menú">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
                 <h1 class="page-title">{% block page_title %}Inicio{% endblock %}</h1>
             </div>
             <div class="topbar-right">
