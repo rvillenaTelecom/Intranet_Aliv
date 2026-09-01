@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: aliv-intranet
+    runtime: python
+    rootDir: Intranet
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --workers 2 --threads 4 --timeout 120 app:app
+    envVars:
+      - key: SECRET_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: PIPELINE_API_KEY
+        sync: false
+      - key: FLASK_DEBUG
+        value: "False"
+      - key: AZURE_SQL_SERVER
+        sync: false
+      - key: AZURE_SQL_DATABASE
+        sync: false
+      - key: AZURE_SQL_USER
+        sync: false
+      - key: AZURE_SQL_PASSWORD
+        sync: false
