@@ -4,8 +4,13 @@
 {% block content %}
 <style>
 :root {
+    {% if area == 'Horizontal' and agencia == 'Sub' %}
+    --kpi-teal: #D8BA82;
+    --kpi-purple: #7A5347;
+    {% else %}
     --kpi-teal: #3FBFAD;
     --kpi-purple: #9C8CF0;
+    {% endif %}
 }
 /* ── Tabs ─────────────────────────────────────────────────── */
 .tab-nav {

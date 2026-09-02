@@ -10,6 +10,20 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    {% if role == 'horizontal_sub' %}
+    <style>
+    /* Identidad de Horizontal Sub-agencias — paleta tierra pedida por la gerente,
+       en vez del naranja de marca genérico. Solo afecta a este rol. */
+    :root {
+        --brand: #C9683C;
+        --brand-hover: #E0A06A;
+        --brand-press: #8A5A47;
+        --brand-glow: rgba(201, 104, 60, 0.20);
+        --brand-glow-soft: rgba(201, 104, 60, 0.09);
+        --on-brand: #211008;
+    }
+    </style>
+    {% endif %}
 </head>
 <body>
 
