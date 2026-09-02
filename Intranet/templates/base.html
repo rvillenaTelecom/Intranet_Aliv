@@ -71,6 +71,17 @@
         border-top: 4px solid transparent;
         border-image: linear-gradient(90deg, #6E4B39 0%, #8B5A3C 26%, #B4693B 52%, #C98A55 76%, #D9BD8C 100%) 1;
     }
+    /* Chat widget: el panel tenía varios colores fijos pensados para fondo
+       oscuro (vidrio negro, overlays blancos translúcidos) que se veían
+       fuera de lugar sobre la paleta clara. */
+    .chat-panel { background: rgba(255,255,255,.97); box-shadow: 0 20px 54px rgba(90,60,30,.28); }
+    .chat-header { background: linear-gradient(120deg, #FFFFFF 0%, #F3E2C8 100%); }
+    .chat-close-btn { background: rgba(90,60,30,.07); }
+    .chat-close-btn:hover { background: rgba(90,60,30,.14); }
+    .chat-input-area { background: rgba(90,60,30,.05); }
+    .chat-input { background: rgba(255,255,255,.8); }
+    .chat-input:focus { background: #FFFFFF; }
+    .chat-fab-pulse { border-color: rgba(139,90,60,.5); }
     </style>
     {% endif %}
 </head>
