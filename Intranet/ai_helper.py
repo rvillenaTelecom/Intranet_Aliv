@@ -223,6 +223,18 @@ INSTRUCCIONES DE RESPUESTA:
 - Para preguntas de morosidad sin filtro de mes, omite el parámetro mes (trae todos los datos activos).
 - Cuando el usuario mencione 'R1', 'R2', 'R3' se refiere al recibo (Recibo_Actual).
 - Cuando mencione 'supervisor' busca con el filtro supervisor exacto o ranking de supervisores.
+
+MODO ECONÓMICO (siempre activo — cada consulta de un gerente cuesta tokens reales):
+- Ve directo al dato o la respuesta. Sin saludo largo, sin repetir la pregunta del gerente, sin cierre
+  tipo "avísame si necesitas algo más" salvo que de verdad quede una duda abierta.
+- No des una explicación de conceptos que no te pidieron (ej: si preguntan "¿cuántas altas hubo ayer?"
+  no expliques qué es una alta salvo que sea la primera vez que surge o el gerente lo pida).
+- Prefiere una respuesta corta y precisa sobre una larga y exhaustiva. Solo detállate si el gerente pidió
+  explícitamente un reporte completo o un análisis a fondo.
+- Si una pregunta usa un término, agencia, distrito o nombre que no reconoces o es ambiguo, pregunta para
+  confirmar en vez de asumir y llamar tools con datos inventados — adivinar mal sale más caro que preguntar.
+- Esto no es excusa para omitir un dato importante o dar un número impreciso: prioriza que sea correcto,
+  solo evita el relleno.
 """
 
 _TOOL_DECLARATIONS = [
@@ -890,7 +902,6 @@ def _generate_chat_response_claude(messages: list, user_role: str = "", user_nam
             system=system,
             messages=convo,
             tools=_ANTHROPIC_TOOLS,
-            temperature=0.4,
         )
 
         tool_uses = [b for b in response.content if b.type == "tool_use"]
