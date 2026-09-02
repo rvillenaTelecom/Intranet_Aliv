@@ -356,7 +356,7 @@ def dashboard_ventas():
             'loc_lima':       lambda: db_helper.get_localizacion_lima(mes, anio, area=area),
             'puntos_mapa':    lambda: db_helper.get_puntos_mapa_lima(mes, anio, area=area),
         }
-        if area == 'Vertical':
+        if area in ('Vertical', 'Horizontal'):
             _queries['pivot_agencia'] = lambda: db_helper.get_pivot_subagencias_lima(mes, anio, dia=dia)
             _fecha_ayer = datetime.now() - timedelta(days=1)
             _queries['pivot_agencia_cierre'] = lambda: db_helper.get_pivot_subagencias_lima(
@@ -429,13 +429,14 @@ def ventas_cuota_guardar():
     try:
         mes = int(data.get('mes'))
         vertical = int(data.get('vertical'))
-        horizontal = int(data.get('horizontal'))
+        horizontal_aliv = int(data.get('horizontal_aliv'))
+        horizontal_sub = int(data.get('horizontal_sub'))
     except (TypeError, ValueError):
-        return jsonify({'ok': False, 'error': 'Mes, vertical y horizontal deben ser números enteros.'}), 400
-    if vertical < 0 or horizontal < 0:
+        return jsonify({'ok': False, 'error': 'Mes, vertical, horizontal aliv y horizontal sub deben ser números enteros.'}), 400
+    if vertical < 0 or horizontal_aliv < 0 or horizontal_sub < 0:
         return jsonify({'ok': False, 'error': 'Los valores no pueden ser negativos.'}), 400
     try:
-        resultado = db_helper.set_cuota_lima(mes, vertical, horizontal)
+        resultado = db_helper.set_cuota_lima(mes, vertical, horizontal_aliv, horizontal_sub)
     except ValueError as e:
         return jsonify({'ok': False, 'error': str(e)}), 400
     except Exception as e:

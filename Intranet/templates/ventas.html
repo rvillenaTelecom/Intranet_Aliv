@@ -7,7 +7,7 @@
 /* ── Cuotas Lima por mes (tabla editable) ─────────────────── */
 .cq-wrap { padding: 0; overflow: hidden; }
 .cq-table-scroll { overflow-x: auto; }
-.cq-table { min-width: 640px; }
+.cq-table { min-width: 800px; }
 .cq-table .cq-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .cq-table .cq-mes { font-weight: 600; white-space: nowrap; }
 .cq-action-col { width: 84px; text-align: right; white-space: nowrap; }
@@ -189,6 +189,8 @@
             <tr>
                 <th>Mes</th>
                 <th class="cq-num">Vertical</th>
+                <th class="cq-num">Horiz. Aliv</th>
+                <th class="cq-num">Horiz. Sub</th>
                 <th class="cq-num">Horizontal</th>
                 <th class="cq-num">Total</th>
                 <th class="cq-num">Altas</th>
@@ -199,12 +201,15 @@
         <tbody>
             {% for c in cuotas_historial %}
             <tr class="cq-row {% if c.es_mes_actual %}cq-row-current{% endif %}"
-                data-mes="{{ c.mes }}" data-vertical="{{ c.cuota_vertical }}" data-horizontal="{{ c.cuota_horizontal }}">
+                data-mes="{{ c.mes }}" data-vertical="{{ c.cuota_vertical }}"
+                data-horizontal-aliv="{{ c.cuota_horizontal_aliv }}" data-horizontal-sub="{{ c.cuota_horizontal_sub }}">
                 <td class="cq-mes">
                     {{ c.nombre }}
                     {% if c.es_mes_actual %}<span class="cq-tag-hoy">HOY</span>{% endif %}
                 </td>
                 <td class="cq-num cq-view-vertical">{% if c.definida %}{{ "{:,}".format(c.cuota_vertical) }}{% else %}—{% endif %}</td>
+                <td class="cq-num cq-view-horizontal-aliv">{% if c.cuota_horizontal_aliv %}{{ "{:,}".format(c.cuota_horizontal_aliv) }}{% else %}—{% endif %}</td>
+                <td class="cq-num cq-view-horizontal-sub">{% if c.cuota_horizontal_sub %}{{ "{:,}".format(c.cuota_horizontal_sub) }}{% else %}—{% endif %}</td>
                 <td class="cq-num cq-view-horizontal">{% if c.definida %}{{ "{:,}".format(c.cuota_horizontal) }}{% else %}—{% endif %}</td>
                 <td class="cq-num cq-view-total">
                     {% if c.definida %}<strong>{{ "{:,}".format(c.cuota_total) }}</strong>
@@ -364,21 +369,28 @@ function cuotaEditar(mes) {
     row.classList.add('cq-editing');
 
     const tdV = row.querySelector('.cq-view-vertical');
+    const tdHA = row.querySelector('.cq-view-horizontal-aliv');
+    const tdHS = row.querySelector('.cq-view-horizontal-sub');
     const tdH = row.querySelector('.cq-view-horizontal');
     const tdT = row.querySelector('.cq-view-total');
     const tdAction = row.querySelector('.cq-action-col');
 
-    const curV = row.dataset.vertical || 0;
-    const curH = row.dataset.horizontal || 0;
+    const curV  = row.dataset.vertical || 0;
+    const curHA = row.dataset.horizontalAliv || 0;
+    const curHS = row.dataset.horizontalSub || 0;
 
     tdV.dataset.prev = tdV.innerHTML;
+    tdHA.dataset.prev = tdHA.innerHTML;
+    tdHS.dataset.prev = tdHS.innerHTML;
     tdH.dataset.prev = tdH.innerHTML;
     tdT.dataset.prev = tdT.innerHTML;
     tdAction.dataset.prev = tdAction.innerHTML;
 
-    tdV.innerHTML = `<input type="number" min="0" class="cq-input" id="cqV${mes}" value="${curV}" oninput="cuotaRecalc(${mes})">`;
-    tdH.innerHTML = `<input type="number" min="0" class="cq-input" id="cqH${mes}" value="${curH}" oninput="cuotaRecalc(${mes})">`;
-    tdT.innerHTML = `<strong id="cqT${mes}">${(parseInt(curV) + parseInt(curH)).toLocaleString('es-PE')}</strong>`;
+    tdV.innerHTML  = `<input type="number" min="0" class="cq-input" id="cqV${mes}" value="${curV}" oninput="cuotaRecalc(${mes})">`;
+    tdHA.innerHTML = `<input type="number" min="0" class="cq-input" id="cqHA${mes}" value="${curHA}" oninput="cuotaRecalc(${mes})">`;
+    tdHS.innerHTML = `<input type="number" min="0" class="cq-input" id="cqHS${mes}" value="${curHS}" oninput="cuotaRecalc(${mes})">`;
+    tdH.innerHTML  = `<span id="cqH${mes}">${(parseInt(curHA) + parseInt(curHS)).toLocaleString('es-PE')}</span>`;
+    tdT.innerHTML  = `<strong id="cqT${mes}">${(parseInt(curV) + parseInt(curHA) + parseInt(curHS)).toLocaleString('es-PE')}</strong>`;
     tdAction.innerHTML = `
         <button class="cq-btn-save" onclick="cuotaGuardar(${mes})" title="Guardar"><i class="fa-solid fa-check"></i></button>
         <button class="cq-btn-cancel" onclick="cuotaCancelar(${mes})" title="Cancelar"><i class="fa-solid fa-xmark"></i></button>
@@ -387,24 +399,30 @@ function cuotaEditar(mes) {
 }
 
 function cuotaRecalc(mes) {
-    const v = parseInt(document.getElementById(`cqV${mes}`).value) || 0;
-    const h = parseInt(document.getElementById(`cqH${mes}`).value) || 0;
+    const v  = parseInt(document.getElementById(`cqV${mes}`).value) || 0;
+    const ha = parseInt(document.getElementById(`cqHA${mes}`).value) || 0;
+    const hs = parseInt(document.getElementById(`cqHS${mes}`).value) || 0;
+    const hEl = document.getElementById(`cqH${mes}`);
     const totalEl = document.getElementById(`cqT${mes}`);
-    if (totalEl) totalEl.textContent = (v + h).toLocaleString('es-PE');
+    if (hEl) hEl.textContent = (ha + hs).toLocaleString('es-PE');
+    if (totalEl) totalEl.textContent = (v + ha + hs).toLocaleString('es-PE');
 }
 
 function cuotaCancelar(mes) {
     const row = document.querySelector(`tr[data-mes="${mes}"]`);
-    row.querySelector('.cq-view-vertical').innerHTML   = row.querySelector('.cq-view-vertical').dataset.prev;
-    row.querySelector('.cq-view-horizontal').innerHTML = row.querySelector('.cq-view-horizontal').dataset.prev;
-    row.querySelector('.cq-view-total').innerHTML      = row.querySelector('.cq-view-total').dataset.prev;
-    row.querySelector('.cq-action-col').innerHTML      = row.querySelector('.cq-action-col').dataset.prev;
+    row.querySelector('.cq-view-vertical').innerHTML        = row.querySelector('.cq-view-vertical').dataset.prev;
+    row.querySelector('.cq-view-horizontal-aliv').innerHTML = row.querySelector('.cq-view-horizontal-aliv').dataset.prev;
+    row.querySelector('.cq-view-horizontal-sub').innerHTML  = row.querySelector('.cq-view-horizontal-sub').dataset.prev;
+    row.querySelector('.cq-view-horizontal').innerHTML      = row.querySelector('.cq-view-horizontal').dataset.prev;
+    row.querySelector('.cq-view-total').innerHTML           = row.querySelector('.cq-view-total').dataset.prev;
+    row.querySelector('.cq-action-col').innerHTML           = row.querySelector('.cq-action-col').dataset.prev;
     row.classList.remove('cq-editing');
 }
 
 function cuotaGuardar(mes) {
-    const v = parseInt(document.getElementById(`cqV${mes}`).value) || 0;
-    const h = parseInt(document.getElementById(`cqH${mes}`).value) || 0;
+    const v  = parseInt(document.getElementById(`cqV${mes}`).value) || 0;
+    const ha = parseInt(document.getElementById(`cqHA${mes}`).value) || 0;
+    const hs = parseInt(document.getElementById(`cqHS${mes}`).value) || 0;
     const row = document.querySelector(`tr[data-mes="${mes}"]`);
     const btn = row.querySelector('.cq-btn-save');
     btn.disabled = true;
@@ -413,7 +431,7 @@ function cuotaGuardar(mes) {
     fetch('/ventas/cuota', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mes: mes, vertical: v, horizontal: h })
+        body: JSON.stringify({ mes: mes, vertical: v, horizontal_aliv: ha, horizontal_sub: hs })
     })
     .then(r => r.json())
     .then(data => {
@@ -423,12 +441,15 @@ function cuotaGuardar(mes) {
             btn.innerHTML = '<i class="fa-solid fa-check"></i>';
             return;
         }
-        const total = data.cuota.total;
+        const cuota = data.cuota;
         row.dataset.vertical = v;
-        row.dataset.horizontal = h;
-        row.querySelector('.cq-view-vertical').innerHTML   = v.toLocaleString('es-PE');
-        row.querySelector('.cq-view-horizontal').innerHTML = h.toLocaleString('es-PE');
-        row.querySelector('.cq-view-total').innerHTML      = `<strong>${total.toLocaleString('es-PE')}</strong>`;
+        row.dataset.horizontalAliv = ha;
+        row.dataset.horizontalSub = hs;
+        row.querySelector('.cq-view-vertical').innerHTML        = v.toLocaleString('es-PE');
+        row.querySelector('.cq-view-horizontal-aliv').innerHTML = ha ? ha.toLocaleString('es-PE') : '—';
+        row.querySelector('.cq-view-horizontal-sub').innerHTML  = hs ? hs.toLocaleString('es-PE') : '—';
+        row.querySelector('.cq-view-horizontal').innerHTML      = cuota.horizontal.toLocaleString('es-PE');
+        row.querySelector('.cq-view-total').innerHTML           = `<strong>${cuota.total.toLocaleString('es-PE')}</strong>`;
         row.querySelector('.cq-action-col').innerHTML =
             `<button class="cq-btn-edit" onclick="cuotaEditar(${mes})" title="Editar cuota"><i class="fa-solid fa-pen"></i></button>`;
         row.classList.remove('cq-editing');

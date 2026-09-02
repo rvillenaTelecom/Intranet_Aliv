@@ -100,20 +100,31 @@ def cuota_definida(mes):
     return (int(mes), '') in _cargar()
 
 
-def set_cuota_lima(mes, vertical, horizontal):
-    """Define/actualiza la cuota Vertical+Horizontal de Lima de un mes en SQL."""
+def set_cuota_lima(mes, vertical, horizontal_aliv, horizontal_sub):
+    """Define/actualiza la cuota de Lima de un mes en SQL: Vertical, y
+    Horizontal repartido entre Aliv y Subagencias (WIN solo da un total de
+    Horizontal combinado; el reparto entre canales se define a mano acá,
+    porque cambia mes a mes -- ej. 40/60 un mes, otro reparto el siguiente)."""
     global _cache
     mes = int(mes)
     if not 1 <= mes <= 12:
         raise ValueError("Mes fuera de rango (1-12)")
     vertical = max(int(vertical), 0)
-    horizontal = max(int(horizontal), 0)
+    horizontal_aliv = max(int(horizontal_aliv), 0)
+    horizontal_sub = max(int(horizontal_sub), 0)
+    horizontal = horizontal_aliv + horizontal_sub
     total = vertical + horizontal
 
     _init_tabla()
     engine = _get_engine()
     with engine.begin() as conn:
-        for area, valor in (('', total), ('Vertical', vertical), ('Horizontal', horizontal)):
+        for area, valor in (
+            ('', total),
+            ('Vertical', vertical),
+            ('Horizontal', horizontal),
+            ('Horizontal_Aliv', horizontal_aliv),
+            ('Horizontal_Sub', horizontal_sub),
+        ):
             conn.execute(sa.text("""
                 MERGE dbo.cuotas_lima AS t
                 USING (SELECT :mes AS mes, :area AS area, :cuota AS cuota) AS s
@@ -123,4 +134,8 @@ def set_cuota_lima(mes, vertical, horizontal):
             """), {"mes": mes, "area": area, "cuota": valor})
 
     _cache = None  # forzar recarga en la próxima lectura
-    return {'mes': mes, 'vertical': vertical, 'horizontal': horizontal, 'total': total}
+    return {
+        'mes': mes, 'vertical': vertical, 'horizontal': horizontal,
+        'horizontal_aliv': horizontal_aliv, 'horizontal_sub': horizontal_sub,
+        'total': total,
+    }
