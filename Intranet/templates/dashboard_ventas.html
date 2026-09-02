@@ -607,7 +607,22 @@ function proySetBasis(btn, basis) {
 {% set av = pivot_agencia.altas[_pk] %}
 {% set vv = pivot_agencia.ventas[_pk] %}
 {% set dt = k.dias_trans if k.dias_trans and k.dias_trans > 0 else 1 %}
-{% set _agencias = [('ALIV','aliv'), ('DEZANET','dezanet'), ('LOTTUS','lottus'), ('SIPION','sipion'), ('SUB-AGENCIAS','sub_agencias'), ('SUB-AGENCIAS 2','sub_agencias_2')] %}
+{% set _agencias_todas = [('ALIV','aliv'), ('DEZANET','dezanet'), ('LOTTUS','lottus'), ('SIPION','sipion'), ('SUB-AGENCIAS','sub_agencias'), ('SUB-AGENCIAS 2','sub_agencias_2')] %}
+{% if area == 'Horizontal' and agencia == 'Aliv' %}
+{% set _agencias = [('ALIV','aliv')] %}
+{% elif area == 'Horizontal' and agencia == 'Sub' %}
+{% set _agencias = [('DEZANET','dezanet'), ('LOTTUS','lottus'), ('SIPION','sipion'), ('SUB-AGENCIAS','sub_agencias'), ('SUB-AGENCIAS 2','sub_agencias_2')] %}
+{% else %}
+{% set _agencias = _agencias_todas %}
+{% endif %}
+{% set ac_total = namespace(v=0) %}
+{% set av_total = namespace(v=0) %}
+{% set vv_total = namespace(v=0) %}
+{% for label, key in _agencias %}
+{% set ac_total.v = ac_total.v + ac[key] %}
+{% set av_total.v = av_total.v + av[key] %}
+{% set vv_total.v = vv_total.v + vv[key] %}
+{% endfor %}
 
 <!-- Cierre (ayer) + Top Distritos -->
 <div class="grid-1-1">
@@ -624,7 +639,7 @@ function proySetBasis(btn, basis) {
             <tfoot>
                 <tr style="font-weight:800; background:var(--bg-card-hover);">
                     <td style="border-top:2px solid var(--border);">Total</td>
-                    <td class="num" style="border-top:2px solid var(--border);">{{ "{:,}".format(ac.total) }}</td>
+                    <td class="num" style="border-top:2px solid var(--border);">{{ "{:,}".format(ac_total.v) }}</td>
                 </tr>
             </tfoot>
         </table>
@@ -667,8 +682,8 @@ function proySetBasis(btn, basis) {
             <tfoot>
                 <tr style="font-weight:800; background:var(--bg-card-hover);">
                     <td style="border-top:2px solid var(--border);">Total</td>
-                    <td class="num" style="border-top:2px solid var(--border);">{{ "{:,}".format(av.total) }}</td>
-                    <td class="num" style="border-top:2px solid var(--border);">{{ "{:,}".format((av.total / dt * base_dias) | round | int) }}</td>
+                    <td class="num" style="border-top:2px solid var(--border);">{{ "{:,}".format(av_total.v) }}</td>
+                    <td class="num" style="border-top:2px solid var(--border);">{{ "{:,}".format((av_total.v / dt * base_dias) | round | int) }}</td>
                 </tr>
             </tfoot>
         </table>
@@ -690,8 +705,8 @@ function proySetBasis(btn, basis) {
             <tfoot>
                 <tr style="font-weight:800; background:var(--bg-card-hover);">
                     <td style="border-top:2px solid var(--border);">Total</td>
-                    <td class="num" style="border-top:2px solid var(--border);">{{ "{:,}".format(vv.total) }}</td>
-                    <td class="num" style="border-top:2px solid var(--border);">{{ "{:,}".format((vv.total / dt * base_dias) | round | int) }}</td>
+                    <td class="num" style="border-top:2px solid var(--border);">{{ "{:,}".format(vv_total.v) }}</td>
+                    <td class="num" style="border-top:2px solid var(--border);">{{ "{:,}".format((vv_total.v / dt * base_dias) | round | int) }}</td>
                 </tr>
             </tfoot>
         </table>
