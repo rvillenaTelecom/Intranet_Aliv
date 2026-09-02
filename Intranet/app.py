@@ -356,12 +356,12 @@ def dashboard_ventas():
     if db_data is None:
         _queries = {
             'kpi_lima':       lambda: db_helper.get_kpi_lima(mes, anio, area=area, dia=dia, cumul=True, base_dias=base_dias, agencia_grupo=agencia),
-            'trend_lima':     lambda: db_helper.get_daily_trend_lima(mes, anio, area=area),
-            'top_dist':       lambda: db_helper.get_top_distritos_lima(mes, anio, area=area, dia=dia),
-            'dist_estados':   lambda: db_helper.get_distribucion_estados_lima(mes, anio, area=area, dia=dia),
-            'vel_planes':     lambda: db_helper.get_velocidad_planes_lima(mes, anio, area=area, dia=dia),
-            'loc_lima':       lambda: db_helper.get_localizacion_lima(mes, anio, area=area),
-            'puntos_mapa':    lambda: db_helper.get_puntos_mapa_lima(mes, anio, area=area),
+            'trend_lima':     lambda: db_helper.get_daily_trend_lima(mes, anio, area=area, agencia_grupo=agencia),
+            'top_dist':       lambda: db_helper.get_top_distritos_lima(mes, anio, area=area, dia=dia, agencia_grupo=agencia),
+            'dist_estados':   lambda: db_helper.get_distribucion_estados_lima(mes, anio, area=area, dia=dia, agencia_grupo=agencia),
+            'vel_planes':     lambda: db_helper.get_velocidad_planes_lima(mes, anio, area=area, dia=dia, agencia_grupo=agencia),
+            'loc_lima':       lambda: db_helper.get_localizacion_lima(mes, anio, area=area, agencia_grupo=agencia),
+            'puntos_mapa':    lambda: db_helper.get_puntos_mapa_lima(mes, anio, area=area, agencia_grupo=agencia),
         }
         if area in ('Vertical', 'Horizontal'):
             _queries['pivot_agencia'] = lambda: db_helper.get_pivot_subagencias_lima(mes, anio, dia=dia)

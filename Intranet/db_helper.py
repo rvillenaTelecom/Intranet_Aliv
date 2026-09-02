@@ -409,10 +409,11 @@ def set_cuota_lima(mes, vertical, horizontal_aliv, horizontal_sub):
     return cuotas_config.set_cuota_lima(mes, vertical, horizontal_aliv, horizontal_sub)
 
 
-def get_daily_trend_lima(mes, anio, area=''):
+def get_daily_trend_lima(mes, anio, area='', agencia_grupo=''):
     """Ventas por Fecha de registro y altas por Fecha programación — Lima."""
     _ac = _area_clause(area)
     _dl = _dept_lima()
+    _agc = _agencia_clause(agencia_grupo)
     try:
         df = get_data(f"""
             SELECT dia, SUM(es_venta) AS ventas, SUM(es_alta) AS altas
@@ -420,7 +421,7 @@ def get_daily_trend_lima(mes, anio, area=''):
                 SELECT DAY([Fecha de registro]) AS dia, 1 AS es_venta, 0 AS es_alta
                 FROM dbo.winforce_lima
                 WHERE MONTH([Fecha de registro]) = :mes AND YEAR([Fecha de registro]) = :anio
-                {_dl} {_ac}
+                {_dl} {_ac} {_agc}
 
                 UNION ALL
 
@@ -429,7 +430,7 @@ def get_daily_trend_lima(mes, anio, area=''):
                 WHERE [Estado orden] = 'Ejecutada'
                   AND MONTH({_FP}) = :mes AND YEAR({_FP}) = :anio
                   AND {_FP} IS NOT NULL
-                {_dl} {_ac}
+                {_dl} {_ac} {_agc}
             ) t
             GROUP BY dia
             ORDER BY dia
@@ -603,10 +604,11 @@ def get_activaciones_hoy(fecha=None):
                 'pendientes_vertical': 0, 'pendientes_horizontal': 0, 'turnos': []}
 
 
-def get_distribucion_estados_lima(mes, anio, area='', dia=None):
+def get_distribucion_estados_lima(mes, anio, area='', dia=None, agencia_grupo=''):
     """Distribución de estados actuales basados en la Fecha de Registro."""
     _ac = _area_clause(area)
     _dl = _dept_lima()
+    _agc = _agencia_clause(agencia_grupo)
     _dr = "AND DAY([Fecha de registro]) <= :dia" if dia else ""
     p   = {'mes': mes, 'anio': anio}
     if dia:
@@ -618,7 +620,7 @@ def get_distribucion_estados_lima(mes, anio, area='', dia=None):
                 COUNT(*) AS registro
             FROM dbo.winforce_lima
             WHERE MONTH([Fecha de registro]) = :mes AND YEAR([Fecha de registro]) = :anio
-            {_dl} {_ac} {_dr}
+            {_dl} {_ac} {_agc} {_dr}
             GROUP BY [Estado orden]
             ORDER BY [Estado orden]
         """, params=p)
@@ -636,10 +638,11 @@ def get_distribucion_estados_lima(mes, anio, area='', dia=None):
         return []
 
 
-def get_top_distritos_lima(mes, anio, top=10, area='', dia=None, cumul=True):
+def get_top_distritos_lima(mes, anio, top=10, area='', dia=None, cumul=True, agencia_grupo=''):
     """Top N distritos por altas en Lima. cumul=False filtra exactamente ese día."""
     _ac = _area_clause(area)
     _dl = _dept_lima()
+    _agc = _agencia_clause(agencia_grupo)
     _op = "<=" if cumul else "="
     _da = f"AND DAY({_FP}) {_op} :dia" if dia else ""
     p   = {'mes': mes, 'anio': anio}
@@ -653,7 +656,7 @@ def get_top_distritos_lima(mes, anio, top=10, area='', dia=None, cumul=True):
               AND MONTH({_FP}) = :mes AND YEAR({_FP}) = :anio
               AND {_FP} IS NOT NULL
               AND Distrito IS NOT NULL AND Distrito <> ''
-              {_dl} {_ac} {_da}
+              {_dl} {_ac} {_agc} {_da}
             GROUP BY Distrito
             ORDER BY altas DESC
         """, params=p)
@@ -663,10 +666,11 @@ def get_top_distritos_lima(mes, anio, top=10, area='', dia=None, cumul=True):
         return []
 
 
-def get_velocidad_planes_lima(mes, anio, area='', dia=None, cumul=True):
+def get_velocidad_planes_lima(mes, anio, area='', dia=None, cumul=True, agencia_grupo=''):
     """Distribución de altas de Lima por velocidad de plan (Mbps). cumul=False filtra exactamente ese día."""
     _ac = _area_clause(area)
     _dl = _dept_lima()
+    _agc = _agencia_clause(agencia_grupo)
     _vel = "LEFT([Plan], CHARINDEX(' ', [Plan] + ' ') - 1)"
     _op = "<=" if cumul else "="
     _da = f"AND DAY({_FP}) {_op} :dia" if dia else ""
@@ -684,7 +688,7 @@ def get_velocidad_planes_lima(mes, anio, area='', dia=None, cumul=True):
               AND MONTH({_FP}) = :mes AND YEAR({_FP}) = :anio
               AND {_FP} IS NOT NULL
               AND [Plan] IS NOT NULL AND [Plan] <> ''
-              {_dl} {_ac} {_da}
+              {_dl} {_ac} {_agc} {_da}
             GROUP BY {_vel}
             ORDER BY altas DESC
         """, params=p)
@@ -1430,11 +1434,12 @@ def delete_usuario(uid):
         return False
 
 
-def get_localizacion_lima(mes, anio, area=''):
+def get_localizacion_lima(mes, anio, area='', agencia_grupo=''):
     """Score, Zona KML y comparativa P2 — Lima.
     Retorna None si la columna Zona_KML no está disponible."""
     _ac = _area_clause(area)
     _dl = _dept_lima()
+    _agc = _agencia_clause(agencia_grupo)
 
     try:
         get_data("SELECT TOP 1 [Zona_KML] FROM dbo.winforce_lima")
@@ -1450,7 +1455,7 @@ def get_localizacion_lima(mes, anio, area=''):
                 COUNT(*)                                               AS total
             FROM dbo.winforce_lima
             WHERE MONTH([Fecha de registro]) = :mes AND YEAR([Fecha de registro]) = :anio
-            {_dl} {_ac}
+            {_dl} {_ac} {_agc}
         """, params={'mes': mes, 'anio': anio})
         r = df.iloc[0]
         total    = _safe_int(r['total'])
@@ -1471,13 +1476,13 @@ def get_localizacion_lima(mes, anio, area=''):
               AND MONTH({_FP}) = :mes AND YEAR({_FP}) = :anio
               AND {_FP} IS NOT NULL
               AND [Zona_KML] IS NOT NULL AND [Zona_KML] <> ''
-              {_dl} {_ac}
+              {_dl} {_ac} {_agc}
             GROUP BY [Zona_KML]
             ORDER BY cnt DESC
         """, params={'mes': mes, 'anio': anio})
         zonas = df_zona.to_dict(orient='records')
 
-        _where_p2 = f"WHERE {_dl[4:]} {_ac}" if area else f"WHERE {_dl[4:]}"
+        _where_p2 = f"WHERE {_dl[4:]} {_ac} {_agc}" if (area or agencia_grupo) else f"WHERE {_dl[4:]}"
         df_p2 = get_data(f"""
             SELECT
                 SUM(CASE WHEN [Fecha de registro] <  '2026-04-15'
@@ -1628,12 +1633,13 @@ def get_comparacion_meses_lima(mes1, anio1, mes2, anio2, area=''):
     }
 
 
-def get_puntos_mapa_lima(mes, anio, area=''):
+def get_puntos_mapa_lima(mes, anio, area='', agencia_grupo=''):
     """Instalaciones con lat/lon para mapa interactivo — Lima y Callao.
     Latitud/Longitud son TEXT en SQL Server → TRY_CAST para conversión segura."""
     import math
     _ac = _area_clause(area)
     _dl = _dept_lima()
+    _agc = _agencia_clause(agencia_grupo)
     _where = f"""
         FROM dbo.winforce_lima
         WHERE [Estado orden] = 'Ejecutada'
@@ -1643,7 +1649,7 @@ def get_puntos_mapa_lima(mes, anio, area=''):
           AND TRY_CAST([Latitud]  AS FLOAT) <> 0
           AND TRY_CAST([Longitud] AS FLOAT) IS NOT NULL
           AND TRY_CAST([Longitud] AS FLOAT) <> 0
-          {_dl} {_ac}
+          {_dl} {_ac} {_agc}
     """
     _base = """
         ISNULL([Distrito], 'Sin distrito')             AS distrito,
