@@ -278,7 +278,7 @@
                     <option value="{{ y }}" {% if anio_actual == y %}selected{% endif %}>{{ y }}</option>
                     {% endfor %}
                 </select>
-                {% if area != 'Vertical' and role not in ['vertical', 'horizontal_sub', 'horizontal_aliv'] %}
+                {% if not area and not agencia %}
                 <span class="filter-label" id="areaLabel">Área:</span>
                 <select name="area" class="fsel" id="areaSelect">
                     <option value="" {% if not area %}selected{% endif %}>Todas</option>
