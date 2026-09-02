@@ -208,22 +208,22 @@ USERS = {
     'vertical': {
         'password_hash': 'scrypt:32768:8:1$Vz8lDPriB3iglgsF$39624d66226d07973daa855cbf6d20e9ef2ca45e935f0f94f0c69e61f2b1aafc9c72739d6ced2110c1a7962b21500a72859ef1f9c197015b9f2272dc05dab2d0',
         'role': 'vertical',
-        'name': 'Gerente Vertical'
+        'name': 'Mariantonieta'
     },
     'horizontal_sub': {
         'password_hash': 'scrypt:32768:8:1$kBeU1J3IK0tgZqDl$9947a8f448b3816e598dc8fde55e9cc11e4c47db990015fa96198ce2b46990d9f248562075f6a2cb2a9c107d52be8c6a3590d04c19d22e85d359a7c5f7a11adc',
         'role': 'horizontal_sub',
-        'name': 'Gerente Horizontal Sub'
+        'name': 'Milagros'
     },
     'horizontal_aliv': {
         'password_hash': 'scrypt:32768:8:1$GqSd3NHdzQYqt10a$99ab34c7f46a02f53115c1fab0c5e097a867b30dc156f01a836dfec039a9bb19c45f61156a698dc0a98b9400e1d23667523c6ae45f51715fb9f55ae8d2eca757',
         'role': 'horizontal_aliv',
-        'name': 'Gerente Horizontal Aliv'
+        'name': 'Jesús'
     },
     'ejecutivo': {
         'password_hash': 'scrypt:32768:8:1$I8oJX7olYzbQqfbN$274e1e7f8408a2365c26e9cda1d98f003d4f43b34655174e805870c6b14efce8421ed69495aad25da366b67fd067ffaaf8aed55657bc29b70475f55bfc268760',
         'role': 'ejecutivo',
-        'name': 'Gerente Ejecutivo'
+        'name': 'Alex'
     },
 }
 
