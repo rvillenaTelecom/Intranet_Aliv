@@ -827,23 +827,41 @@ _ANTHROPIC_TOOLS = [
 ]
 
 
-def _get_client():
-    global _client
-    if _client is None:
-        import anthropic
-        key = os.environ.get("ANTHROPIC_API_KEY", "")
-        if not key:
-            raise RuntimeError("ANTHROPIC_API_KEY no está configurada.")
-        _client = anthropic.Anthropic(api_key=key)
-    return _client
+def active_provider() -> str:
+    """'claude' si hay ANTHROPIC_API_KEY (se prefiere una vez configurada),
+    si no 'gemini' mientras se termina de migrar, si no '' (nada configurado)."""
+    if os.environ.get("ANTHROPIC_API_KEY", ""):
+        return "claude"
+    if os.environ.get("GEMINI_API_KEY", ""):
+        return "gemini"
+    return ""
 
 
 def generate_chat_response(messages: list, user_role: str = "", user_name: str = "") -> str:
     """
     messages: [{"role": "user"/"assistant", "content": "..."}]
     Retorna el texto de respuesta del asistente.
+    Usa Claude si ANTHROPIC_API_KEY está configurada; si no, cae a Gemini
+    (GEMINI_API_KEY) mientras se termina de migrar la cuenta de empresa.
     """
-    client = _get_client()
+    provider = active_provider()
+    if provider == "claude":
+        return _generate_chat_response_claude(messages, user_role, user_name)
+    if provider == "gemini":
+        return _generate_chat_response_gemini(messages, user_role, user_name)
+    raise RuntimeError("No hay ninguna API key de IA configurada (ANTHROPIC_API_KEY ni GEMINI_API_KEY).")
+
+
+def _get_claude_client():
+    global _client
+    if _client is None:
+        import anthropic
+        _client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    return _client
+
+
+def _generate_chat_response_claude(messages: list, user_role: str = "", user_name: str = "") -> str:
+    client = _get_claude_client()
 
     system = SYSTEM_PROMPT
     if user_name:
@@ -887,5 +905,89 @@ def generate_chat_response(messages: list, user_role: str = "", user_name: str =
                     "content": json.dumps(result, ensure_ascii=False, default=str),
                 }
         convo.append({"role": "user", "content": results})
+
+    return "No pude completar la consulta. Por favor intenta de nuevo."
+
+
+_gemini_client = None
+
+
+def _get_gemini_client():
+    global _gemini_client
+    if _gemini_client is None:
+        from google import genai
+        _gemini_client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+    return _gemini_client
+
+
+def _generate_chat_response_gemini(messages: list, user_role: str = "", user_name: str = "") -> str:
+    from google.genai import types
+
+    client = _get_gemini_client()
+
+    contents = []
+    for m in messages:
+        role = "user" if m["role"] == "user" else "model"
+        contents.append(types.Content(role=role, parts=[types.Part(text=m["content"])]))
+
+    fn_decls = [
+        types.FunctionDeclaration(
+            name=t["name"],
+            description=t["description"],
+            parameters=t["parameters"],
+        )
+        for t in _TOOL_DECLARATIONS
+    ]
+    tool = types.Tool(function_declarations=fn_decls)
+
+    system = SYSTEM_PROMPT
+    if user_name:
+        system += f"\nEl usuario que consulta se llama **{user_name}** y tiene el rol '{user_role}'."
+
+    config = types.GenerateContentConfig(
+        system_instruction=system,
+        tools=[tool],
+        tool_config=types.ToolConfig(
+            function_calling_config=types.FunctionCallingConfig(mode="AUTO")
+        ),
+        temperature=0.4,
+    )
+
+    loop_contents = list(contents)
+    for _ in range(8):
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=loop_contents,
+            config=config,
+        )
+
+        parts = response.candidates[0].content.parts
+        fn_calls = [p for p in parts if p.function_call]
+
+        if not fn_calls:
+            return response.text or "No pude generar una respuesta. Intenta de nuevo."
+
+        loop_contents.append(types.Content(role="model", parts=parts))
+
+        fn_results = [None] * len(fn_calls)
+        with ThreadPoolExecutor(max_workers=len(fn_calls)) as executor:
+            future_to_idx = {
+                executor.submit(_call_tool, p.function_call.name, dict(p.function_call.args)): i
+                for i, p in enumerate(fn_calls)
+            }
+            for future in as_completed(future_to_idx):
+                i = future_to_idx[future]
+                fc = fn_calls[i].function_call
+                try:
+                    result = future.result()
+                except Exception as e:
+                    result = {"error": str(e)}
+                fn_results[i] = types.Part(
+                    function_response=types.FunctionResponse(
+                        name=fc.name,
+                        response={"result": json.dumps(result, ensure_ascii=False, default=str)},
+                    )
+                )
+        loop_contents.append(types.Content(role="user", parts=fn_results))
 
     return "No pude completar la consulta. Por favor intenta de nuevo."

@@ -21,6 +21,13 @@ except ImportError:
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'AlivIntranet2026!')
 
+
+@app.context_processor
+def _inject_ai_provider_label():
+    import ai_helper
+    _label = {'claude': 'Claude', 'gemini': 'Gemini'}.get(ai_helper.active_provider(), 'IA')
+    return {'ai_provider_label': _label}
+
 # --- PIPELINE: paths y estado global ---
 _INTRANET_DIR  = os.path.dirname(os.path.abspath(__file__))
 _PIPELINE_DIR  = os.path.join(os.path.dirname(_INTRANET_DIR), 'Pipeline')

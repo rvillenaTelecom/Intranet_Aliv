@@ -6,6 +6,7 @@ openpyxl
 lxml
 jinja2
 anthropic>=0.40.0
+google-genai==2.7.0
 python-dotenv
 fastapi
 uvicorn[standard]
