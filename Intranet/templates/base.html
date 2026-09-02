@@ -10,10 +10,12 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    {% if role == 'horizontal_sub' %}
+    {% if role == 'horizontal_sub' or (area is defined and area == 'Horizontal' and agencia is defined and agencia == 'Sub') %}
     <style>
     /* Identidad de Horizontal Sub-agencias — paleta tierra pedida por la gerente,
-       en vez del naranja de marca genérico. Solo afecta a este rol. */
+       en vez del naranja de marca genérico. Se activa para su rol bloqueado,
+       y también para cualquiera viendo esa misma vista filtrada (ej. admin
+       previsualizando /dashboard-ventas?area=Horizontal&agencia=Sub). */
     :root {
         --brand: #C9683C;
         --brand-hover: #E0A06A;
