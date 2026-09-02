@@ -889,9 +889,21 @@ def _get_claude_client():
 def _generate_chat_response_claude(messages: list, user_role: str = "", user_name: str = "") -> str:
     client = _get_claude_client()
 
-    system = SYSTEM_PROMPT
+    # SYSTEM_PROMPT + las 25 tools son ~miles de tokens estáticos que antes se
+    # reenviaban completos en CADA mensaje y en cada vuelta del loop de tools
+    # (hasta 8 por pregunta) -- eso es lo que estaba disparando el costo por
+    # consulta. El bloque marcado con cache_control queda cacheado del lado de
+    # Anthropic (~90% más barato en los siguientes hits, compartido entre
+    # todos los gerentes) y el nombre/rol del usuario va aparte, sin cachear,
+    # porque cambia en cada request.
+    system_blocks = [
+        {"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}},
+    ]
     if user_name:
-        system += f"\nEl usuario que consulta se llama **{user_name}** y tiene el rol '{user_role}'."
+        system_blocks.append({
+            "type": "text",
+            "text": f"El usuario que consulta se llama **{user_name}** y tiene el rol '{user_role}'.",
+        })
 
     convo = [{"role": m["role"], "content": m["content"]} for m in messages]
 
@@ -899,7 +911,7 @@ def _generate_chat_response_claude(messages: list, user_role: str = "", user_nam
         response = client.messages.create(
             model=_CLAUDE_MODEL,
             max_tokens=4096,
-            system=system,
+            system=system_blocks,
             messages=convo,
             tools=_ANTHROPIC_TOOLS,
         )
