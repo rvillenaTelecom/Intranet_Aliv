@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Dashboard Ventas — AlivTelecom{% endblock %}
 
-{% set dv_earth = area == 'Horizontal' and agencia == 'Sub' %}
+{% set dv_earth = role == 'horizontal_sub' %}
 {% block content %}
 <style>
 :root {

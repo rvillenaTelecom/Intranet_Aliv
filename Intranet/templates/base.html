@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    {% set dv_earth = role == 'horizontal_sub' or (area is defined and area == 'Horizontal' and agencia is defined and agencia == 'Sub') %}
+    {% set dv_earth = role == 'horizontal_sub' %}
     <meta name="color-scheme" content="{{ 'light' if dv_earth else 'dark' }}">
     <title>{% block title %}Intranet AlivTelecom{% endblock %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -16,9 +16,10 @@
     /* ═══════════════════════════════════════════════════════════════
        Identidad de Horizontal Sub-agencias — pedida por la gerente:
        paleta tierra (terracota/marrón/arena) sobre fondo claro, en vez
-       del naranja-sobre-negro del resto de la Intranet. Se activa para
-       su rol bloqueado, y también para cualquiera viendo esa misma
-       vista filtrada (ej. admin en /dashboard-ventas?area=Horizontal&agencia=Sub).
+       del naranja-sobre-negro del resto de la Intranet. Es su identidad
+       personal -- se activa solo cuando ELLA inició sesión (rol
+       horizontal_sub), nunca para admin ni otro rol aunque estén viendo
+       su misma vista filtrada (?area=Horizontal&agencia=Sub).
        ═══════════════════════════════════════════════════════════════ */
     :root {
         /* Marca — terracota profundo, no una variante del naranja de siempre */
