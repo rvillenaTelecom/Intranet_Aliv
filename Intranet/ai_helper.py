@@ -833,7 +833,15 @@ def _call_tool(name: str, args: dict):
         return {"error": str(e)}
 
 
-_CLAUDE_MODEL = "claude-sonnet-5"
+# En prueba: Haiku 4.5 es mucho mas barato por token que Sonnet 5. Si la
+# calidad de las respuestas a los gerentes no alcanza, volver a "claude-sonnet-5".
+_CLAUDE_MODEL = "claude-haiku-4-5-20251001"
+
+# Cuantos mensajes recientes del chat se reenvian a Claude/Gemini. El historial
+# completo de la conversacion se manda entero en cada pregunta (no hay memoria
+# del lado del servidor), asi que sin tope una charla larga se vuelve cada vez
+# mas cara. 12 mensajes = ~6 idas y vueltas de contexto reciente.
+_MAX_HISTORY_MESSAGES = 12
 
 _ANTHROPIC_TOOLS = [
     {
@@ -871,6 +879,7 @@ def generate_chat_response(messages: list, user_role: str = "", user_name: str =
     (GEMINI_API_KEY) mientras se termina de migrar la cuenta de empresa.
     """
     provider = active_provider()
+    messages = messages[-_MAX_HISTORY_MESSAGES:]
     if provider == "claude":
         return _generate_chat_response_claude(messages, user_role, user_name)
     if provider == "gemini":
