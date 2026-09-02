@@ -47,5 +47,11 @@
         </form>
     </div>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+    // Si la sesión expiró sola (sin pasar por "Cerrar sesión") igual se
+    // limpia el chat, para que el próximo que entre en esta pestaña no
+    // vea la conversación de la cuenta anterior.
+    sessionStorage.removeItem('aliv_chat_history');
+    </script>
 </body>
 </html>

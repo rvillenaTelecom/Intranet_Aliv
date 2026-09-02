@@ -171,7 +171,7 @@
         </nav>
 
         <div class="sidebar-footer">
-            <a href="{{ url_for('logout') }}" class="nav-item logout">
+            <a href="{{ url_for('logout') }}" class="nav-item logout" onclick="sessionStorage.removeItem('aliv_chat_history')">
                 <i class="fa-solid fa-right-from-bracket"></i>
                 <span>Cerrar sesión</span>
             </a>
