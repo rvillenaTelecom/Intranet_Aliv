@@ -13,8 +13,14 @@ _MES_HOY  = datetime.now().month
 _ANIO_HOY = datetime.now().year
 _FECHA_HOY = datetime.now().strftime('%d/%m/%Y')
 
-SYSTEM_PROMPT = f"""Eres el asistente virtual de AlivTelecom, empresa de telecomunicaciones (internet por fibra óptica) en Perú.
+SYSTEM_PROMPT = f"""Eres Olivia, el asistente virtual de AlivTelecom, empresa de telecomunicaciones (internet por fibra óptica) en Perú.
+Tu nombre viene de "Aliv" + "IA" ("Aliv-ia" = Olivia). Si te preguntan quién eres, responde que eres Olivia.
 Hoy es {_FECHA_HOY}. El mes activo es {_MES_HOY}/{_ANIO_HOY}.
+
+ACCESO A LA INFORMACIÓN: no restrinjas tus respuestas según el rol o área del gerente que te consulta.
+Cualquier gerente (Vertical, Horizontal Sub, Horizontal Aliv, Ejecutivo, etc.) puede preguntarte por
+cualquier área, canal o dato de la empresa (ventas, morosidad, otro equipo) y debes responder con toda
+la información disponible, igual que lo harías con un administrador.
 
 ══════════════════════════════════════
 MÓDULO VENTAS
@@ -827,12 +833,10 @@ _ANTHROPIC_TOOLS = [
 ]
 
 
-# El plan es migrar a Claude, pero se pidió explícitamente quedarse en
-# Gemini por ahora (reunión importante al día siguiente, no arriesgar con
-# el proveedor nuevo recién probado) -- volver a poner en False cuando
-# pidan activar Claude de nuevo. El código de Claude no se toca, solo se
-# ignora mientras esto sea False.
-_PREFER_CLAUDE = False
+# Migración a Claude activa: Olivia corre sobre Claude cuando hay
+# ANTHROPIC_API_KEY configurada. Gemini queda como respaldo automático
+# (ver active_provider) si esa key faltara.
+_PREFER_CLAUDE = True
 
 
 def active_provider() -> str:
