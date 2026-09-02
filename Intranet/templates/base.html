@@ -3,26 +3,72 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="color-scheme" content="dark">
+    {% set dv_earth = role == 'horizontal_sub' or (area is defined and area == 'Horizontal' and agencia is defined and agencia == 'Sub') %}
+    <meta name="color-scheme" content="{{ 'light' if dv_earth else 'dark' }}">
     <title>{% block title %}Intranet AlivTelecom{% endblock %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600{% if dv_earth %}&family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500{% endif %}&display=swap">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    {% if role == 'horizontal_sub' or (area is defined and area == 'Horizontal' and agencia is defined and agencia == 'Sub') %}
+    {% if dv_earth %}
     <style>
-    /* Identidad de Horizontal Sub-agencias — paleta tierra pedida por la gerente,
-       en vez del naranja de marca genérico. Se activa para su rol bloqueado,
-       y también para cualquiera viendo esa misma vista filtrada (ej. admin
-       previsualizando /dashboard-ventas?area=Horizontal&agencia=Sub). */
+    /* ═══════════════════════════════════════════════════════════════
+       Identidad de Horizontal Sub-agencias — pedida por la gerente:
+       paleta tierra (terracota/marrón/arena) sobre fondo claro, en vez
+       del naranja-sobre-negro del resto de la Intranet. Se activa para
+       su rol bloqueado, y también para cualquiera viendo esa misma
+       vista filtrada (ej. admin en /dashboard-ventas?area=Horizontal&agencia=Sub).
+       ═══════════════════════════════════════════════════════════════ */
     :root {
+        /* Marca — terracota profundo, no una variante del naranja de siempre */
         --brand: #8B5A3C;
         --brand-hover: #B37A4F;
         --brand-press: #613E29;
         --brand-glow: rgba(139, 90, 60, 0.24);
-        --brand-glow-soft: rgba(139, 90, 60, 0.12);
-        --on-brand: #F7EEE3;
+        --brand-glow-soft: rgba(139, 90, 60, 0.10);
+        --on-brand: #FBF3E7;
+
+        --slate: #8A7561;
+        --slate-glow: rgba(138, 117, 97, 0.14);
+
+        /* Semáforo — mismos roles (bien/riesgo/mal) en clave tierra */
+        --success: #6E8C42;
+        --success-glow: rgba(110, 140, 66, 0.16);
+        --danger: #A8402A;
+        --danger-glow: rgba(168, 64, 42, 0.14);
+        --warning: #B8791E;
+        --warning-glow: rgba(184, 121, 30, 0.16);
+
+        /* Superficies — arena clara, no negro cálido */
+        --bg-app: #F6EFE2;
+        --bg-main: #F6EFE2;
+        --bg-sidebar: #FFFFFF;
+        --bg-sidebar-hover: #F1E4CF;
+        --bg-card: #FFFFFF;
+        --bg-card-hover: #F8F0E3;
+        --bg-inset: #F1E4CF;
+        --bg-topbar: #FFFFFF;
+
+        --text-primary: #3A281C;
+        --text-secondary: #7C6350;
+        --text-light: #A4907A;
+        --text-sidebar: #4A3626;
+
+        --border: #E6D6BC;
+        --border-strong: #D2BC96;
+
+        --shadow: 0 2px 14px rgba(90,60,30,0.08);
+        --shadow-card: 0 10px 26px rgba(90,60,30,0.10);
+
+        --font-display: 'Fraunces', 'Georgia', serif;
+    }
+    /* El anillo del logo estaba fijo en naranja de marca — lo alineamos */
+    .logo-icon { box-shadow: 0 0 0 1px rgba(139,90,60,.35), 0 4px 14px var(--brand-glow); }
+    /* Firma: una veta de estratos de tierra, una sola vez, sobre la topbar */
+    .topbar {
+        border-top: 4px solid transparent;
+        border-image: linear-gradient(90deg, #6E4B39 0%, #8B5A3C 26%, #B4693B 52%, #C98A55 76%, #D9BD8C 100%) 1;
     }
     </style>
     {% endif %}

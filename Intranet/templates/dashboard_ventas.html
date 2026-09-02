@@ -1,12 +1,15 @@
 {% extends "base.html" %}
 {% block title %}Dashboard Ventas — AlivTelecom{% endblock %}
 
+{% set dv_earth = area == 'Horizontal' and agencia == 'Sub' %}
 {% block content %}
 <style>
 :root {
-    {% if area == 'Horizontal' and agencia == 'Sub' %}
-    --kpi-teal: #D8BA82;
-    --kpi-purple: #7A5347;
+    {% if dv_earth %}
+    /* Fondo claro: los tonos claros que se leían bien sobre negro (kpi-teal
+       original) quedan invisibles sobre tarjeta blanca -- se oscurecen. */
+    --kpi-teal: #A8721E;
+    --kpi-purple: #6B4634;
     {% else %}
     --kpi-teal: #3FBFAD;
     --kpi-purple: #9C8CF0;
@@ -137,10 +140,11 @@
 .data-table .num { text-align: right; font-variant-numeric: tabular-nums; }
 .data-table .rank { color: var(--text-light); font-weight: 700; text-align: center; width: 28px; }
 
-/* Semáforo badges */
-.badge-meta   { background: var(--success-glow); color: #6EE7C0; padding: 2px 9px; border-radius: 12px; font-size: 11px; font-weight: 700; }
-.badge-riesgo { background: var(--warning-glow); color: #FFC876; padding: 2px 9px; border-radius: 12px; font-size: 11px; font-weight: 700; }
-.badge-bajo   { background: var(--danger-glow); color: #FF9E9A; padding: 2px 9px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+/* Semáforo badges — colores claros (pensados para fondo negro) se oscurecen
+   en el tema tierra, donde el fondo de la tarjeta es blanco. */
+.badge-meta   { background: var(--success-glow); color: {{ '#3F5A22' if dv_earth else '#6EE7C0' }}; padding: 2px 9px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+.badge-riesgo { background: var(--warning-glow); color: {{ '#7A4E12' if dv_earth else '#FFC876' }}; padding: 2px 9px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+.badge-bajo   { background: var(--danger-glow); color: {{ '#7A2E1D' if dv_earth else '#FF9E9A' }}; padding: 2px 9px; border-radius: 12px; font-size: 11px; font-weight: 700; }
 
 /* Barra de alcance en tabla */
 .alcance-bar-wrap { display: flex; align-items: center; gap: 6px; }
@@ -180,32 +184,32 @@
 
 .p2-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .p2-box { border-radius: 10px; padding: 16px; text-align: center; border: 2px solid transparent; }
-.p2-box.antes   { background: var(--slate-glow); border-color: rgba(124,139,153,.35); }
-.p2-box.despues { background: var(--brand-glow-soft); border-color: rgba(244,121,32,.3); }
+.p2-box.antes   { background: var(--slate-glow); border-color: {{ 'rgba(138,117,97,.35)' if dv_earth else 'rgba(124,139,153,.35)' }}; }
+.p2-box.despues { background: var(--brand-glow-soft); border-color: {{ 'rgba(139,90,60,.35)' if dv_earth else 'rgba(244,121,32,.3)' }}; }
 .p2-box-title { font-size: 11px; font-weight: 700; text-transform: uppercase;
                 color: var(--text-secondary); margin-bottom: 6px; }
 .p2-box-val   { font-size: 28px; font-weight: 800; }
 .p2-box-sub   { font-size: 11px; color: var(--text-light); margin-top: 4px; }
 .caida-badge  { margin-top: 10px; padding: 6px 14px; border-radius: 20px;
                 font-size: 13px; font-weight: 700; display: inline-block; }
-.caida-neg { background: var(--danger-glow); color: #FF9E9A; }
-.caida-pos { background: var(--success-glow); color: #6EE7C0; }
+.caida-neg { background: var(--danger-glow); color: {{ '#7A2E1D' if dv_earth else '#FF9E9A' }}; }
+.caida-pos { background: var(--success-glow); color: {{ '#3F5A22' if dv_earth else '#6EE7C0' }}; }
 
 /* ── Mapa: tooltip distritos ─────────────────────────────── */
 .dist-tooltip {
-    background: rgba(10,10,11,0.95) !important;
+    background: {{ 'rgba(255,255,255,0.97)' if dv_earth else 'rgba(10,10,11,0.95)' }} !important;
     color: var(--text-primary) !important;
     border: 1px solid var(--border-strong) !important;
     border-radius: 6px !important;
     padding: 5px 10px !important;
     font-size: 12px !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,.5) !important;
+    box-shadow: 0 2px 8px {{ 'rgba(90,60,30,.25)' if dv_earth else 'rgba(0,0,0,.5)' }} !important;
     white-space: nowrap !important;
 }
 .dist-tooltip::before { display:none !important; }
 .mapa-hint {
     position: absolute; bottom: 10px; left: 10px; z-index: 999;
-    background: rgba(19,19,22,.92); border: 1px solid var(--border-strong); border-radius: 8px;
+    background: {{ 'rgba(255,255,255,0.95)' if dv_earth else 'rgba(19,19,22,.92)' }}; border: 1px solid var(--border-strong); border-radius: 8px;
     padding: 5px 10px; font-size: 11px; color: var(--text-secondary);
     box-shadow: 0 1px 4px rgba(0,0,0,.35); pointer-events: none;
     display: flex; align-items: center; gap: 5px;
@@ -895,14 +899,16 @@ function proySetBasis(btn, basis) {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script>
-// Chart.js en tema oscuro: texto/ejes/leyendas claros, grilla sutil.
+var DV_EARTH = {{ 'true' if dv_earth else 'false' }};
+// Chart.js: tema oscuro (texto/ejes claros, grilla sutil) o tema tierra
+// (fondo blanco -- ejes/texto oscuros, grilla suave color arena).
 if (window.Chart) {
-    Chart.defaults.color = 'rgba(242,240,236,0.75)';
-    Chart.defaults.borderColor = 'rgba(255,255,255,0.08)';
-    Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(10,10,11,0.95)';
-    Chart.defaults.plugins.tooltip.titleColor = '#F2F0EC';
-    Chart.defaults.plugins.tooltip.bodyColor = '#F2F0EC';
-    Chart.defaults.plugins.tooltip.borderColor = 'rgba(255,255,255,0.12)';
+    Chart.defaults.color = DV_EARTH ? 'rgba(58,40,28,0.72)' : 'rgba(242,240,236,0.75)';
+    Chart.defaults.borderColor = DV_EARTH ? 'rgba(90,60,30,0.12)' : 'rgba(255,255,255,0.08)';
+    Chart.defaults.plugins.tooltip.backgroundColor = DV_EARTH ? 'rgba(255,255,255,0.97)' : 'rgba(10,10,11,0.95)';
+    Chart.defaults.plugins.tooltip.titleColor = DV_EARTH ? '#3A281C' : '#F2F0EC';
+    Chart.defaults.plugins.tooltip.bodyColor = DV_EARTH ? '#3A281C' : '#F2F0EC';
+    Chart.defaults.plugins.tooltip.borderColor = DV_EARTH ? 'rgba(90,60,30,0.18)' : 'rgba(255,255,255,0.12)';
     Chart.defaults.plugins.tooltip.borderWidth = 1;
 }
 
@@ -975,7 +981,7 @@ function dvSeguirPdfSSE() {
 // ── Colores de gráficas listos para imprimir (fondo blanco en PDF) ─
 var _dvCharts = [];
 var _dvPrintMode = false;
-var _DV_COLOR_SCREEN = 'rgba(242,240,236,0.75)';
+var _DV_COLOR_SCREEN = DV_EARTH ? 'rgba(58,40,28,0.72)' : 'rgba(242,240,236,0.75)';
 var _DV_COLOR_PRINT  = '#333333';
 
 function _dvSetChartPrintMode(isPrint) {
@@ -1037,14 +1043,18 @@ function switchTab(name, btn) {
     }
 })();
 
-const ORANGE = '#f97316', BLUE = '#0066CC', GREEN = '#10b981', PURPLE = '#8b5cf6',
-      ORANGE20 = '#f9731620', BLUE20 = '#0066CC20';
+const ORANGE = '#f97316', BLUE = DV_EARTH ? '#8B5A3C' : '#0066CC', GREEN = '#10b981', PURPLE = '#8b5cf6',
+      ORANGE20 = '#f9731620', BLUE20 = DV_EARTH ? '#8B5A3C20' : '#0066CC20';
+const DV_DONUT_BORDER = DV_EARTH ? '#FFFFFF' : '#1B1B1F';
+const DV_PALETTE = DV_EARTH
+    ? ['#8B5A3C','#B37A4F','#6B4634','#A8721E','#D2BC96','#6E8C42','#A8402A','#8A7561','#3A281C']
+    : ['#f97316','#0066CC','#10b981','#8b5cf6','#f59e0b','#14b8a6','#ef4444','#94a3b8','#64748b'];
 
 const chartDefaults = {
     maintainAspectRatio: false,
     plugins: { legend: { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } },
     scales: {
-        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.08)' }, ticks: { font: { size: 11 } } },
+        y: { beginAtZero: true, grid: { color: DV_EARTH ? 'rgba(90,60,30,0.12)' : 'rgba(255,255,255,0.08)' }, ticks: { font: { size: 11 } } },
         x: { grid: { display: false }, ticks: { font: { size: 11 } } }
     }
 };
@@ -1071,13 +1081,12 @@ if (trendLima.length) {
 // ── Donut Velocidad Planes ───────────────────────────────
 const velData = {{ vel_planes | tojson }};
 if (velData.length) {
-    const velColors = ['#f97316','#0066CC','#10b981','#8b5cf6','#f59e0b','#14b8a6','#ef4444','#94a3b8','#64748b'];
     _dvCharts.push(new Chart(document.getElementById('chartVelocidad'), {
         type: 'doughnut',
         data: {
             labels: velData.map(v => v.velocidad + ' Mbps'),
             datasets: [{ data: velData.map(v => v.altas),
-                         backgroundColor: velColors, borderWidth: 2, borderColor: '#1B1B1F' }]
+                         backgroundColor: DV_PALETTE, borderWidth: 2, borderColor: DV_DONUT_BORDER }]
         },
         options: {
             maintainAspectRatio: false,
@@ -1090,7 +1099,6 @@ if (velData.length) {
 // ── Donut Zona KML ───────────────────────────────────────
 const zonasData = {{ loc_zonas | tojson }};
 if (zonasData.length) {
-    const colors = ['#0066CC','#8b5cf6','#ef4444','#f97316','#10b981','#14b8a6','#f59e0b'];
     const zonaDonutEl = document.getElementById('zonaDonut');
     if (zonaDonutEl) {
         new Chart(zonaDonutEl, {
@@ -1098,7 +1106,7 @@ if (zonasData.length) {
             data: {
                 labels: zonasData.map(z => z.zona),
                 datasets: [{ data: zonasData.map(z => z.cnt),
-                             backgroundColor: colors, borderWidth: 2, borderColor: '#1B1B1F' }]
+                             backgroundColor: DV_PALETTE, borderWidth: 2, borderColor: DV_DONUT_BORDER }]
             },
             options: {
                 maintainAspectRatio: false,
