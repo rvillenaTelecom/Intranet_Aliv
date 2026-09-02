@@ -815,14 +815,26 @@ def _call_tool(name: str, args: dict):
         return {"error": str(e)}
 
 
+_CLAUDE_MODEL = "claude-sonnet-5"
+
+_ANTHROPIC_TOOLS = [
+    {
+        "name": t["name"],
+        "description": t["description"],
+        "input_schema": t["parameters"],
+    }
+    for t in _TOOL_DECLARATIONS
+]
+
+
 def _get_client():
     global _client
     if _client is None:
-        from google import genai
-        key = os.environ.get("GEMINI_API_KEY", "")
+        import anthropic
+        key = os.environ.get("ANTHROPIC_API_KEY", "")
         if not key:
-            raise RuntimeError("GEMINI_API_KEY no está configurada.")
-        _client = genai.Client(api_key=key)
+            raise RuntimeError("ANTHROPIC_API_KEY no está configurada.")
+        _client = anthropic.Anthropic(api_key=key)
     return _client
 
 
@@ -831,74 +843,49 @@ def generate_chat_response(messages: list, user_role: str = "", user_name: str =
     messages: [{"role": "user"/"assistant", "content": "..."}]
     Retorna el texto de respuesta del asistente.
     """
-    from google import genai
-    from google.genai import types
-
     client = _get_client()
-
-    contents = []
-    for m in messages:
-        role = "user" if m["role"] == "user" else "model"
-        contents.append(types.Content(role=role, parts=[types.Part(text=m["content"])]))
-
-    fn_decls = [
-        types.FunctionDeclaration(
-            name=t["name"],
-            description=t["description"],
-            parameters=t["parameters"],
-        )
-        for t in _TOOL_DECLARATIONS
-    ]
-    tool = types.Tool(function_declarations=fn_decls)
 
     system = SYSTEM_PROMPT
     if user_name:
         system += f"\nEl usuario que consulta se llama **{user_name}** y tiene el rol '{user_role}'."
 
-    config = types.GenerateContentConfig(
-        system_instruction=system,
-        tools=[tool],
-        tool_config=types.ToolConfig(
-            function_calling_config=types.FunctionCallingConfig(mode="AUTO")
-        ),
-        temperature=0.4,
-    )
+    convo = [{"role": m["role"], "content": m["content"]} for m in messages]
 
-    loop_contents = list(contents)
     for _ in range(8):
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=loop_contents,
-            config=config,
+        response = client.messages.create(
+            model=_CLAUDE_MODEL,
+            max_tokens=4096,
+            system=system,
+            messages=convo,
+            tools=_ANTHROPIC_TOOLS,
+            temperature=0.4,
         )
 
-        parts = response.candidates[0].content.parts
-        fn_calls = [p for p in parts if p.function_call]
+        tool_uses = [b for b in response.content if b.type == "tool_use"]
 
-        if not fn_calls:
-            return response.text or "No pude generar una respuesta. Intenta de nuevo."
+        if response.stop_reason != "tool_use" or not tool_uses:
+            text = "".join(b.text for b in response.content if b.type == "text")
+            return text or "No pude generar una respuesta. Intenta de nuevo."
 
-        loop_contents.append(types.Content(role="model", parts=parts))
+        convo.append({"role": "assistant", "content": response.content})
 
-        fn_results = [None] * len(fn_calls)
-        with ThreadPoolExecutor(max_workers=len(fn_calls)) as executor:
+        results = [None] * len(tool_uses)
+        with ThreadPoolExecutor(max_workers=len(tool_uses)) as executor:
             future_to_idx = {
-                executor.submit(_call_tool, p.function_call.name, dict(p.function_call.args)): i
-                for i, p in enumerate(fn_calls)
+                executor.submit(_call_tool, b.name, b.input): i
+                for i, b in enumerate(tool_uses)
             }
             for future in as_completed(future_to_idx):
                 i = future_to_idx[future]
-                fc = fn_calls[i].function_call
                 try:
                     result = future.result()
                 except Exception as e:
                     result = {"error": str(e)}
-                fn_results[i] = types.Part(
-                    function_response=types.FunctionResponse(
-                        name=fc.name,
-                        response={"result": json.dumps(result, ensure_ascii=False, default=str)},
-                    )
-                )
-        loop_contents.append(types.Content(role="user", parts=fn_results))
+                results[i] = {
+                    "type": "tool_result",
+                    "tool_use_id": tool_uses[i].id,
+                    "content": json.dumps(result, ensure_ascii=False, default=str),
+                }
+        convo.append({"role": "user", "content": results})
 
     return "No pude completar la consulta. Por favor intenta de nuevo."
