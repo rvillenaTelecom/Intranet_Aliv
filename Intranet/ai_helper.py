@@ -827,13 +827,23 @@ _ANTHROPIC_TOOLS = [
 ]
 
 
+# El plan es migrar a Claude, pero se pidió explícitamente quedarse en
+# Gemini por ahora (reunión importante al día siguiente, no arriesgar con
+# el proveedor nuevo recién probado) -- volver a poner en False cuando
+# pidan activar Claude de nuevo. El código de Claude no se toca, solo se
+# ignora mientras esto sea False.
+_PREFER_CLAUDE = False
+
+
 def active_provider() -> str:
-    """'claude' si hay ANTHROPIC_API_KEY (se prefiere una vez configurada),
-    si no 'gemini' mientras se termina de migrar, si no '' (nada configurado)."""
-    if os.environ.get("ANTHROPIC_API_KEY", ""):
+    """'claude' si hay ANTHROPIC_API_KEY Y _PREFER_CLAUDE está activo,
+    si no 'gemini' mientras tanto, si no '' (nada configurado)."""
+    if _PREFER_CLAUDE and os.environ.get("ANTHROPIC_API_KEY", ""):
         return "claude"
     if os.environ.get("GEMINI_API_KEY", ""):
         return "gemini"
+    if os.environ.get("ANTHROPIC_API_KEY", ""):
+        return "claude"
     return ""
 
 
