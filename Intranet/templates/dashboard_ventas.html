@@ -46,6 +46,13 @@
     font-size: 12px; color: var(--text-secondary); background: var(--bg-inset);
     padding: 4px 10px; border-radius: 20px; font-weight: 600;
 }
+.dv-tgl { display: inline-flex; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
+.dv-tgl-btn {
+    padding: 6px 12px; font-size: 13px; font-weight: 600; border: none; cursor: pointer;
+    background: var(--bg-main); color: var(--text-secondary); transition: background .15s, color .15s;
+}
+.dv-tgl-btn.active { background: var(--brand); color: var(--on-brand); }
+.dv-tgl.disabled { opacity: .4; pointer-events: none; }
 .btn-print, .btn-reporte-diario {
     padding: 7px 16px; background: var(--bg-inset); color: var(--text-primary);
     border: 1px solid var(--border-strong); border-radius: 7px; font-size: 13px; font-weight: 600;
@@ -295,8 +302,14 @@
                 <input type="hidden" name="area" value="{{ area }}">
                 {% if agencia %}<input type="hidden" name="agencia" value="{{ agencia }}">{% endif %}
                 {% endif %}
+                <span class="filter-label">Corte:</span>
+                <input type="hidden" name="ref" id="refInput" value="{{ ref }}">
+                <div class="dv-tgl {% if dia_actual %}disabled{% endif %}" id="dvCorteTgl">
+                    <button type="button" class="dv-tgl-btn {% if ref == 'ayer' %}active{% endif %}" onclick="dvSetRefFilter('ayer')">Ayer</button>
+                    <button type="button" class="dv-tgl-btn {% if ref != 'ayer' %}active{% endif %}" onclick="dvSetRefFilter('hoy')">Hoy</button>
+                </div>
                 <span class="filter-label">Día:</span>
-                <select name="dia" class="fsel" style="min-width:70px;">
+                <select name="dia" class="fsel" style="min-width:70px;" onchange="dvToggleCorteState(this)">
                     <option value="0" {% if not dia_actual %}selected{% endif %}>Todos</option>
                     {% for d in range(1, 32) %}
                     <option value="{{ d }}" {% if dia_actual == d %}selected{% endif %}>{{ d }}</option>
@@ -315,7 +328,7 @@
             </form>
             <span class="period-badge">
                 <i class="fa-solid fa-calendar-days"></i>
-                {% if dia_actual %}Día {{ dia_actual }} · {% endif %}{{ mes_nombre }} {{ anio_actual }}
+                {% if dia_actual %}Día {{ dia_actual }} ·{% elif ref == 'ayer' %}Cierre de ayer ·{% else %}Hoy en vivo ·{% endif %} {{ mes_nombre }} {{ anio_actual }}
                 <span style="margin-left:6px; opacity:0.7;">· Base {{ base_dias }}d</span>
                 {% if agencia %}<span style="margin-left:6px; opacity:0.7;">· {{ 'Aliv directo' if agencia == 'Aliv' else 'Subagencias' }}</span>{% endif %}
             </span>
@@ -542,6 +555,13 @@ function proyResetDias(btn) {
     var block = btn.closest('.proy-cuota-block');
     block.querySelector('.proy-dias-input').value = block.dataset.diasDefault;
     proyRecalc(block);
+}
+function dvSetRefFilter(r) {
+    document.getElementById('refInput').value = r;
+    document.getElementById('refInput').closest('form').submit();
+}
+function dvToggleCorteState(sel) {
+    document.getElementById('dvCorteTgl').classList.toggle('disabled', sel.value !== '0');
 }
 function proySetBasis(btn, basis) {
     var block = btn.closest('.proy-cuota-block');

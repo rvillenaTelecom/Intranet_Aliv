@@ -327,7 +327,14 @@ def dashboard_ventas():
         _agencia  = request.args.get('agencia', '')
         agencia   = _agencia if _agencia in ('Aliv', 'Sub') else ''
     _dia      = request.args.get('dia', 0, type=int)
-    dia       = _dia if _dia and 1 <= _dia <= 31 else None
+    dia_pick  = _dia if _dia and 1 <= _dia <= 31 else None
+    _ref      = request.args.get('ref', 'hoy')
+    ref       = _ref if _ref in ('hoy', 'ayer') else 'hoy'
+    dia = dia_pick
+    if dia is None and ref == 'ayer':
+        _fecha_ayer_ref = datetime.now() - timedelta(days=1)
+        if mes == _fecha_ayer_ref.month and anio == _fecha_ayer_ref.year:
+            dia = _fecha_ayer_ref.day
     _base     = request.args.get('base', 30, type=int)
     base_dias = _base if _base in range(25, 32) else 30
 
@@ -379,8 +386,8 @@ def dashboard_ventas():
                            user=session['name'], role=session['role'],
                            mes_actual=mes, anio_actual=anio,
                            mes_nombre=mes_nombre, meses=meses, anios=anios,
-                           area=area, agencia=agencia, dia_actual=dia or 0, base_dias=base_dias,
-                           fecha_cierre=fecha_cierre,
+                           area=area, agencia=agencia, dia_actual=dia_pick or 0, base_dias=base_dias,
+                           ref=ref, fecha_cierre=fecha_cierre,
                            pivot_agencia_cierre=db_data.get('pivot_agencia_cierre'),
                            kpi_lima=db_data.get('kpi_lima'),
                            trend_lima=db_data.get('trend_lima'),
