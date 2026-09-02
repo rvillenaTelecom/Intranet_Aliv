@@ -378,7 +378,11 @@ def dashboard_ventas():
                 except Exception as e:
                     print(f"[dashboard] {name}: {e}")
                     db_data[name] = None
-        _cache_set(cache_key, db_data)
+        # Un hipo pasajero de conexion (varias consultas corren en paralelo y
+        # Azure a veces tira una) no debe quedar pegado 5 minutos en cache --
+        # solo se cachea si la consulta principal (kpi_lima) sí trajo datos.
+        if db_data.get('kpi_lima') is not None:
+            _cache_set(cache_key, db_data)
 
     loc_lima = db_data.get('loc_lima')
     fecha_cierre = (datetime.now() - timedelta(days=1)).strftime('%d/%m/%Y')
