@@ -973,6 +973,9 @@ function proySetBasis(btn, basis) {
                     <th>Condominio/Edificio</th>
                     {% endif %}
                     <th>Dirección</th><th>Distrito</th>
+                    {% if not (area == 'Horizontal' and agencia == 'Aliv') %}
+                    <th>Agencia</th>
+                    {% endif %}
                 </tr>
             </thead>
             <tbody id="regBodyLima"></tbody>
@@ -1068,6 +1071,9 @@ function proySetBasis(btn, basis) {
                     <th>Condominio/Edificio</th>
                     {% endif %}
                     <th>Dirección</th><th>Distrito</th>
+                    {% if not (area == 'Horizontal' and agencia == 'Aliv') %}
+                    <th>Agencia</th>
+                    {% endif %}
                 </tr>
             </thead>
             <tbody id="regBodyLoc"></tbody>
@@ -1087,6 +1093,7 @@ var DV_EARTH = {{ 'true' if dv_earth else 'false' }};
 const DV_MES = {{ mes_actual }}, DV_ANIO = {{ anio_actual }};
 const DV_AREA = {{ area | tojson }}, DV_AGENCIA = {{ agencia | tojson }};
 const DV_IS_HORIZONTAL = DV_AREA === 'Horizontal';
+const DV_SHOW_AGENCIA_COL = !(DV_AREA === 'Horizontal' && DV_AGENCIA === 'Aliv');
 
 function descargarRegistrosExcel(docId, canalId, distId) {
     const params = new URLSearchParams({ mes: DV_MES, anio: DV_ANIO, area: DV_AREA, agencia: DV_AGENCIA });
@@ -1343,7 +1350,8 @@ function buildRegistrosTable(tbodyId, countId, doc, canal, distrito) {
     if (countEl) countEl.textContent = rows.length.toLocaleString();
 
     if (!rows.length) {
-        tbody.innerHTML = '<tr><td colspan="' + (DV_IS_HORIZONTAL ? 11 : 10) + '" style="text-align:center; color:var(--text-light); padding:16px;">Sin registros para este filtro.</td></tr>';
+        const nCols = (DV_IS_HORIZONTAL ? 11 : 10) + (DV_SHOW_AGENCIA_COL ? 1 : 0);
+        tbody.innerHTML = '<tr><td colspan="' + nCols + '" style="text-align:center; color:var(--text-light); padding:16px;">Sin registros para este filtro.</td></tr>';
         return;
     }
     tbody.innerHTML = rows.slice(0, 300).map(r => `
@@ -1360,6 +1368,7 @@ function buildRegistrosTable(tbodyId, countId, doc, canal, distrito) {
                 : `<td>${_regEsc(r.condominio) || '—'}</td>`}
             <td>${_regEsc(r.direccion) || '—'}</td>
             <td>${_regEsc(r.distrito) || '—'}</td>
+            ${DV_SHOW_AGENCIA_COL ? `<td>${_regEsc(r.agencia) || '—'}</td>` : ''}
         </tr>
     `).join('');
 }
