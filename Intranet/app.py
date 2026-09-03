@@ -1143,6 +1143,10 @@ def reporte_gerente():
     pivot_sub = db_helper.get_pivot_subagencias_lima(mes, anio, dia=dia, cumul=_cumul)
     anios = list(range(2024, datetime.now().year + 2))
 
+    # Serie diaria de altas del mes (para "Plan semana a semana" del panel de cuota).
+    trend_v = db_helper.get_daily_trend_lima(mes, anio, area='Vertical')
+    trend_h = db_helper.get_daily_trend_lima(mes, anio, area='Horizontal')
+
     # Instalaciones del día: si hay un Día específico elegido, la vista operativa
     # se mueve a ese día del mes/año filtrado; si no, sigue el corte Ayer/Hoy real.
     if dia_pick:
@@ -1170,6 +1174,7 @@ def reporte_gerente():
         planes_merged=planes_merged,
         top_distritos=top_distritos,
         pivot_sub=pivot_sub,
+        trend_v=trend_v, trend_h=trend_h,
         activaciones_hoy=activaciones_hoy, fecha_avance=fecha_avance, avance_label=avance_label,
         generado=datetime.now().strftime('%d/%m/%Y %H:%M'),
     )

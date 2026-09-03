@@ -447,7 +447,8 @@
 {% if k.cuota %}
 <div class="panel proy-cuota-block" style="margin-bottom:20px;"
      data-cuota="{{ k.cuota }}" data-altas-ayer="{{ k.altas_ayer }}" data-altas-hoy="{{ k.altas }}"
-     data-conversion="{{ k.conversion_ayer }}" data-dias-default="{{ k.dias_rest_incl_hoy }}" data-basis="ayer">
+     data-conversion="{{ k.conversion_ayer }}" data-dias-default="{{ k.dias_rest_incl_hoy }}" data-basis="ayer"
+     data-mes="{{ mes_actual }}" data-anio="{{ anio_actual }}" data-dias-totales="{{ k.dias_tot }}">
     <div class="panel-title"><i class="fa-solid fa-bullseye"></i> ¿Qué necesito para llegar a la cuota?</div>
     <div style="font-size:12px; color:var(--text-secondary); margin:-6px 0 12px;">
         Conversión a cierre de ayer: <b style="color:var(--text-primary);">{{ k.conversion_ayer }}%</b>
@@ -513,9 +514,97 @@
         Por defecto todo se calcula con el cierre de ayer (hoy todavía está a medio registrar/ejecutar en WinForce) — hoy es el primer día disponible para cerrar esa brecha, por eso "días restantes" sí lo incluye. Cambia a "Hoy" para ver el acumulado en vivo, ajusta "Días restantes" a mano si un día pesa menos (ej. domingo), o cambia el % de la meta adicional.
         {% if k.ventas_nec_100 is none %}Aún no hay ventas registradas este mes para calcular la conversión.{% endif %}
     </div>
+    <div style="margin-top:18px; padding-top:14px; border-top:1px solid var(--border);">
+        <div style="font-size:12px; font-weight:700; color:var(--text-primary); margin-bottom:10px; text-transform:uppercase; letter-spacing:0.3px;">
+            Plan semana a semana <span class="proy-weekly-objetivo" style="font-weight:400; color:var(--text-secondary); text-transform:none;"></span>
+        </div>
+        <div class="proy-weekly-row" style="display:flex; gap:10px; flex-wrap:wrap;"></div>
+    </div>
 </div>
 <script>
 function proyFmt(n) { return Math.round(n).toLocaleString('en-US'); }
+
+var PROY_MESES_CORTOS = ['', 'ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+
+function proyWeeksOfMonth(mes, anio) {
+    var daysInMonth = new Date(anio, mes, 0).getDate();
+    var weeks = [];
+    var day = 1;
+    while (day <= daysInMonth) {
+        var dow = new Date(anio, mes - 1, day).getDay(); // 0=Dom..6=Sab
+        var isoDow = dow === 0 ? 7 : dow; // 1=Lun..7=Dom
+        var end = Math.min(day + (7 - isoDow), daysInMonth);
+        weeks.push({ start: day, end: end });
+        day = end + 1;
+    }
+    return weeks;
+}
+
+function proyBuildWeekly(block, targetCuota, cutoffDay) {
+    var row = block.querySelector('.proy-weekly-row');
+    var objLbl = block.querySelector('.proy-weekly-objetivo');
+    if (!row) return;
+    var mes = parseInt(block.dataset.mes, 10);
+    var anio = parseInt(block.dataset.anio, 10);
+    if (!mes || !anio || !(typeof trendLima !== 'undefined')) { row.innerHTML = ''; return; }
+
+    var altasPorDia = {};
+    trendLima.forEach(function (d) { altasPorDia[d.dia] = parseFloat(d.altas) || 0; });
+
+    var weeks = proyWeeksOfMonth(mes, anio);
+    var virtualCum = 0;
+    var cards = [];
+
+    weeks.forEach(function (w, i) {
+        if (w.start <= cutoffDay) {
+            var fEnd = Math.min(w.end, cutoffDay);
+            var real = 0;
+            for (var d = w.start; d <= fEnd; d++) real += (altasPorDia[d] || 0);
+            virtualCum += real;
+            var isPast = w.end <= cutoffDay;
+            cards.push({
+                header: 'Sem ' + (i + 1) + ' (' + (isPast ? 'ya pasó' : 'en curso') + ')',
+                value: proyFmt(real),
+                sub: isPast ? 'Real' : 'Actual',
+                current: !isPast, past: isPast
+            });
+        } else {
+            var remaining = Math.max(targetCuota - virtualCum, 0);
+            var futureDaysTotal = 0;
+            for (var j = i; j < weeks.length; j++) {
+                if (weeks[j].start > cutoffDay) futureDaysTotal += (weeks[j].end - weeks[j].start + 1);
+            }
+            var daysInWeek = w.end - w.start + 1;
+            var needed = (i === weeks.length - 1 || futureDaysTotal === 0)
+                ? remaining
+                : Math.round(remaining * daysInWeek / futureDaysTotal);
+            needed = Math.max(needed, 0);
+            virtualCum += needed;
+            var extra = '';
+            if (w.start <= 15 && 15 <= w.end) extra = 'quincena';
+            else if (i === weeks.length - 1) extra = 'cierre';
+            cards.push({
+                header: 'Sem ' + (i + 1) + ' · ' + w.start + '-' + w.end + ' ' + PROY_MESES_CORTOS[mes],
+                value: '+' + proyFmt(needed),
+                sub: 'Meta: ' + proyFmt(virtualCum) + ' total' + (extra ? ' · ' + extra : ''),
+                current: false, past: false
+            });
+        }
+    });
+
+    row.innerHTML = cards.map(function (c) {
+        var border = c.current ? '1.5px solid var(--primary)' : '1px solid var(--border)';
+        var bg = c.past ? 'var(--bg-inset)' : 'var(--bg-card-hover)';
+        var valColor = c.past ? 'var(--text-light)' : 'var(--primary)';
+        return '<div style="flex:1; min-width:110px; border:' + border + '; border-radius:10px; padding:10px 8px; text-align:center; background:' + bg + ';">' +
+            '<div style="font-size:10.5px; color:var(--text-secondary); margin-bottom:6px;">' + c.header + '</div>' +
+            '<div style="font-size:21px; font-weight:800; color:' + valColor + ';">' + c.value + '</div>' +
+            '<div style="font-size:10px; color:var(--text-secondary); margin-top:4px;">' + c.sub + '</div>' +
+        '</div>';
+    }).join('');
+
+    if (objLbl) objLbl.textContent = '(objetivo: ' + proyFmt(targetCuota) + ')';
+}
 
 function proyRecalc(block) {
     var dias = parseFloat(block.querySelector('.proy-dias-input').value);
@@ -559,6 +648,14 @@ function proyRecalc(block) {
         block.querySelector('.proy-altas-extra').textContent = altasNecExtra.toFixed(1);
         block.querySelector('.proy-ventas-extra').textContent = (ventasNecExtra !== null && isFinite(ventasNecExtra)) ? ventasNecExtra.toFixed(1) : '—';
     }
+
+    // Plan semana a semana -- mismo objetivo activo (meta adicional si está
+    // prendida, si no la cuota 100%) y mismo "días restantes" para decidir
+    // qué semanas ya cerraron vs cuáles todavía necesitan una meta.
+    var diasTotales = parseFloat(block.dataset.diasTotales) || 0;
+    var cutoffDay = diasTotales - dias;
+    var targetCuota = extraOn ? Math.round(cuota * (parseFloat(block.querySelector('.proy-extra-pct').value) || 100) / 100) : cuota;
+    proyBuildWeekly(block, targetCuota, cutoffDay);
 }
 function proyResetDias(btn) {
     var block = btn.closest('.proy-cuota-block');
@@ -1061,6 +1158,7 @@ const chartDefaults = {
 
 // ── Gráfica diaria Lima ──────────────────────────────────
 const trendLima = {{ trend_lima | tojson }};
+document.querySelectorAll('.proy-cuota-block').forEach(function (b) { proyRecalc(b); });
 if (trendLima.length) {
     _dvCharts.push(new Chart(document.getElementById('chartLima'), {
         type: 'bar',
