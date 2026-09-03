@@ -249,6 +249,7 @@ _LOCKED_ROLE_ALLOWED_ENDPOINTS = {
     'static', 'login', 'logout', 'root',
     'dashboard_ventas', 'reporte_gerente',
     'lima_distritos_geo', 'api_chat',
+    'api_registros_lima_excel',
 }
 # resumen-tabla/proyeccion-cierre devuelven el consolidado Vertical+Horizontal
 # (para el toggle interno de Ejecutivo) — no deben quedar accesibles por URL
@@ -412,6 +413,70 @@ def dashboard_ventas():
                            puntos_mapa=db_data.get('puntos_mapa'),
                            registros_lima=db_data.get('registros_lima') or [],
                            pivot_agencia=db_data.get('pivot_agencia'))
+
+
+@app.route('/api/dashboard/registros-lima/excel')
+@login_required
+def api_registros_lima_excel():
+    """Excel de la tabla 'Registros -- Detalle de clientes' de Localización/Lima,
+    respetando el mismo filtro (mes/año/área/agencia/documento/condominio/distrito)
+    que el usuario tenía aplicado en pantalla."""
+    import io
+    import pandas as pd
+
+    mes  = request.args.get('mes',  datetime.now().month, type=int)
+    anio = request.args.get('anio', datetime.now().year,  type=int)
+    _scope = ROLE_SCOPE.get(session['role'])
+    if _scope:
+        area, agencia = _scope['area'], _scope['agencia']
+    else:
+        area     = request.args.get('area', '')
+        _agencia = request.args.get('agencia', '')
+        agencia  = _agencia if _agencia in ('Aliv', 'Sub') else ''
+
+    doc        = request.args.get('doc', '').strip().lower()
+    condominio = request.args.get('condominio', '').strip().lower()
+    distrito   = request.args.get('distrito', '').strip()
+
+    try:
+        rows = db_helper.get_registros_lima(mes, anio, area=area, agencia_grupo=agencia)
+        if distrito:
+            rows = [r for r in rows if r.get('distrito') == distrito]
+        if doc:
+            rows = [r for r in rows if doc in str(r.get('doc', '')).lower()
+                                     or doc in str(r.get('telefono', '')).lower()]
+        if condominio:
+            rows = [r for r in rows if condominio in str(r.get('condominio', '')).lower()]
+
+        if not rows:
+            return jsonify({'error': 'Sin datos para exportar'}), 404
+
+        col_names = {
+            'doc': 'Doc. cliente', 'cliente': 'Cliente', 'telefono': 'Teléfono',
+            'fecha_registro': 'F. Registro', 'fecha_programacion': 'F. Programación',
+            'estado_orden': 'Estado orden', 'estado_pedido': 'Estado pedido',
+            'condominio': 'Condominio/Edificio', 'direccion': 'Dirección', 'distrito': 'Distrito',
+        }
+        df = pd.DataFrame(rows).rename(columns=col_names)
+        buf = io.BytesIO()
+        with pd.ExcelWriter(buf, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='Registros')
+            ws = writer.sheets['Registros']
+            for col in ws.columns:
+                max_len = max((len(str(c.value or '')) for c in col), default=10)
+                ws.column_dimensions[col[0].column_letter].width = min(max_len + 2, 40)
+
+        buf.seek(0)
+        fname = f"registros_lima_{area or 'todos'}_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
+        return Response(
+            buf.getvalue(),
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            headers={'Content-Disposition': f'attachment; filename="{fname}"'}
+        )
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
 
 @app.route('/ventas')
 @login_required

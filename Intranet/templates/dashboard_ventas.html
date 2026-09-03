@@ -941,7 +941,12 @@ function proySetBasis(btn, basis) {
 
 <!-- Registros individuales — mismo dataset que Localización, filtros propios -->
 <div class="panel mb16">
-    <div class="panel-title"><i class="fa-solid fa-table-list"></i> Registros — Detalle de clientes</div>
+    <div class="panel-title" style="display:flex; align-items:center; justify-content:space-between;">
+        <span><i class="fa-solid fa-table-list"></i> Registros — Detalle de clientes</span>
+        <button type="button" class="btn btn-outline" style="font-size:11px; padding:4px 10px;" onclick="descargarRegistrosExcel('docSearchLima','condSearchLima','')">
+            <i class="fa-solid fa-file-excel"></i> Descargar Excel
+        </button>
+    </div>
     <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:10px;">
         <span class="filter-label">Documento:</span>
         <input id="docSearchLima" type="text" class="fsel" placeholder="N° doc o teléfono…" style="min-width:150px;" autocomplete="off">
@@ -1031,10 +1036,15 @@ function proySetBasis(btn, basis) {
 
 <!-- Registros individuales — filtrado por Distrito/Dirección/Documento/Condominio de arriba -->
 <div class="panel mb16" style="margin-top:16px;">
-    <div class="panel-title"><i class="fa-solid fa-table-list"></i> Registros — Detalle de clientes
-        <span id="regStatsLoc" style="font-size:11px; font-weight:400; color:var(--text-secondary); margin-left:8px;">
-            <b id="regCountLoc" style="color:var(--primary);">—</b> registros
+    <div class="panel-title" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+        <span><i class="fa-solid fa-table-list"></i> Registros — Detalle de clientes
+            <span id="regStatsLoc" style="font-size:11px; font-weight:400; color:var(--text-secondary); margin-left:8px;">
+                <b id="regCountLoc" style="color:var(--primary);">—</b> registros
+            </span>
         </span>
+        <button type="button" class="btn btn-outline" style="font-size:11px; padding:4px 10px;" onclick="descargarRegistrosExcel('docSearchLoc','condSearchLoc','distritoFilter')">
+            <i class="fa-solid fa-file-excel"></i> Descargar Excel
+        </button>
     </div>
     <div class="tbl-scroll-v" style="max-height:360px;">
         <table class="data-table" style="min-width:920px;">
@@ -1059,6 +1069,19 @@ function proySetBasis(btn, basis) {
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script>
 var DV_EARTH = {{ 'true' if dv_earth else 'false' }};
+const DV_MES = {{ mes_actual }}, DV_ANIO = {{ anio_actual }};
+const DV_AREA = {{ area | tojson }}, DV_AGENCIA = {{ agencia | tojson }};
+
+function descargarRegistrosExcel(docId, condId, distId) {
+    const params = new URLSearchParams({ mes: DV_MES, anio: DV_ANIO, area: DV_AREA, agencia: DV_AGENCIA });
+    const doc  = docId  ? (document.getElementById(docId)  || {}).value : '';
+    const cond = condId ? (document.getElementById(condId) || {}).value : '';
+    const dist = distId ? (document.getElementById(distId) || {}).value : '';
+    if (doc)  params.set('doc', doc);
+    if (cond) params.set('condominio', cond);
+    if (dist) params.set('distrito', dist);
+    window.location.href = '/api/dashboard/registros-lima/excel?' + params.toString();
+}
 // Chart.js: tema oscuro (texto/ejes claros, grilla sutil) o tema tierra
 // (fondo blanco -- ejes/texto oscuros, grilla suave color arena).
 if (window.Chart) {
