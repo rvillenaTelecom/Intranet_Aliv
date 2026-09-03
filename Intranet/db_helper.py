@@ -1720,6 +1720,8 @@ def get_registros_lima(mes, anio, area='', agencia_grupo=''):
                 ISNULL([Estado orden], '')                AS estado_orden,
                 ISNULL([Estado del Pedido], '')           AS estado_pedido,
                 ISNULL([Condominio / Edificio], '')       AS condominio,
+                ISNULL(Piso, '')                          AS piso,
+                ISNULL([N° departamento], '')              AS departamento,
                 ISNULL([Dirección de Instalación], '')    AS direccion,
                 ISNULL(Distrito, '')                      AS distrito,
                 ISNULL(ua.agencia, '')                    AS agencia

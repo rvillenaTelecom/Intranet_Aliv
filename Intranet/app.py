@@ -455,8 +455,8 @@ def api_registros_lima_excel():
             'doc': 'Doc. cliente', 'cliente': 'Cliente', 'telefono': 'Teléfono',
             'fecha_registro': 'F. Registro', 'fecha_programacion': 'F. Programación',
             'estado_orden': 'Estado orden', 'estado_pedido': 'Estado pedido',
-            'condominio': 'Condominio/Edificio', 'direccion': 'Dirección', 'distrito': 'Distrito',
-            'agencia': 'Agencia',
+            'condominio': 'Condominio/Edificio', 'piso': 'Piso', 'departamento': 'N° departamento',
+            'direccion': 'Dirección', 'distrito': 'Distrito', 'agencia': 'Agencia',
         }
         df = pd.DataFrame(rows).rename(columns=col_names)
         buf = io.BytesIO()

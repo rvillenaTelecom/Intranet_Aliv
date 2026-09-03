@@ -967,7 +967,12 @@ function proySetBasis(btn, basis) {
                 <tr>
                     <th>Doc. cliente</th><th>Cliente</th><th>Teléfono</th><th>F. registro</th>
                     <th>F. programación</th><th>Estado orden</th><th>Estado pedido</th>
-                    <th>Condominio/Edificio</th><th>Dirección</th><th>Distrito</th>
+                    {% if area == 'Horizontal' %}
+                    <th>Piso</th><th>N° depto.</th>
+                    {% else %}
+                    <th>Condominio/Edificio</th>
+                    {% endif %}
+                    <th>Dirección</th><th>Distrito</th>
                 </tr>
             </thead>
             <tbody id="regBodyLima"></tbody>
@@ -1057,7 +1062,12 @@ function proySetBasis(btn, basis) {
                 <tr>
                     <th>Doc. cliente</th><th>Cliente</th><th>Teléfono</th><th>F. registro</th>
                     <th>F. programación</th><th>Estado orden</th><th>Estado pedido</th>
-                    <th>Condominio/Edificio</th><th>Dirección</th><th>Distrito</th>
+                    {% if area == 'Horizontal' %}
+                    <th>Piso</th><th>N° depto.</th>
+                    {% else %}
+                    <th>Condominio/Edificio</th>
+                    {% endif %}
+                    <th>Dirección</th><th>Distrito</th>
                 </tr>
             </thead>
             <tbody id="regBodyLoc"></tbody>
@@ -1076,6 +1086,7 @@ function proySetBasis(btn, basis) {
 var DV_EARTH = {{ 'true' if dv_earth else 'false' }};
 const DV_MES = {{ mes_actual }}, DV_ANIO = {{ anio_actual }};
 const DV_AREA = {{ area | tojson }}, DV_AGENCIA = {{ agencia | tojson }};
+const DV_IS_HORIZONTAL = DV_AREA === 'Horizontal';
 
 function descargarRegistrosExcel(docId, canalId, distId) {
     const params = new URLSearchParams({ mes: DV_MES, anio: DV_ANIO, area: DV_AREA, agencia: DV_AGENCIA });
@@ -1332,7 +1343,7 @@ function buildRegistrosTable(tbodyId, countId, doc, canal, distrito) {
     if (countEl) countEl.textContent = rows.length.toLocaleString();
 
     if (!rows.length) {
-        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color:var(--text-light); padding:16px;">Sin registros para este filtro.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="' + (DV_IS_HORIZONTAL ? 11 : 10) + '" style="text-align:center; color:var(--text-light); padding:16px;">Sin registros para este filtro.</td></tr>';
         return;
     }
     tbody.innerHTML = rows.slice(0, 300).map(r => `
@@ -1344,7 +1355,9 @@ function buildRegistrosTable(tbodyId, countId, doc, canal, distrito) {
             <td>${_regEsc(r.fecha_programacion) || '—'}</td>
             <td>${_regEsc(r.estado_orden) || '—'}</td>
             <td>${_regEsc(r.estado_pedido) || '—'}</td>
-            <td>${_regEsc(r.condominio) || '—'}</td>
+            ${DV_IS_HORIZONTAL
+                ? `<td>${_regEsc(r.piso) || '—'}</td><td>${_regEsc(r.departamento) || '—'}</td>`
+                : `<td>${_regEsc(r.condominio) || '—'}</td>`}
             <td>${_regEsc(r.direccion) || '—'}</td>
             <td>${_regEsc(r.distrito) || '—'}</td>
         </tr>
