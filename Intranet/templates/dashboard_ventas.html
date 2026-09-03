@@ -368,7 +368,7 @@
         <input id="dirSearch" type="text" class="fsel" placeholder="Buscar dirección o Geofinder…"
                style="min-width:220px;" autocomplete="off">
         <span class="filter-label">Documento:</span>
-        <input id="docSearchLoc" type="text" class="fsel" placeholder="N° doc cliente…"
+        <input id="docSearchLoc" type="text" class="fsel" placeholder="N° doc o teléfono…"
                style="min-width:150px;" autocomplete="off">
         <span class="filter-label">Condominio/Edificio:</span>
         <input id="condSearchLoc" type="text" class="fsel" placeholder="Nombre del condominio…"
@@ -944,7 +944,7 @@ function proySetBasis(btn, basis) {
     <div class="panel-title"><i class="fa-solid fa-table-list"></i> Registros — Detalle de clientes</div>
     <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:10px;">
         <span class="filter-label">Documento:</span>
-        <input id="docSearchLima" type="text" class="fsel" placeholder="N° doc cliente…" style="min-width:150px;" autocomplete="off">
+        <input id="docSearchLima" type="text" class="fsel" placeholder="N° doc o teléfono…" style="min-width:150px;" autocomplete="off">
         <span class="filter-label">Condominio/Edificio:</span>
         <input id="condSearchLima" type="text" class="fsel" placeholder="Nombre del condominio…" style="min-width:180px;" autocomplete="off">
         <span style="font-size:12px; color:var(--text-secondary); margin-left:4px;">
@@ -1296,7 +1296,9 @@ function buildRegistrosTable(tbodyId, countId, doc, cond, distrito) {
 
     let rows = registrosLima;
     if (distrito) rows = rows.filter(r => r.distrito === distrito);
-    if (doc)  rows = rows.filter(r => String(r.doc || '').toLowerCase().includes(doc));
+    if (doc)  rows = rows.filter(r =>
+        String(r.doc || '').toLowerCase().includes(doc) ||
+        String(r.telefono || '').toLowerCase().includes(doc));
     if (cond) rows = rows.filter(r => (r.condominio || '').toLowerCase().includes(cond));
 
     const countEl = document.getElementById(countId);
@@ -1551,7 +1553,9 @@ function initMapaLima() {
             (p.direccion || '').toLowerCase().includes(filterDir) ||
             (p.geofinder || '').toLowerCase().includes(filterDir));
         if (filterCond) pts = pts.filter(p => (p.condominio || '').toLowerCase().includes(filterCond));
-        if (filterDoc)  pts = pts.filter(p => String(p.doc || '').toLowerCase().includes(filterDoc));
+        if (filterDoc)  pts = pts.filter(p =>
+            String(p.doc || '').toLowerCase().includes(filterDoc) ||
+            String(p.telefono || '').toLowerCase().includes(filterDoc));
 
         addMarkers(pts);
         buildTablaDistritos(filterDist);

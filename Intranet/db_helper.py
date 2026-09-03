@@ -1661,7 +1661,8 @@ def get_puntos_mapa_lima(mes, anio, area='', agencia_grupo=''):
         ISNULL([Tipo de domicilio], '')                AS tipo,
         ISNULL([Estado orden], '')                     AS estado_orden,
         ISNULL([Condominio / Edificio], '')            AS condominio,
-        ISNULL([N° doc cliente], '')                   AS doc
+        ISNULL([N° doc cliente], '')                   AS doc,
+        ISNULL([Telf. cliente], '')                    AS telefono
     """
     _score_cols = """
         ,ISNULL([Zona_KML], '')                        AS zona_kml
