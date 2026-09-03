@@ -192,6 +192,7 @@
                 <th class="cq-num">Horiz. Aliv</th>
                 <th class="cq-num">Horiz. Sub</th>
                 <th class="cq-num">Horizontal</th>
+                <th class="cq-num" title="Cuota real de Horizontal tal cual la entrega WIN (un solo total, sin repartir). Se usa para el total y alcance a nivel ejecutivo.">Cuota Win Horiz.</th>
                 <th class="cq-num">Total</th>
                 <th class="cq-num">Altas</th>
                 <th class="cq-num">Alcance</th>
@@ -202,7 +203,8 @@
             {% for c in cuotas_historial %}
             <tr class="cq-row {% if c.es_mes_actual %}cq-row-current{% endif %}"
                 data-mes="{{ c.mes }}" data-vertical="{{ c.cuota_vertical }}"
-                data-horizontal-aliv="{{ c.cuota_horizontal_aliv }}" data-horizontal-sub="{{ c.cuota_horizontal_sub }}">
+                data-horizontal-aliv="{{ c.cuota_horizontal_aliv }}" data-horizontal-sub="{{ c.cuota_horizontal_sub }}"
+                data-horizontal-win="{{ c.cuota_horizontal_win }}">
                 <td class="cq-mes">
                     {{ c.nombre }}
                     {% if c.es_mes_actual %}<span class="cq-tag-hoy">HOY</span>{% endif %}
@@ -211,6 +213,7 @@
                 <td class="cq-num cq-view-horizontal-aliv">{% if c.cuota_horizontal_aliv %}{{ "{:,}".format(c.cuota_horizontal_aliv) }}{% else %}—{% endif %}</td>
                 <td class="cq-num cq-view-horizontal-sub">{% if c.cuota_horizontal_sub %}{{ "{:,}".format(c.cuota_horizontal_sub) }}{% else %}—{% endif %}</td>
                 <td class="cq-num cq-view-horizontal">{% if c.definida %}{{ "{:,}".format(c.cuota_horizontal) }}{% else %}—{% endif %}</td>
+                <td class="cq-num cq-view-horizontal-win">{% if c.cuota_horizontal_win %}{{ "{:,}".format(c.cuota_horizontal_win) }}{% else %}—{% endif %}</td>
                 <td class="cq-num cq-view-total">
                     {% if c.definida %}<strong>{{ "{:,}".format(c.cuota_total) }}</strong>
                     {% else %}<span class="cq-badge-undef"><i class="fa-solid fa-circle-exclamation"></i> Sin definir</span>{% endif %}
@@ -372,17 +375,20 @@ function cuotaEditar(mes) {
     const tdHA = row.querySelector('.cq-view-horizontal-aliv');
     const tdHS = row.querySelector('.cq-view-horizontal-sub');
     const tdH = row.querySelector('.cq-view-horizontal');
+    const tdHW = row.querySelector('.cq-view-horizontal-win');
     const tdT = row.querySelector('.cq-view-total');
     const tdAction = row.querySelector('.cq-action-col');
 
     const curV  = row.dataset.vertical || 0;
     const curHA = row.dataset.horizontalAliv || 0;
     const curHS = row.dataset.horizontalSub || 0;
+    const curHW = row.dataset.horizontalWin || (parseInt(curHA) + parseInt(curHS));
 
     tdV.dataset.prev = tdV.innerHTML;
     tdHA.dataset.prev = tdHA.innerHTML;
     tdHS.dataset.prev = tdHS.innerHTML;
     tdH.dataset.prev = tdH.innerHTML;
+    tdHW.dataset.prev = tdHW.innerHTML;
     tdT.dataset.prev = tdT.innerHTML;
     tdAction.dataset.prev = tdAction.innerHTML;
 
@@ -390,7 +396,8 @@ function cuotaEditar(mes) {
     tdHA.innerHTML = `<input type="number" min="0" class="cq-input" id="cqHA${mes}" value="${curHA}" oninput="cuotaRecalc(${mes})">`;
     tdHS.innerHTML = `<input type="number" min="0" class="cq-input" id="cqHS${mes}" value="${curHS}" oninput="cuotaRecalc(${mes})">`;
     tdH.innerHTML  = `<span id="cqH${mes}">${(parseInt(curHA) + parseInt(curHS)).toLocaleString('es-PE')}</span>`;
-    tdT.innerHTML  = `<strong id="cqT${mes}">${(parseInt(curV) + parseInt(curHA) + parseInt(curHS)).toLocaleString('es-PE')}</strong>`;
+    tdHW.innerHTML = `<input type="number" min="0" class="cq-input" id="cqHW${mes}" value="${curHW}" oninput="cuotaRecalc(${mes})" title="Cuota real de Horizontal que entrega WIN">`;
+    tdT.innerHTML  = `<strong id="cqT${mes}">${(parseInt(curV) + parseInt(curHW)).toLocaleString('es-PE')}</strong>`;
     tdAction.innerHTML = `
         <button class="cq-btn-save" onclick="cuotaGuardar(${mes})" title="Guardar"><i class="fa-solid fa-check"></i></button>
         <button class="cq-btn-cancel" onclick="cuotaCancelar(${mes})" title="Cancelar"><i class="fa-solid fa-xmark"></i></button>
@@ -402,10 +409,11 @@ function cuotaRecalc(mes) {
     const v  = parseInt(document.getElementById(`cqV${mes}`).value) || 0;
     const ha = parseInt(document.getElementById(`cqHA${mes}`).value) || 0;
     const hs = parseInt(document.getElementById(`cqHS${mes}`).value) || 0;
+    const hw = parseInt(document.getElementById(`cqHW${mes}`).value) || 0;
     const hEl = document.getElementById(`cqH${mes}`);
     const totalEl = document.getElementById(`cqT${mes}`);
     if (hEl) hEl.textContent = (ha + hs).toLocaleString('es-PE');
-    if (totalEl) totalEl.textContent = (v + ha + hs).toLocaleString('es-PE');
+    if (totalEl) totalEl.textContent = (v + hw).toLocaleString('es-PE');
 }
 
 function cuotaCancelar(mes) {
@@ -414,6 +422,7 @@ function cuotaCancelar(mes) {
     row.querySelector('.cq-view-horizontal-aliv').innerHTML = row.querySelector('.cq-view-horizontal-aliv').dataset.prev;
     row.querySelector('.cq-view-horizontal-sub').innerHTML  = row.querySelector('.cq-view-horizontal-sub').dataset.prev;
     row.querySelector('.cq-view-horizontal').innerHTML      = row.querySelector('.cq-view-horizontal').dataset.prev;
+    row.querySelector('.cq-view-horizontal-win').innerHTML  = row.querySelector('.cq-view-horizontal-win').dataset.prev;
     row.querySelector('.cq-view-total').innerHTML           = row.querySelector('.cq-view-total').dataset.prev;
     row.querySelector('.cq-action-col').innerHTML           = row.querySelector('.cq-action-col').dataset.prev;
     row.classList.remove('cq-editing');
@@ -423,6 +432,7 @@ function cuotaGuardar(mes) {
     const v  = parseInt(document.getElementById(`cqV${mes}`).value) || 0;
     const ha = parseInt(document.getElementById(`cqHA${mes}`).value) || 0;
     const hs = parseInt(document.getElementById(`cqHS${mes}`).value) || 0;
+    const hw = parseInt(document.getElementById(`cqHW${mes}`).value) || 0;
     const row = document.querySelector(`tr[data-mes="${mes}"]`);
     const btn = row.querySelector('.cq-btn-save');
     btn.disabled = true;
@@ -431,7 +441,7 @@ function cuotaGuardar(mes) {
     fetch('/ventas/cuota', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mes: mes, vertical: v, horizontal_aliv: ha, horizontal_sub: hs })
+        body: JSON.stringify({ mes: mes, vertical: v, horizontal_aliv: ha, horizontal_sub: hs, horizontal_win: hw })
     })
     .then(r => r.json())
     .then(data => {
@@ -445,10 +455,12 @@ function cuotaGuardar(mes) {
         row.dataset.vertical = v;
         row.dataset.horizontalAliv = ha;
         row.dataset.horizontalSub = hs;
+        row.dataset.horizontalWin = cuota.horizontal_win;
         row.querySelector('.cq-view-vertical').innerHTML        = v.toLocaleString('es-PE');
         row.querySelector('.cq-view-horizontal-aliv').innerHTML = ha ? ha.toLocaleString('es-PE') : '—';
         row.querySelector('.cq-view-horizontal-sub').innerHTML  = hs ? hs.toLocaleString('es-PE') : '—';
         row.querySelector('.cq-view-horizontal').innerHTML      = cuota.horizontal.toLocaleString('es-PE');
+        row.querySelector('.cq-view-horizontal-win').innerHTML  = cuota.horizontal_win ? cuota.horizontal_win.toLocaleString('es-PE') : '—';
         row.querySelector('.cq-view-total').innerHTML           = `<strong>${cuota.total.toLocaleString('es-PE')}</strong>`;
         row.querySelector('.cq-action-col').innerHTML =
             `<button class="cq-btn-edit" onclick="cuotaEditar(${mes})" title="Editar cuota"><i class="fa-solid fa-pen"></i></button>`;

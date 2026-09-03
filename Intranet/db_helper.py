@@ -188,6 +188,14 @@ def get_kpi_lima(mes, anio, area='', dia=None, cumul=False, base_dias=30, agenci
                 cuota = _cuota_lima(mes, 'Horizontal_Aliv' if agencia_grupo == 'Aliv' else 'Horizontal_Sub')
             elif agencia_grupo:
                 cuota = 0
+            elif area == 'Horizontal':
+                # Vista combinada (ejecutivo/gerencial, sin agencia): usa la
+                # cuota real que entrega WIN, no la suma aliv+sub (que es un
+                # reparto interno que puede no cuadrar con ese total). Si el
+                # mes aún no tiene Horizontal_Win definido (meses viejos, o
+                # el mes actual antes de que el admin la cargue), cae de
+                # vuelta a la suma aliv+sub para no dejar el panel en 0.
+                cuota = _cuota_lima(mes, 'Horizontal_Win') or _cuota_lima(mes, 'Horizontal')
             else:
                 cuota = _cuota_lima(mes, area)
             proyeccion      = round(altas / dias_trans * base_dias) if dias_trans > 0 else 0
@@ -381,6 +389,7 @@ def get_cuotas_lima_historial(anio):
         cuota_horiz = cuotas_config.cuota_lima(m, 'Horizontal')
         cuota_horiz_aliv = cuotas_config.cuota_lima(m, 'Horizontal_Aliv')
         cuota_horiz_sub = cuotas_config.cuota_lima(m, 'Horizontal_Sub')
+        cuota_horiz_win = cuotas_config.cuota_lima(m, 'Horizontal_Win')
         cuota_total = cuotas_config.cuota_lima(m, '')
         altas = altas_por_mes.get(m, {'vertical': 0, 'horizontal': 0, 'total': 0})
         out.append({
@@ -390,6 +399,7 @@ def get_cuotas_lima_historial(anio):
             'cuota_horizontal': cuota_horiz,
             'cuota_horizontal_aliv': cuota_horiz_aliv,
             'cuota_horizontal_sub': cuota_horiz_sub,
+            'cuota_horizontal_win': cuota_horiz_win,
             'cuota_total': cuota_total,
             'altas_vertical': altas['vertical'],
             'altas_horizontal': altas['horizontal'],
@@ -402,11 +412,12 @@ def get_cuotas_lima_historial(anio):
     return out
 
 
-def set_cuota_lima(mes, vertical, horizontal_aliv, horizontal_sub):
+def set_cuota_lima(mes, vertical, horizontal_aliv, horizontal_sub, horizontal_win=None):
     """Define/actualiza la cuota de Lima de un mes: Vertical + Horizontal
-    repartida entre Aliv y Subagencias (en Azure SQL)."""
+    repartida entre Aliv y Subagencias, más la cuota real de Horizontal que
+    entrega WIN (en Azure SQL)."""
     import cuotas_config
-    return cuotas_config.set_cuota_lima(mes, vertical, horizontal_aliv, horizontal_sub)
+    return cuotas_config.set_cuota_lima(mes, vertical, horizontal_aliv, horizontal_sub, horizontal_win)
 
 
 def get_daily_trend_lima(mes, anio, area='', agencia_grupo=''):

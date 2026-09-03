@@ -100,11 +100,17 @@ def cuota_definida(mes):
     return (int(mes), '') in _cargar()
 
 
-def set_cuota_lima(mes, vertical, horizontal_aliv, horizontal_sub):
+def set_cuota_lima(mes, vertical, horizontal_aliv, horizontal_sub, horizontal_win=None):
     """Define/actualiza la cuota de Lima de un mes en SQL: Vertical, y
-    Horizontal repartido entre Aliv y Subagencias (WIN solo da un total de
-    Horizontal combinado; el reparto entre canales se define a mano acá,
-    porque cambia mes a mes -- ej. 40/60 un mes, otro reparto el siguiente)."""
+    Horizontal repartido entre Aliv y Subagencias (el reparto entre canales
+    se define a mano acá, porque cambia mes a mes -- ej. 40/60 un mes, otro
+    reparto el siguiente, y no siempre suma igual al total real de WIN).
+
+    horizontal_win es la cuota de Horizontal tal cual la entrega WIN (un solo
+    total combinado, sin repartir) -- se usa para el total/alcance a nivel
+    ejecutivo/gerencial, en vez de la suma aliv+sub, porque esa suma es un
+    reparto interno que puede no cuadrar con el número real de WIN. Si no se
+    especifica, cae por defecto a aliv+sub (compatibilidad con meses viejos)."""
     global _cache
     mes = int(mes)
     if not 1 <= mes <= 12:
@@ -113,7 +119,8 @@ def set_cuota_lima(mes, vertical, horizontal_aliv, horizontal_sub):
     horizontal_aliv = max(int(horizontal_aliv), 0)
     horizontal_sub = max(int(horizontal_sub), 0)
     horizontal = horizontal_aliv + horizontal_sub
-    total = vertical + horizontal
+    horizontal_win = horizontal if horizontal_win is None else max(int(horizontal_win), 0)
+    total = vertical + horizontal_win
 
     _init_tabla()
     engine = _get_engine()
@@ -124,6 +131,7 @@ def set_cuota_lima(mes, vertical, horizontal_aliv, horizontal_sub):
             ('Horizontal', horizontal),
             ('Horizontal_Aliv', horizontal_aliv),
             ('Horizontal_Sub', horizontal_sub),
+            ('Horizontal_Win', horizontal_win),
         ):
             conn.execute(sa.text("""
                 MERGE dbo.cuotas_lima AS t
@@ -137,5 +145,5 @@ def set_cuota_lima(mes, vertical, horizontal_aliv, horizontal_sub):
     return {
         'mes': mes, 'vertical': vertical, 'horizontal': horizontal,
         'horizontal_aliv': horizontal_aliv, 'horizontal_sub': horizontal_sub,
-        'total': total,
+        'horizontal_win': horizontal_win, 'total': total,
     }

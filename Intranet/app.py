@@ -518,12 +518,14 @@ def ventas_cuota_guardar():
         vertical = int(data.get('vertical'))
         horizontal_aliv = int(data.get('horizontal_aliv'))
         horizontal_sub = int(data.get('horizontal_sub'))
+        _hw = data.get('horizontal_win')
+        horizontal_win = int(_hw) if _hw not in (None, '') else None
     except (TypeError, ValueError):
-        return jsonify({'ok': False, 'error': 'Mes, vertical, horizontal aliv y horizontal sub deben ser números enteros.'}), 400
-    if vertical < 0 or horizontal_aliv < 0 or horizontal_sub < 0:
+        return jsonify({'ok': False, 'error': 'Mes, vertical, horizontal aliv, horizontal sub y cuota win horizontal deben ser números enteros.'}), 400
+    if vertical < 0 or horizontal_aliv < 0 or horizontal_sub < 0 or (horizontal_win is not None and horizontal_win < 0):
         return jsonify({'ok': False, 'error': 'Los valores no pueden ser negativos.'}), 400
     try:
-        resultado = db_helper.set_cuota_lima(mes, vertical, horizontal_aliv, horizontal_sub)
+        resultado = db_helper.set_cuota_lima(mes, vertical, horizontal_aliv, horizontal_sub, horizontal_win)
     except ValueError as e:
         return jsonify({'ok': False, 'error': str(e)}), 400
     except Exception as e:
