@@ -552,10 +552,17 @@ function proyBuildWeekly(block, targetCuota, cutoffDay) {
     trendLima.forEach(function (d) { altasPorDia[d.dia] = parseFloat(d.altas) || 0; });
 
     var weeks = proyWeeksOfMonth(mes, anio);
+    var totalDaysMonth = weeks.length ? weeks[weeks.length - 1].end : 0;
     var virtualCum = 0;
     var cards = [];
 
     weeks.forEach(function (w, i) {
+        var daysInWeekAll = w.end - w.start + 1;
+        // Cuota semanal ideal: reparto plano de TODO el objetivo por días del mes
+        // (no el catch-up de las semanas futuras) -- sirve para comparar "cuánto
+        // debí hacer esta semana" contra lo real, incluida la semana en curso.
+        var metaSemana = totalDaysMonth > 0 ? Math.round(targetCuota * daysInWeekAll / totalDaysMonth) : 0;
+
         if (w.start <= cutoffDay) {
             var fEnd = Math.min(w.end, cutoffDay);
             var real = 0;
@@ -565,7 +572,7 @@ function proyBuildWeekly(block, targetCuota, cutoffDay) {
             cards.push({
                 header: 'Sem ' + (i + 1) + ' (' + (isPast ? 'ya pasó' : 'en curso') + ')',
                 value: proyFmt(real),
-                sub: isPast ? 'Real' : 'Actual',
+                sub: (isPast ? 'Real' : 'Actual') + ' · Meta semana: ' + proyFmt(metaSemana),
                 current: !isPast, past: isPast
             });
         } else {
