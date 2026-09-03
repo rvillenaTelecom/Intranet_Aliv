@@ -1642,6 +1642,7 @@ def get_puntos_mapa_lima(mes, anio, area='', agencia_grupo=''):
     _agc = _agencia_clause(agencia_grupo)
     _where = f"""
         FROM dbo.winforce_lima
+        LEFT JOIN dbo.dim_usuarios_Aliv ua ON [Vendedor real] = ua.vendedor
         WHERE [Estado orden] = 'Ejecutada'
           AND MONTH({_FP}) = :mes AND YEAR({_FP}) = :anio
           AND {_FP} IS NOT NULL
@@ -1662,7 +1663,8 @@ def get_puntos_mapa_lima(mes, anio, area='', agencia_grupo=''):
         ISNULL([Estado orden], '')                     AS estado_orden,
         ISNULL([Condominio / Edificio], '')            AS condominio,
         ISNULL([N° doc cliente], '')                   AS doc,
-        ISNULL([Telf. cliente], '')                    AS telefono
+        ISNULL([Telf. cliente], '')                    AS telefono,
+        ISNULL(ua.agencia, '')                         AS agencia
     """
     _score_cols = """
         ,ISNULL([Zona_KML], '')                        AS zona_kml
@@ -1719,8 +1721,10 @@ def get_registros_lima(mes, anio, area='', agencia_grupo=''):
                 ISNULL([Estado del Pedido], '')           AS estado_pedido,
                 ISNULL([Condominio / Edificio], '')       AS condominio,
                 ISNULL([Dirección de Instalación], '')    AS direccion,
-                ISNULL(Distrito, '')                      AS distrito
+                ISNULL(Distrito, '')                      AS distrito,
+                ISNULL(ua.agencia, '')                    AS agencia
             FROM dbo.winforce_lima
+            LEFT JOIN dbo.dim_usuarios_Aliv ua ON [Vendedor real] = ua.vendedor
             WHERE MONTH([Fecha de registro]) = :mes AND YEAR([Fecha de registro]) = :anio
             {_dl} {_ac} {_agc}
             ORDER BY [Fecha de registro] DESC

@@ -419,7 +419,7 @@ def dashboard_ventas():
 @login_required
 def api_registros_lima_excel():
     """Excel de la tabla 'Registros -- Detalle de clientes' de Localización/Lima,
-    respetando el mismo filtro (mes/año/área/agencia/documento/condominio/distrito)
+    respetando el mismo filtro (mes/año/área/agencia/documento/canal/distrito)
     que el usuario tenía aplicado en pantalla."""
     import io
     import pandas as pd
@@ -434,9 +434,9 @@ def api_registros_lima_excel():
         _agencia = request.args.get('agencia', '')
         agencia  = _agencia if _agencia in ('Aliv', 'Sub') else ''
 
-    doc        = request.args.get('doc', '').strip().lower()
-    condominio = request.args.get('condominio', '').strip().lower()
-    distrito   = request.args.get('distrito', '').strip()
+    doc      = request.args.get('doc', '').strip().lower()
+    canal    = request.args.get('canal', '').strip()
+    distrito = request.args.get('distrito', '').strip()
 
     try:
         rows = db_helper.get_registros_lima(mes, anio, area=area, agencia_grupo=agencia)
@@ -445,8 +445,8 @@ def api_registros_lima_excel():
         if doc:
             rows = [r for r in rows if doc in str(r.get('doc', '')).lower()
                                      or doc in str(r.get('telefono', '')).lower()]
-        if condominio:
-            rows = [r for r in rows if condominio in str(r.get('condominio', '')).lower()]
+        if canal:
+            rows = [r for r in rows if r.get('agencia') == canal]
 
         if not rows:
             return jsonify({'error': 'Sin datos para exportar'}), 404
@@ -456,6 +456,7 @@ def api_registros_lima_excel():
             'fecha_registro': 'F. Registro', 'fecha_programacion': 'F. Programación',
             'estado_orden': 'Estado orden', 'estado_pedido': 'Estado pedido',
             'condominio': 'Condominio/Edificio', 'direccion': 'Dirección', 'distrito': 'Distrito',
+            'agencia': 'Agencia',
         }
         df = pd.DataFrame(rows).rename(columns=col_names)
         buf = io.BytesIO()

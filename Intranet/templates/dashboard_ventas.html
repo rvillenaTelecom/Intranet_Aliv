@@ -370,9 +370,12 @@
         <span class="filter-label">Documento:</span>
         <input id="docSearchLoc" type="text" class="fsel" placeholder="N° doc o teléfono…"
                style="min-width:150px;" autocomplete="off">
-        <span class="filter-label">Condominio/Edificio:</span>
-        <input id="condSearchLoc" type="text" class="fsel" placeholder="Nombre del condominio…"
-               style="min-width:180px;" autocomplete="off">
+        {% if not (area == 'Horizontal' and agencia == 'Aliv') %}
+        <span class="filter-label">Agencia:</span>
+        <select id="agenciaFilterLoc" class="fsel" style="min-width:160px;" onchange="filtrarMapa()">
+            <option value="">Todas las agencias</option>
+        </select>
+        {% endif %}
         <span id="locStats" style="font-size:12px; color:var(--text-secondary); white-space:nowrap; margin-left:4px;">
             <b id="statPuntos" style="color:var(--primary);">—</b> instalaciones
             &nbsp;<b id="statDistritos" style="color:var(--success);">—</b> distritos
@@ -943,15 +946,17 @@ function proySetBasis(btn, basis) {
 <div class="panel mb16">
     <div class="panel-title" style="display:flex; align-items:center; justify-content:space-between;">
         <span><i class="fa-solid fa-table-list"></i> Registros — Detalle de clientes</span>
-        <button type="button" class="btn btn-outline" style="font-size:11px; padding:4px 10px;" onclick="descargarRegistrosExcel('docSearchLima','condSearchLima','')">
+        <button type="button" class="btn btn-outline" style="font-size:11px; padding:4px 10px;" onclick="descargarRegistrosExcel('docSearchLima','agenciaFilterLima','')">
             <i class="fa-solid fa-file-excel"></i> Descargar Excel
         </button>
     </div>
     <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:10px;">
         <span class="filter-label">Documento:</span>
         <input id="docSearchLima" type="text" class="fsel" placeholder="N° doc o teléfono…" style="min-width:150px;" autocomplete="off">
-        <span class="filter-label">Condominio/Edificio:</span>
-        <input id="condSearchLima" type="text" class="fsel" placeholder="Nombre del condominio…" style="min-width:180px;" autocomplete="off">
+        {% if not (area == 'Horizontal' and agencia == 'Aliv') %}
+        <span class="filter-label">Agencia:</span>
+        <select id="agenciaFilterLima" class="fsel" style="min-width:160px;"><option value="">Todas las agencias</option></select>
+        {% endif %}
         <span style="font-size:12px; color:var(--text-secondary); margin-left:4px;">
             <b id="regCountLima" style="color:var(--primary);">—</b> registros
         </span>
@@ -1042,7 +1047,7 @@ function proySetBasis(btn, basis) {
                 <b id="regCountLoc" style="color:var(--primary);">—</b> registros
             </span>
         </span>
-        <button type="button" class="btn btn-outline" style="font-size:11px; padding:4px 10px;" onclick="descargarRegistrosExcel('docSearchLoc','condSearchLoc','distritoFilter')">
+        <button type="button" class="btn btn-outline" style="font-size:11px; padding:4px 10px;" onclick="descargarRegistrosExcel('docSearchLoc','agenciaFilterLoc','distritoFilter')">
             <i class="fa-solid fa-file-excel"></i> Descargar Excel
         </button>
     </div>
@@ -1072,14 +1077,14 @@ var DV_EARTH = {{ 'true' if dv_earth else 'false' }};
 const DV_MES = {{ mes_actual }}, DV_ANIO = {{ anio_actual }};
 const DV_AREA = {{ area | tojson }}, DV_AGENCIA = {{ agencia | tojson }};
 
-function descargarRegistrosExcel(docId, condId, distId) {
+function descargarRegistrosExcel(docId, canalId, distId) {
     const params = new URLSearchParams({ mes: DV_MES, anio: DV_ANIO, area: DV_AREA, agencia: DV_AGENCIA });
-    const doc  = docId  ? (document.getElementById(docId)  || {}).value : '';
-    const cond = condId ? (document.getElementById(condId) || {}).value : '';
-    const dist = distId ? (document.getElementById(distId) || {}).value : '';
-    if (doc)  params.set('doc', doc);
-    if (cond) params.set('condominio', cond);
-    if (dist) params.set('distrito', dist);
+    const doc   = docId   ? (document.getElementById(docId)   || {}).value : '';
+    const canal = canalId ? (document.getElementById(canalId) || {}).value : '';
+    const dist  = distId  ? (document.getElementById(distId)  || {}).value : '';
+    if (doc)   params.set('doc', doc);
+    if (canal) params.set('canal', canal);
+    if (dist)  params.set('distrito', dist);
     window.location.href = '/api/dashboard/registros-lima/excel?' + params.toString();
 }
 // Chart.js: tema oscuro (texto/ejes claros, grilla sutil) o tema tierra
@@ -1311,18 +1316,17 @@ function _regEsc(s) {
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-function buildRegistrosTable(tbodyId, countId, doc, cond, distrito) {
+function buildRegistrosTable(tbodyId, countId, doc, canal, distrito) {
     const tbody = document.getElementById(tbodyId);
     if (!tbody) return;
     doc = (doc || '').toLowerCase().trim();
-    cond = (cond || '').toLowerCase().trim();
 
     let rows = registrosLima;
     if (distrito) rows = rows.filter(r => r.distrito === distrito);
     if (doc)  rows = rows.filter(r =>
         String(r.doc || '').toLowerCase().includes(doc) ||
         String(r.telefono || '').toLowerCase().includes(doc));
-    if (cond) rows = rows.filter(r => (r.condominio || '').toLowerCase().includes(cond));
+    if (canal) rows = rows.filter(r => r.agencia === canal);
 
     const countEl = document.getElementById(countId);
     if (countEl) countEl.textContent = rows.length.toLocaleString();
@@ -1347,18 +1351,28 @@ function buildRegistrosTable(tbodyId, countId, doc, cond, distrito) {
     `).join('');
 }
 
-// Tab Lima: filtros propios de Documento/Condominio (sin mapa ni distrito)
+// Tab Lima: filtros propios de Documento/Agencia (sin mapa ni distrito)
 (function () {
     let _t;
+    const agEl = document.getElementById('agenciaFilterLima');
+    if (agEl) {
+        const counts = {};
+        registrosLima.forEach(r => { if (r.agencia) counts[r.agencia] = (counts[r.agencia] || 0) + 1; });
+        Object.keys(counts).sort((a, b) => counts[b] - counts[a]).forEach(ag => {
+            const opt = document.createElement('option');
+            opt.value = ag;
+            opt.textContent = ag + ' (' + counts[ag] + ')';
+            agEl.appendChild(opt);
+        });
+        agEl.addEventListener('change', _refreshLima);
+    }
     function _refreshLima() {
         buildRegistrosTable('regBodyLima', 'regCountLima',
             document.getElementById('docSearchLima').value,
-            document.getElementById('condSearchLima').value, '');
+            agEl ? agEl.value : '', '');
     }
     const docEl = document.getElementById('docSearchLima');
-    const condEl = document.getElementById('condSearchLima');
     if (docEl) docEl.addEventListener('input', function () { clearTimeout(_t); _t = setTimeout(_refreshLima, 250); });
-    if (condEl) condEl.addEventListener('input', function () { clearTimeout(_t); _t = setTimeout(_refreshLima, 250); });
     _refreshLima();
 })();
 
@@ -1410,9 +1424,21 @@ function initMapaLima() {
         sel.appendChild(opt);
     });
 
-    // ── Búsqueda por dirección / documento / condominio (debounce 300ms) ──
+    const agSel = document.getElementById('agenciaFilterLoc');
+    if (agSel) {
+        const agCounts = {};
+        puntosMapa.forEach(p => { if (p.agencia) agCounts[p.agencia] = (agCounts[p.agencia] || 0) + 1; });
+        Object.keys(agCounts).sort((a, b) => agCounts[b] - agCounts[a]).forEach(ag => {
+            const opt = document.createElement('option');
+            opt.value = ag;
+            opt.textContent = ag + ' (' + agCounts[ag] + ')';
+            agSel.appendChild(opt);
+        });
+    }
+
+    // ── Búsqueda por dirección / documento (debounce 300ms) ──
     let _dirTimer;
-    ['dirSearch', 'docSearchLoc', 'condSearchLoc'].forEach(function (id) {
+    ['dirSearch', 'docSearchLoc'].forEach(function (id) {
         const el = document.getElementById(id);
         if (!el) return;
         el.addEventListener('input', function() {
@@ -1549,9 +1575,9 @@ function initMapaLima() {
         if (dist !== undefined) sel.value = dist || '';
         const filterDist = sel.value;
         const filterDir  = (document.getElementById('dirSearch').value || '').toLowerCase().trim();
-        const filterDoc  = (document.getElementById('docSearchLoc').value || '').toLowerCase().trim();
-        const filterCond = (document.getElementById('condSearchLoc').value || '').toLowerCase().trim();
-        const hasFilter  = filterDist || filterDir || filterDoc || filterCond;
+        const filterDoc   = (document.getElementById('docSearchLoc').value || '').toLowerCase().trim();
+        const filterCanal = (document.getElementById('agenciaFilterLoc') || {}).value || '';
+        const hasFilter  = filterDist || filterDir || filterDoc || filterCanal;
 
         // Resaltar polígono según distrito seleccionado
         Object.keys(_distGeoLayers).forEach(function(name) {
@@ -1575,14 +1601,14 @@ function initMapaLima() {
         if (filterDir)  pts = pts.filter(p =>
             (p.direccion || '').toLowerCase().includes(filterDir) ||
             (p.geofinder || '').toLowerCase().includes(filterDir));
-        if (filterCond) pts = pts.filter(p => (p.condominio || '').toLowerCase().includes(filterCond));
+        if (filterCanal) pts = pts.filter(p => p.agencia === filterCanal);
         if (filterDoc)  pts = pts.filter(p =>
             String(p.doc || '').toLowerCase().includes(filterDoc) ||
             String(p.telefono || '').toLowerCase().includes(filterDoc));
 
         addMarkers(pts);
         buildTablaDistritos(filterDist);
-        buildRegistrosTable('regBodyLoc', 'regCountLoc', filterDoc, filterCond, filterDist);
+        buildRegistrosTable('regBodyLoc', 'regCountLoc', filterDoc, filterCanal, filterDist);
         document.getElementById('statPuntos').textContent = pts.length.toLocaleString();
 
         if (hasFilter && pts.length) {
