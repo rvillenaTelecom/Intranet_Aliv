@@ -135,6 +135,8 @@
     color: var(--text-secondary); border-bottom: 2px solid var(--border);
 }
 .data-table td { padding: 9px 12px; border-bottom: 1px solid var(--border); color: var(--text-primary); }
+.tbl-scroll-v { overflow-x: auto; overflow-y: auto; }
+.tbl-scroll-v thead th { position: sticky; top: 0; z-index: 2; background: var(--bg-card-hover); box-shadow: 0 1px 0 var(--border); }
 .data-table tr:hover td { background: var(--bg-card-hover); }
 .agencias-tfoot tr:hover td { background: var(--brand-glow-soft) !important; }
 .data-table .num { text-align: right; font-variant-numeric: tabular-nums; }
@@ -365,6 +367,12 @@
         <span class="filter-label">Dirección:</span>
         <input id="dirSearch" type="text" class="fsel" placeholder="Buscar dirección o Geofinder…"
                style="min-width:220px;" autocomplete="off">
+        <span class="filter-label">Documento:</span>
+        <input id="docSearchLoc" type="text" class="fsel" placeholder="N° doc cliente…"
+               style="min-width:150px;" autocomplete="off">
+        <span class="filter-label">Condominio/Edificio:</span>
+        <input id="condSearchLoc" type="text" class="fsel" placeholder="Nombre del condominio…"
+               style="min-width:180px;" autocomplete="off">
         <span id="locStats" style="font-size:12px; color:var(--text-secondary); white-space:nowrap; margin-left:4px;">
             <b id="statPuntos" style="color:var(--primary);">—</b> instalaciones
             &nbsp;<b id="statDistritos" style="color:var(--success);">—</b> distritos
@@ -931,6 +939,32 @@ function proySetBasis(btn, basis) {
 </div>
 {% endif %}
 
+<!-- Registros individuales — mismo dataset que Localización, filtros propios -->
+<div class="panel mb16">
+    <div class="panel-title"><i class="fa-solid fa-table-list"></i> Registros — Detalle de clientes</div>
+    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:10px;">
+        <span class="filter-label">Documento:</span>
+        <input id="docSearchLima" type="text" class="fsel" placeholder="N° doc cliente…" style="min-width:150px;" autocomplete="off">
+        <span class="filter-label">Condominio/Edificio:</span>
+        <input id="condSearchLima" type="text" class="fsel" placeholder="Nombre del condominio…" style="min-width:180px;" autocomplete="off">
+        <span style="font-size:12px; color:var(--text-secondary); margin-left:4px;">
+            <b id="regCountLima" style="color:var(--primary);">—</b> registros
+        </span>
+    </div>
+    <div class="tbl-scroll-v" style="max-height:360px;">
+        <table class="data-table" style="min-width:920px;">
+            <thead>
+                <tr>
+                    <th>Doc. cliente</th><th>Cliente</th><th>Teléfono</th><th>F. registro</th>
+                    <th>F. programación</th><th>Estado orden</th><th>Estado pedido</th>
+                    <th>Condominio/Edificio</th><th>Dirección</th><th>Distrito</th>
+                </tr>
+            </thead>
+            <tbody id="regBodyLima"></tbody>
+        </table>
+    </div>
+</div>
+
 {% else %}
 <div class="panel" style="text-align:center; padding:40px; color:var(--text-light);">
     <i class="fa-solid fa-circle-exclamation" style="font-size:32px; margin-bottom:10px;"></i>
@@ -993,6 +1027,27 @@ function proySetBasis(btn, basis) {
         <div id="tablaDistritos" style="overflow-y:auto; flex:1; font-size:12px;"></div>
     </div>
 
+</div>
+
+<!-- Registros individuales — filtrado por Distrito/Dirección/Documento/Condominio de arriba -->
+<div class="panel mb16" style="margin-top:16px;">
+    <div class="panel-title"><i class="fa-solid fa-table-list"></i> Registros — Detalle de clientes
+        <span id="regStatsLoc" style="font-size:11px; font-weight:400; color:var(--text-secondary); margin-left:8px;">
+            <b id="regCountLoc" style="color:var(--primary);">—</b> registros
+        </span>
+    </div>
+    <div class="tbl-scroll-v" style="max-height:360px;">
+        <table class="data-table" style="min-width:920px;">
+            <thead>
+                <tr>
+                    <th>Doc. cliente</th><th>Cliente</th><th>Teléfono</th><th>F. registro</th>
+                    <th>F. programación</th><th>Estado orden</th><th>Estado pedido</th>
+                    <th>Condominio/Edificio</th><th>Dirección</th><th>Distrito</th>
+                </tr>
+            </thead>
+            <tbody id="regBodyLoc"></tbody>
+        </table>
+    </div>
 </div>
 
 </div><!-- /tab-localizacion -->
@@ -1225,6 +1280,63 @@ if (zonasData.length) {
 // ── Mapa Localización (lazy — se inicializa al abrir el tab) ─
 const puntosMapa = {{ puntos_mapa | tojson }};
 
+// ── Registros individuales (buscador Documento/Condominio) ──
+const registrosLima = {{ registros_lima | tojson }};
+
+function _regEsc(s) {
+    return (s || '').toString()
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function buildRegistrosTable(tbodyId, countId, doc, cond, distrito) {
+    const tbody = document.getElementById(tbodyId);
+    if (!tbody) return;
+    doc = (doc || '').toLowerCase().trim();
+    cond = (cond || '').toLowerCase().trim();
+
+    let rows = registrosLima;
+    if (distrito) rows = rows.filter(r => r.distrito === distrito);
+    if (doc)  rows = rows.filter(r => String(r.doc || '').toLowerCase().includes(doc));
+    if (cond) rows = rows.filter(r => (r.condominio || '').toLowerCase().includes(cond));
+
+    const countEl = document.getElementById(countId);
+    if (countEl) countEl.textContent = rows.length.toLocaleString();
+
+    if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color:var(--text-light); padding:16px;">Sin registros para este filtro.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = rows.slice(0, 300).map(r => `
+        <tr>
+            <td>${_regEsc(r.doc) || '—'}</td>
+            <td>${_regEsc(r.cliente) || '—'}</td>
+            <td>${_regEsc(r.telefono) || '—'}</td>
+            <td>${_regEsc(r.fecha_registro) || '—'}</td>
+            <td>${_regEsc(r.fecha_programacion) || '—'}</td>
+            <td>${_regEsc(r.estado_orden) || '—'}</td>
+            <td>${_regEsc(r.estado_pedido) || '—'}</td>
+            <td>${_regEsc(r.condominio) || '—'}</td>
+            <td>${_regEsc(r.direccion) || '—'}</td>
+            <td>${_regEsc(r.distrito) || '—'}</td>
+        </tr>
+    `).join('');
+}
+
+// Tab Lima: filtros propios de Documento/Condominio (sin mapa ni distrito)
+(function () {
+    let _t;
+    function _refreshLima() {
+        buildRegistrosTable('regBodyLima', 'regCountLima',
+            document.getElementById('docSearchLima').value,
+            document.getElementById('condSearchLima').value, '');
+    }
+    const docEl = document.getElementById('docSearchLima');
+    const condEl = document.getElementById('condSearchLima');
+    if (docEl) docEl.addEventListener('input', function () { clearTimeout(_t); _t = setTimeout(_refreshLima, 250); });
+    if (condEl) condEl.addEventListener('input', function () { clearTimeout(_t); _t = setTimeout(_refreshLima, 250); });
+    _refreshLima();
+})();
+
 function initMapaLima() {
     if (_mapaLima || !puntosMapa.length) return;
     const el = document.getElementById('mapaLima');
@@ -1273,11 +1385,15 @@ function initMapaLima() {
         sel.appendChild(opt);
     });
 
-    // ── Búsqueda por dirección (debounce 300ms) ──────────────
+    // ── Búsqueda por dirección / documento / condominio (debounce 300ms) ──
     let _dirTimer;
-    document.getElementById('dirSearch').addEventListener('input', function() {
-        clearTimeout(_dirTimer);
-        _dirTimer = setTimeout(() => filtrarMapa(), 300);
+    ['dirSearch', 'docSearchLoc', 'condSearchLoc'].forEach(function (id) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('input', function() {
+            clearTimeout(_dirTimer);
+            _dirTimer = setTimeout(() => filtrarMapa(), 300);
+        });
     });
 
     // ── Límites distritales oficiales (GeoJSON GADM) ─────────
@@ -1366,8 +1482,10 @@ function initMapaLima() {
                     <b style="font-size:13px; color:var(--primary);">${p.distrito}</b><br>
                     ${p.geofinder ? `<span style="color:var(--brand); font-size:11px;"><i class="fa-solid fa-location-dot"></i> ${p.geofinder}</span><br>` : ''}
                     ${p.direccion && p.direccion !== p.geofinder ? `<span style="color:var(--slate); font-size:11px;">${p.direccion}</span><br>` : ''}
+                    ${p.condominio ? `<span style="color:var(--text-secondary); font-size:11px;"><i class="fa-solid fa-building"></i> ${p.condominio}</span><br>` : ''}
                     <span style="color:var(--warning); font-weight:700;">${p.plan || '—'}</span>
                     <span style="color:var(--slate); margin-left:6px; font-size:11px;">${p.tipo || ''}</span>
+                    ${p.estado_orden ? `<br><span style="font-size:11px; color:var(--success); font-weight:600;">${p.estado_orden}</span>` : ''}
                     ${p.score_zona ? `<br><span style="font-size:11px; font-weight:700; color:${scoreColor};">⬤ ${p.score_zona}</span>` : ''}
                 </div>`
             );
@@ -1406,7 +1524,9 @@ function initMapaLima() {
         if (dist !== undefined) sel.value = dist || '';
         const filterDist = sel.value;
         const filterDir  = (document.getElementById('dirSearch').value || '').toLowerCase().trim();
-        const hasFilter  = filterDist || filterDir;
+        const filterDoc  = document.getElementById('docSearchLoc').value || '';
+        const filterCond = (document.getElementById('condSearchLoc').value || '').toLowerCase().trim();
+        const hasFilter  = filterDist || filterDir || filterCond;
 
         // Resaltar polígono según distrito seleccionado
         Object.keys(_distGeoLayers).forEach(function(name) {
@@ -1430,9 +1550,11 @@ function initMapaLima() {
         if (filterDir)  pts = pts.filter(p =>
             (p.direccion || '').toLowerCase().includes(filterDir) ||
             (p.geofinder || '').toLowerCase().includes(filterDir));
+        if (filterCond) pts = pts.filter(p => (p.condominio || '').toLowerCase().includes(filterCond));
 
         addMarkers(pts);
         buildTablaDistritos(filterDist);
+        buildRegistrosTable('regBodyLoc', 'regCountLoc', filterDoc, filterCond, filterDist);
         document.getElementById('statPuntos').textContent = pts.length.toLocaleString();
 
         if (hasFilter && pts.length) {
@@ -1448,6 +1570,7 @@ function initMapaLima() {
 
     addMarkers(puntosMapa);
     buildTablaDistritos('');
+    buildRegistrosTable('regBodyLoc', 'regCountLoc', '', '', '');
     document.getElementById('statPuntos').textContent = puntosMapa.length.toLocaleString();
     document.getElementById('statDistritos').textContent = distSorted.length;
     setTimeout(() => _mapaLima.invalidateSize(), 100);

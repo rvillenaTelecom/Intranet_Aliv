@@ -1658,7 +1658,9 @@ def get_puntos_mapa_lima(mes, anio, area='', agencia_grupo=''):
         TRY_CAST([Latitud]  AS FLOAT)                  AS lat,
         TRY_CAST([Longitud] AS FLOAT)                  AS lon,
         ISNULL([Plan], '')                             AS [plan],
-        ISNULL([Tipo de domicilio], '')                AS tipo
+        ISNULL([Tipo de domicilio], '')                AS tipo,
+        ISNULL([Estado orden], '')                     AS estado_orden,
+        ISNULL([Condominio / Edificio], '')            AS condominio
     """
     _score_cols = """
         ,ISNULL([Zona_KML], '')                        AS zona_kml
@@ -1692,6 +1694,39 @@ def get_puntos_mapa_lima(mes, anio, area='', agencia_grupo=''):
                 print(f"Error get_puntos_mapa_lima: {e}")
                 return []
             print(f"[mapa] Score cols no disponibles, usando base: {e}")
+
+
+def get_registros_lima(mes, anio, area='', agencia_grupo=''):
+    """Registros individuales de Lima (cualquier estado, no solo Ejecutada) para
+    el buscador por documento/condominio y la tabla de detalle de clientes.
+    A diferencia de get_puntos_mapa_lima esto no exige lat/lon ni Estado orden
+    'Ejecutada' -- por eso encuentra ventas que aún no se instalaron.
+    Tope de 3000 filas más recientes (mismo criterio que get_mora_detalle)."""
+    _ac = _area_clause(area)
+    _dl = _dept_lima()
+    _agc = _agencia_clause(agencia_grupo)
+    try:
+        df = get_data(f"""
+            SELECT TOP 3000
+                ISNULL([N° doc cliente], '')             AS doc,
+                ISNULL(Cliente, '')                      AS cliente,
+                ISNULL([Telf. cliente], '')               AS telefono,
+                ISNULL([Fecha de registro], '')           AS fecha_registro,
+                ISNULL([Fecha programación], '')          AS fecha_programacion,
+                ISNULL([Estado orden], '')                AS estado_orden,
+                ISNULL([Estado del Pedido], '')           AS estado_pedido,
+                ISNULL([Condominio / Edificio], '')       AS condominio,
+                ISNULL([Dirección de Instalación], '')    AS direccion,
+                ISNULL(Distrito, '')                      AS distrito
+            FROM dbo.winforce_lima
+            WHERE MONTH([Fecha de registro]) = :mes AND YEAR([Fecha de registro]) = :anio
+            {_dl} {_ac} {_agc}
+            ORDER BY [Fecha de registro] DESC
+        """, params={'mes': mes, 'anio': anio})
+        return df.to_dict(orient='records')
+    except Exception as e:
+        print(f"Error get_registros_lima: {e}")
+        return []
 
 
 # ─── MOROSIDAD / CLAWBACK ────────────────────────────────────────────────────

@@ -370,6 +370,7 @@ def dashboard_ventas():
             'vel_planes':     lambda: db_helper.get_velocidad_planes_lima(mes, anio, area=area, dia=dia, agencia_grupo=agencia),
             'loc_lima':       lambda: db_helper.get_localizacion_lima(mes, anio, area=area, agencia_grupo=agencia),
             'puntos_mapa':    lambda: db_helper.get_puntos_mapa_lima(mes, anio, area=area, agencia_grupo=agencia),
+            'registros_lima': lambda: db_helper.get_registros_lima(mes, anio, area=area, agencia_grupo=agencia),
         }
         if area in ('Vertical', 'Horizontal'):
             _queries['pivot_agencia'] = lambda: db_helper.get_pivot_subagencias_lima(mes, anio, dia=dia)
@@ -409,6 +410,7 @@ def dashboard_ventas():
                            loc_lima=loc_lima,
                            loc_zonas=loc_lima['zonas'] if loc_lima else [],
                            puntos_mapa=db_data.get('puntos_mapa'),
+                           registros_lima=db_data.get('registros_lima') or [],
                            pivot_agencia=db_data.get('pivot_agencia'))
 
 @app.route('/ventas')
