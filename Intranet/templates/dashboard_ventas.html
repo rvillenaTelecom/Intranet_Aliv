@@ -1524,9 +1524,9 @@ function initMapaLima() {
         if (dist !== undefined) sel.value = dist || '';
         const filterDist = sel.value;
         const filterDir  = (document.getElementById('dirSearch').value || '').toLowerCase().trim();
-        const filterDoc  = document.getElementById('docSearchLoc').value || '';
+        const filterDoc  = (document.getElementById('docSearchLoc').value || '').toLowerCase().trim();
         const filterCond = (document.getElementById('condSearchLoc').value || '').toLowerCase().trim();
-        const hasFilter  = filterDist || filterDir || filterCond;
+        const hasFilter  = filterDist || filterDir || filterDoc || filterCond;
 
         // Resaltar polígono según distrito seleccionado
         Object.keys(_distGeoLayers).forEach(function(name) {
@@ -1551,6 +1551,7 @@ function initMapaLima() {
             (p.direccion || '').toLowerCase().includes(filterDir) ||
             (p.geofinder || '').toLowerCase().includes(filterDir));
         if (filterCond) pts = pts.filter(p => (p.condominio || '').toLowerCase().includes(filterCond));
+        if (filterDoc)  pts = pts.filter(p => String(p.doc || '').toLowerCase().includes(filterDoc));
 
         addMarkers(pts);
         buildTablaDistritos(filterDist);
