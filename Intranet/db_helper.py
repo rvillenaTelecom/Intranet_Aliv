@@ -302,9 +302,20 @@ def get_kpi_lima(mes, anio, area='', dia=None, cumul=False, base_dias=30, agenci
 def get_equipo_ventas_kpis(mes, anio):
     """KPIs resumen para la página Equipo Ventas: cuota Lima total, Vertical,
     Horizontal y zonas activas (distritos de Lima con ventas este mes)."""
-    kpi_lima = get_kpi_lima(mes, anio, area='')
-    kpi_vert = get_kpi_lima(mes, anio, area='Vertical')
-    kpi_horiz = get_kpi_lima(mes, anio, area='Horizontal')
+    def _kpi_con_reintento(area):
+        # Estas 3 consultas van una tras otra en el mismo request. Si la BD
+        # (Azure SQL free-tier) estaba recién despertando de una auto-pausa,
+        # la primera puede fallar mientras las siguientes ya cargan bien --
+        # un solo reintento inmediato evita que esa cuota quede en 0 durante
+        # los 5 minutos que dura el caché de esta página.
+        kpi = get_kpi_lima(mes, anio, area=area)
+        if kpi is None:
+            kpi = get_kpi_lima(mes, anio, area=area)
+        return kpi
+
+    kpi_lima = _kpi_con_reintento('')
+    kpi_vert = _kpi_con_reintento('Vertical')
+    kpi_horiz = _kpi_con_reintento('Horizontal')
 
     zonas_activas = 0
     try:
