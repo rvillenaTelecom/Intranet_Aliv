@@ -178,6 +178,7 @@ def get_kpi_lima(mes, anio, area='', dia=None, cumul=False, base_dias=30, agenci
             conversion_ayer = 0
             faltantes_ayer_100 = faltantes_ayer_110 = 0
             altas_ayer = 0
+            dia_ayer_efectivo = 0
         else:
             # Cuota por canal: WIN solo da una cuota de Horizontal combinada,
             # que se reparte a mano entre Aliv y Subagencias (áreas
@@ -206,11 +207,6 @@ def get_kpi_lima(mes, anio, area='', dia=None, cumul=False, base_dias=30, agenci
             ritmo_necesario   = round(max(cuota - altas, 0) / dias_base_rest)
             faltantes       = max(cuota - altas, 0)
             pct_proyeccion  = round(proyeccion / cuota * 100, 1) if cuota > 0 else 0
-
-            # Días reales que quedan para cerrar el mes, incluyendo hoy —
-            # es el horizonte que usamos para "cuánto necesito vender/instalar
-            # por día" (distinto de dias_base_rest, que usa el proxy 28/30d).
-            dias_rest_incl_hoy = max(dias_tot - dias_trans + 1, 1)
 
             cuota_110      = round(cuota * 1.10)
             faltantes_110  = max(cuota_110 - altas, 0)
@@ -258,6 +254,14 @@ def get_kpi_lima(mes, anio, area='', dia=None, cumul=False, base_dias=30, agenci
                     print(f"Error conversion_ayer: {e}")
                     altas_ayer = altas
 
+            # Días de la Base seleccionada (28/30/etc.) que quedan para cerrar
+            # la brecha, contando hoy como el primer día disponible -- se mide
+            # sobre el mismo corte de ayer que faltantes_ayer_100/110 (no sobre
+            # el calendario real del mes), para que "Altas/día" respete el
+            # selector Base igual que el resto del panel de proyección.
+            dia_ayer_efectivo = (dias_trans - 1) if (es_hoy_en_vivo and dias_trans > 1) else dias_trans
+            dias_rest_incl_hoy = max(base_dias - dia_ayer_efectivo, 1)
+
             faltantes_ayer_100 = max(cuota - altas_ayer, 0)
             faltantes_ayer_110 = max(cuota_110 - altas_ayer, 0)
 
@@ -283,6 +287,7 @@ def get_kpi_lima(mes, anio, area='', dia=None, cumul=False, base_dias=30, agenci
             'en_riesgo': 0, 'riesgo_pct': 0,
             'dias_trans': dias_trans, 'dias_tot': dias_tot,
             'dias_rest_incl_hoy': dias_rest_incl_hoy,
+            'dia_ayer_efectivo': dia_ayer_efectivo,
             'cuota_110': cuota_110, 'faltantes_110': faltantes_110,
             'altas_nec_100': altas_nec_100, 'altas_nec_110': altas_nec_110,
             'ventas_nec_100': ventas_nec_100, 'ventas_nec_110': ventas_nec_110,

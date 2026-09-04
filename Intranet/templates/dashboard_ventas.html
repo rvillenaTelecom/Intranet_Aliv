@@ -459,7 +459,8 @@
 <div class="panel proy-cuota-block" style="margin-bottom:20px;"
      data-cuota="{{ k.cuota }}" data-altas-ayer="{{ k.altas_ayer }}" data-altas-hoy="{{ k.altas }}"
      data-conversion="{{ k.conversion_ayer }}" data-dias-default="{{ k.dias_rest_incl_hoy }}" data-basis="ayer"
-     data-mes="{{ mes_actual }}" data-anio="{{ anio_actual }}" data-dias-totales="{{ k.dias_tot }}">
+     data-mes="{{ mes_actual }}" data-anio="{{ anio_actual }}" data-dias-totales="{{ k.dias_tot }}"
+     data-dias-transcurridos="{{ k.dia_ayer_efectivo }}">
     <div class="panel-title"><i class="fa-solid fa-bullseye"></i> ¿Qué necesito para llegar a la cuota?</div>
     <div style="font-size:12px; color:var(--text-secondary); margin:-6px 0 12px;">
         Conversión a cierre de ayer: <b style="color:var(--text-primary);">{{ k.conversion_ayer }}%</b>
@@ -671,7 +672,11 @@ function proyRecalc(block) {
     // prendida, si no la cuota 100%) y mismo "días restantes" para decidir
     // qué semanas ya cerraron vs cuáles todavía necesitan una meta.
     var diasTotales = parseFloat(block.dataset.diasTotales) || 0;
-    var cutoffDay = diasTotales - dias;
+    // El corte real (qué semanas ya pasaron) siempre se basa en el calendario
+    // -- viene fijo del server (cierre de ayer), no del input "Días restantes"
+    // (que ahora es relativo a la Base 28/30d y puede no coincidir con el día
+    // real del mes).
+    var cutoffDay = parseFloat(block.dataset.diasTranscurridos) || (diasTotales - dias);
     var targetCuota = extraOn ? Math.round(cuota * (parseFloat(block.querySelector('.proy-extra-pct').value) || 100) / 100) : cuota;
     proyBuildWeekly(block, targetCuota, cutoffDay);
 }
