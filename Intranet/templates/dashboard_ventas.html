@@ -552,7 +552,7 @@ function proyWeeksOfMonth(mes, anio) {
     return weeks;
 }
 
-function proyBuildWeekly(block, targetCuota, cutoffDay) {
+function proyBuildWeekly(block, targetCuota, cutoffDay, extraOn, extraPct) {
     var row = block.querySelector('.proy-weekly-row');
     var objLbl = block.querySelector('.proy-weekly-objetivo');
     if (!row) return;
@@ -622,7 +622,10 @@ function proyBuildWeekly(block, targetCuota, cutoffDay) {
         '</div>';
     }).join('');
 
-    if (objLbl) objLbl.textContent = '(objetivo: ' + proyFmt(targetCuota) + ')';
+    if (objLbl) {
+        var objSufijo = extraOn ? ' · Meta Adicional ' + extraPct + '%' : ' · cuota 100%';
+        objLbl.textContent = '(objetivo: ' + proyFmt(targetCuota) + objSufijo + ')';
+    }
 }
 
 function proyRecalc(block) {
@@ -675,10 +678,13 @@ function proyRecalc(block) {
     // El corte real (qué semanas ya pasaron) siempre se basa en el calendario
     // -- viene fijo del server (cierre de ayer), no del input "Días restantes"
     // (que ahora es relativo a la Base 28/30d y puede no coincidir con el día
-    // real del mes).
-    var cutoffDay = parseFloat(block.dataset.diasTranscurridos) || (diasTotales - dias);
+    // real del mes). Si el toggle "Altas con corte a" está en Hoy, la semana
+    // en curso también cuenta el día de hoy (en vivo), igual que la tabla de
+    // arriba.
+    var diasTranscurridosAyer = parseFloat(block.dataset.diasTranscurridos) || (diasTotales - dias);
+    var cutoffDay = basis === 'hoy' ? Math.min(diasTranscurridosAyer + 1, diasTotales) : diasTranscurridosAyer;
     var targetCuota = extraOn ? Math.round(cuota * (parseFloat(block.querySelector('.proy-extra-pct').value) || 100) / 100) : cuota;
-    proyBuildWeekly(block, targetCuota, cutoffDay);
+    proyBuildWeekly(block, targetCuota, cutoffDay, extraOn, extraOn ? (parseFloat(block.querySelector('.proy-extra-pct').value) || 100) : 100);
 }
 function proyResetDias(btn) {
     var block = btn.closest('.proy-cuota-block');
