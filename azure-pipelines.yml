@@ -1,0 +1,50 @@
+# Corre la fase "daily" del Pipeline (descarga WinForce + Zonificación + sube
+# a Azure SQL) cada hora en horario laboral de Perú (9am-9pm, UTC-5), sin
+# depender de que la PC local esté prendida.
+#
+# Los horarios cron de Azure Pipelines son SIEMPRE en UTC (no hay campo
+# timezone en este esquema) -- Perú es UTC-5 todo el año (sin horario de
+# verano), así que 9am-9pm Perú = 14:00-02:00 UTC (cruza medianoche UTC).
+# 13 corridas/día x ~4 min c/u x 30 días =~ 1,560 min/mes -- dentro del
+# free tier de Azure Pipelines (1,800 min/mes con 1 job de Microsoft-hosted).
+#
+# Variables/secretos que hay que crear en Azure DevOps (Pipelines > Edit >
+# Variables), marcados como "secret" -- NUNCA se escriben acá en el YAML:
+#   WINFORCE_USUARIO, WINFORCE_PASSWORD, AZURE_SQL_SERVER,
+#   AZURE_SQL_DATABASE, AZURE_SQL_USER, AZURE_SQL_PASSWORD
+
+trigger: none  # no correr en cada push -- solo por horario o manual
+
+schedules:
+  - cron: '0 14-23,0-2 * * *'
+    displayName: 'Cada hora, 9am-9pm Perú (UTC-5)'
+    branches:
+      include:
+        - main
+    always: true  # correr aunque no haya cambios nuevos en el repo
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '3.12'
+    displayName: 'Usar Python 3.12'
+
+  - script: |
+      pip install -r Pipeline/requirements.txt
+      playwright install --with-deps chromium
+    displayName: 'Instalar dependencias + Chromium'
+
+  - script: |
+      cd Pipeline
+      python run_pipeline.py daily
+    displayName: 'Correr fase daily (WinForce + Zonificación + subida a Azure SQL)'
+    env:
+      WINFORCE_USUARIO: $(WINFORCE_USUARIO)
+      WINFORCE_PASSWORD: $(WINFORCE_PASSWORD)
+      AZURE_SQL_SERVER: $(AZURE_SQL_SERVER)
+      AZURE_SQL_DATABASE: $(AZURE_SQL_DATABASE)
+      AZURE_SQL_USER: $(AZURE_SQL_USER)
+      AZURE_SQL_PASSWORD: $(AZURE_SQL_PASSWORD)
