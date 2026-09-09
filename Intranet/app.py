@@ -379,7 +379,7 @@ def dashboard_ventas():
             _queries['pivot_agencia_cierre'] = lambda: db_helper.get_pivot_subagencias_lima(
                 _fecha_ayer.month, _fecha_ayer.year, dia=_fecha_ayer.day, cumul=False)
         db_data = {}
-        with ThreadPoolExecutor(max_workers=6) as executor:
+        with ThreadPoolExecutor(max_workers=2) as executor:
             futures = {executor.submit(fn): name for name, fn in _queries.items()}
             for future in as_completed(futures):
                 name = futures[future]

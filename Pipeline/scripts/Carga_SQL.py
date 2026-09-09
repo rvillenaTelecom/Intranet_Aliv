@@ -59,12 +59,26 @@ def get_engine():
 
 
 def _replace_upload(engine, df, table_name, if_exists, label):
-    """Sube df a `engine`, reemplazando la tabla si if_exists='replace'. Devuelve True/False."""
+    """Sube df a `engine`, reemplazando la tabla si if_exists='replace'. Devuelve True/False.
+
+    Si la tabla ya existe y sus columnas coinciden con el DataFrame, se vacía con
+    TRUNCATE en vez de DROP+recrear -- así se conservan los tipos de columna e
+    índices definidos a mano (ver winforce_lima: columnas VARCHAR(MAX) acotadas
+    + índices agregados para que el dashboard no haga table scans -- un DROP
+    los perdería, porque to_sql recrea la tabla con tipos auto-inferidos y sin
+    índices). Si las columnas no coinciden (cambió el formato de origen), cae
+    de vuelta a DROP+recrear como antes."""
     try:
         nombre = table_name
         insp = sa.inspect(engine)
-        if if_exists == 'replace':
-            if insp.has_table(nombre, schema='dbo'):
+        if if_exists == 'replace' and insp.has_table(nombre, schema='dbo'):
+            cols_tabla = {c['name'] for c in insp.get_columns(nombre, schema='dbo')}
+            if cols_tabla == set(df.columns):
+                with engine.begin() as conn:
+                    conn.execute(sa.text(f"TRUNCATE TABLE [dbo].[{nombre}]"))
+            else:
+                print(f"  [DB {label}] Columnas de '{nombre}' cambiaron -- se recrea la tabla "
+                      f"(se pierden tipos/índices definidos a mano).")
                 with engine.begin() as conn:
                     conn.execute(sa.text(f"DROP TABLE [dbo].[{nombre}]"))
         df.to_sql(nombre, engine, index=False, if_exists='append', schema='dbo')
