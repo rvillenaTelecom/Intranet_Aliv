@@ -28,7 +28,12 @@ def get_engine():
             f"mssql+pymssql://{urllib.parse.quote_plus(azure_user)}:{urllib.parse.quote_plus(azure_pass)}"
             f"@{azure_server}:1433/{azure_db}"
         )
-        _engine = sa.create_engine(conn_str)
+        _engine = sa.create_engine(
+            conn_str,
+            pool_pre_ping=True,   # descarta conexiones muertas del pool antes de usarlas
+            pool_recycle=280,     # recicla conexiones antes de que Azure las cierre por inactividad
+            connect_args={'timeout': 30, 'login_timeout': 15},  # pymssql: query / conexión, en segundos
+        )
         return _engine
 
     SERVER = r'.\SQLEXPRESS'
