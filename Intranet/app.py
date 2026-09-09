@@ -1190,33 +1190,7 @@ def reporte_gerente():
     ]
     mes_nombre = next((m['nombre'] for m in meses if m['id'] == mes), '')
 
-    kpi_t = db_helper.get_kpi_lima(mes, anio, area='',           dia=dia, cumul=_cumul, base_dias=base_dias) or {}
-    kpi_v = db_helper.get_kpi_lima(mes, anio, area='Vertical',   dia=dia, cumul=_cumul, base_dias=base_dias) or {}
-    kpi_h = db_helper.get_kpi_lima(mes, anio, area='Horizontal', dia=dia, cumul=_cumul, base_dias=base_dias) or {}
-    k = kpi_v if area == 'Vertical' else (kpi_h if area == 'Horizontal' else kpi_t)
-
-    planes_v_raw = db_helper.get_velocidad_planes_lima(mes, anio, area='Vertical',   dia=dia, cumul=_cumul)
-    planes_h_raw = db_helper.get_velocidad_planes_lima(mes, anio, area='Horizontal', dia=dia, cumul=_cumul)
-    _pm = {}
-    for p in planes_v_raw:
-        _pm[p['velocidad']] = {'velocidad': p['velocidad'], 'v_altas': p['altas'], 'v_pct': p['pct'], 'h_altas': 0, 'h_pct': 0.0}
-    for p in planes_h_raw:
-        if p['velocidad'] in _pm:
-            _pm[p['velocidad']]['h_altas'] = p['altas']
-            _pm[p['velocidad']]['h_pct']   = p['pct']
-        else:
-            _pm[p['velocidad']] = {'velocidad': p['velocidad'], 'v_altas': 0, 'v_pct': 0.0, 'h_altas': p['altas'], 'h_pct': p['pct']}
-    planes_merged = sorted(_pm.values(), key=lambda x: x['v_altas'] + x['h_altas'], reverse=True)
-    for p in planes_merged:
-        p['total'] = p['v_altas'] + p['h_altas']
-
-    top_distritos = db_helper.get_top_distritos_lima(mes, anio, top=10, dia=dia, cumul=_cumul)
-    pivot_sub = db_helper.get_pivot_subagencias_lima(mes, anio, dia=dia, cumul=_cumul)
     anios = list(range(2024, datetime.now().year + 2))
-
-    # Serie diaria de altas del mes (para "Plan semana a semana" del panel de cuota).
-    trend_v = db_helper.get_daily_trend_lima(mes, anio, area='Vertical')
-    trend_h = db_helper.get_daily_trend_lima(mes, anio, area='Horizontal')
 
     # Instalaciones del día: si hay un Día específico elegido, la vista operativa
     # se mueve a ese día del mes/año filtrado; si no, sigue el corte Ayer/Hoy real.
@@ -1231,7 +1205,70 @@ def reporte_gerente():
     else:
         fecha_avance = hoy_real.date()
         avance_label = 'Hoy'
-    activaciones_hoy = db_helper.get_activaciones_hoy(fecha=fecha_avance)
+
+    # Las ~10 consultas de abajo son independientes entre sí -- se corren en
+    # paralelo (igual que dashboard_ventas) y se cachean 5 min, porque antes
+    # se hacían una por una y la carga completa pasaba de 2 minutos.
+    cache_key = ('reporte_gerente', mes, anio, area, dia, _cumul, base_dias, fecha_avance)
+    db_data = _cache_get(cache_key)
+    if db_data is None:
+        _queries = {
+            'kpi_t':            lambda: db_helper.get_kpi_lima(mes, anio, area='',           dia=dia, cumul=_cumul, base_dias=base_dias),
+            'kpi_v':            lambda: db_helper.get_kpi_lima(mes, anio, area='Vertical',   dia=dia, cumul=_cumul, base_dias=base_dias),
+            'kpi_h':            lambda: db_helper.get_kpi_lima(mes, anio, area='Horizontal', dia=dia, cumul=_cumul, base_dias=base_dias),
+            'planes_v':         lambda: db_helper.get_velocidad_planes_lima(mes, anio, area='Vertical',   dia=dia, cumul=_cumul),
+            'planes_h':         lambda: db_helper.get_velocidad_planes_lima(mes, anio, area='Horizontal', dia=dia, cumul=_cumul),
+            'top_distritos':    lambda: db_helper.get_top_distritos_lima(mes, anio, top=10, dia=dia, cumul=_cumul),
+            'pivot_sub':        lambda: db_helper.get_pivot_subagencias_lima(mes, anio, dia=dia, cumul=_cumul),
+            'trend_v':          lambda: db_helper.get_daily_trend_lima(mes, anio, area='Vertical'),
+            'trend_h':          lambda: db_helper.get_daily_trend_lima(mes, anio, area='Horizontal'),
+            'activaciones_hoy': lambda: db_helper.get_activaciones_hoy(fecha=fecha_avance),
+        }
+        db_data = {}
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            futures = {executor.submit(fn): name for name, fn in _queries.items()}
+            for future in as_completed(futures):
+                name = futures[future]
+                try:
+                    db_data[name] = future.result()
+                except Exception as e:
+                    print(f"[reporte_gerente] {name}: {e}")
+                    db_data[name] = None
+        if db_data.get('kpi_t') is not None:
+            _cache_set(cache_key, db_data)
+
+    kpi_t = db_data.get('kpi_t') or {}
+    kpi_v = db_data.get('kpi_v') or {}
+    kpi_h = db_data.get('kpi_h') or {}
+    k = kpi_v if area == 'Vertical' else (kpi_h if area == 'Horizontal' else kpi_t)
+
+    planes_v_raw = db_data.get('planes_v') or []
+    planes_h_raw = db_data.get('planes_h') or []
+    _pm = {}
+    for p in planes_v_raw:
+        _pm[p['velocidad']] = {'velocidad': p['velocidad'], 'v_altas': p['altas'], 'v_pct': p['pct'], 'h_altas': 0, 'h_pct': 0.0}
+    for p in planes_h_raw:
+        if p['velocidad'] in _pm:
+            _pm[p['velocidad']]['h_altas'] = p['altas']
+            _pm[p['velocidad']]['h_pct']   = p['pct']
+        else:
+            _pm[p['velocidad']] = {'velocidad': p['velocidad'], 'v_altas': 0, 'v_pct': 0.0, 'h_altas': p['altas'], 'h_pct': p['pct']}
+    planes_merged = sorted(_pm.values(), key=lambda x: x['v_altas'] + x['h_altas'], reverse=True)
+    for p in planes_merged:
+        p['total'] = p['v_altas'] + p['h_altas']
+
+    top_distritos = db_data.get('top_distritos') or []
+    pivot_sub = db_data.get('pivot_sub') or []
+
+    # Serie diaria de altas del mes (para "Plan semana a semana" del panel de cuota).
+    trend_v = db_data.get('trend_v') or []
+    trend_h = db_data.get('trend_h') or []
+
+    activaciones_hoy = db_data.get('activaciones_hoy') or {
+        'ejecutadas': 0, 'pendientes': 0, 'agendadas': 0, 'faltan': 0,
+        'ejecutadas_vertical': 0, 'ejecutadas_horizontal': 0,
+        'pendientes_vertical': 0, 'pendientes_horizontal': 0, 'turnos': [],
+    }
     activaciones_hoy['agendadas_vertical']   = activaciones_hoy['ejecutadas_vertical']   + activaciones_hoy['pendientes_vertical']
     activaciones_hoy['agendadas_horizontal'] = activaciones_hoy['ejecutadas_horizontal'] + activaciones_hoy['pendientes_horizontal']
 
