@@ -58,6 +58,19 @@ def get_engine():
     return _get_azure_engine() or _get_local_engine()
 
 
+def _try_local_engine():
+    """Como _get_local_engine(), pero no revienta si falta el driver (pyodbc) o
+    no hay SQL Express instalado -- pasa en agentes de CI en la nube (Azure
+    Pipelines, GitHub Actions), donde sa.create_engine() falla al construirse
+    (no solo al conectar) porque el dialecto pyodbc ni siquiera está instalado.
+    Devuelve None si falla, para que el respaldo local sea best-effort de verdad."""
+    try:
+        return _get_local_engine()
+    except Exception as e:
+        print(f"  [DB Local] Motor local no disponible (normal en un agente en la nube sin SQL Express/pyodbc): {e}")
+        return None
+
+
 def _replace_upload(engine, df, table_name, if_exists, label):
     """Sube df a `engine`, reemplazando la tabla si if_exists='replace'. Devuelve True/False.
 
@@ -96,9 +109,15 @@ def upload_to_sql(df, table_name, if_exists='replace'):
     azure_engine = _get_azure_engine()
     if azure_engine is not None:
         ok = _replace_upload(azure_engine, df, table_name, if_exists, label='Azure')
-        _replace_upload(_get_local_engine(), df, table_name, if_exists, label='Local-respaldo')
+        local_engine = _try_local_engine()
+        if local_engine is not None:
+            _replace_upload(local_engine, df, table_name, if_exists, label='Local-respaldo')
         return ok
-    return _replace_upload(_get_local_engine(), df, table_name, if_exists, label='Local')
+    local_engine = _try_local_engine()
+    if local_engine is None:
+        print(f"  [DB] ERROR upload_to_sql({table_name}): no hay Azure configurado y el motor local no está disponible.")
+        return False
+    return _replace_upload(local_engine, df, table_name, if_exists, label='Local')
 
 
 def _incremental_upload(engine, df, table_name, date_col, days, start_date, label):
@@ -172,6 +191,12 @@ def upload_incremental_to_sql(df, table_name, date_col, days=None, start_date=No
     azure_engine = _get_azure_engine()
     if azure_engine is not None:
         ok = _incremental_upload(azure_engine, df, table_name, date_col, days, start_date, label='Azure')
-        _incremental_upload(_get_local_engine(), df, table_name, date_col, days, start_date, label='Local-respaldo')
+        local_engine = _try_local_engine()
+        if local_engine is not None:
+            _incremental_upload(local_engine, df, table_name, date_col, days, start_date, label='Local-respaldo')
         return ok
-    return _incremental_upload(_get_local_engine(), df, table_name, date_col, days, start_date, label='Local')
+    local_engine = _try_local_engine()
+    if local_engine is None:
+        print(f"  [DB] ERROR upload_incremental_to_sql({table_name}): no hay Azure configurado y el motor local no está disponible.")
+        return False
+    return _incremental_upload(local_engine, df, table_name, date_col, days, start_date, label='Local')
