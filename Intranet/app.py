@@ -130,6 +130,7 @@ def _job_todo_2026():
 
 _dashboard_cache = {}
 _CACHE_TTL = 300  # 5 minutos
+_CACHE_MAX_ENTRIES = 40  # evita que crezca sin límite y llene la memoria (512MB en Render)
 
 
 def _cache_get(key):
@@ -140,6 +141,13 @@ def _cache_get(key):
 
 
 def _cache_set(key, data):
+    if len(_dashboard_cache) >= _CACHE_MAX_ENTRIES:
+        # Cada combinación de filtros (mes/dia/base/área) que alguien prueba
+        # queda guardada -- sin este límite el caché crece sin parar durante
+        # el día y puede agotar la memoria del servidor. Se vacía entero en
+        # vez de llevar un LRU: es más simple y el costo es solo repetir
+        # algunas consultas, no perder correctitud.
+        _dashboard_cache.clear()
     _dashboard_cache[key] = (time.time(), data)
 
 try:
