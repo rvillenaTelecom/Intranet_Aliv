@@ -38,9 +38,11 @@ def get_engine():
         )
         _engine = sa.create_engine(
             conn_str,
-            pool_size=5,
-            max_overflow=5,       # tope bajo a propósito: mas conexiones en paralelo saturan la
-                                   # base en vez de ayudar (confirmado empíricamente)
+            pool_size=8,
+            max_overflow=8,       # subido de 5+5 -- con varios usuarios reales a la vez, cada
+                                   # carga de dashboard pide 2 conexiones (ThreadPoolExecutor) y
+                                   # el pool se llenaba rapido ("QueuePool limit... reached").
+                                   # Sigue acotado para no volver al extremo de 60 de antes.
             pool_pre_ping=True,   # descarta conexiones muertas del pool antes de usarlas
             pool_recycle=280,     # recicla conexiones antes de que Azure las cierre por inactividad
             connect_args={'timeout': 30, 'login_timeout': 15},  # pymssql: query / conexión, en segundos
