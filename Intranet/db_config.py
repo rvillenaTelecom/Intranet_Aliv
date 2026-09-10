@@ -21,6 +21,8 @@ def get_engine():
 
     azure_server = os.environ.get('AZURE_SQL_SERVER')
     if azure_server:
+        if '.database.windows.net' not in azure_server and not azure_server.endswith('.net'):
+            azure_server = f"{azure_server}.database.windows.net"
         azure_db   = os.environ.get('AZURE_SQL_DATABASE', 'Aliv_DB')
         azure_user = os.environ.get('AZURE_SQL_USER')
         azure_pass = os.environ.get('AZURE_SQL_PASSWORD')
@@ -30,9 +32,11 @@ def get_engine():
         )
         _engine = sa.create_engine(
             conn_str,
+            pool_size=10,
+            max_overflow=20,
             pool_pre_ping=True,   # descarta conexiones muertas del pool antes de usarlas
             pool_recycle=280,     # recicla conexiones antes de que Azure las cierre por inactividad
-            connect_args={'timeout': 30, 'login_timeout': 15},  # pymssql: query / conexión, en segundos
+            connect_args={'timeout': 60, 'login_timeout': 60},  # pymssql: query / conexión, en segundos
         )
         return _engine
 

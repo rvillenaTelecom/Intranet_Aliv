@@ -150,10 +150,13 @@ def _cache_set(key, data):
         _dashboard_cache.clear()
     _dashboard_cache[key] = (time.time(), data)
 
-try:
-    db_helper.init_dim_usuarios_table()
-except Exception as _e:
-    print(f"init dim_usuarios: {_e}")
+def _async_init_db():
+    try:
+        db_helper.init_dim_usuarios_table()
+    except Exception as _e:
+        print(f"init dim_usuarios: {_e}")
+
+threading.Thread(target=_async_init_db, daemon=True).start()
 
 
 def _auto_download_lima_geo():
