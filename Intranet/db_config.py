@@ -37,10 +37,9 @@ def get_engine():
                                    # base en vez de ayudar (confirmado empíricamente)
             pool_pre_ping=True,   # descarta conexiones muertas del pool antes de usarlas
             pool_recycle=280,     # recicla conexiones antes de que Azure las cierre por inactividad
-            connect_args={'timeout': 30, 'login_timeout': 100},  # pymssql: query / conexión, en segundos
-                                   # -- login_timeout alto a propósito: la base es Serverless y se
-                                   # pausa sola tras inactividad, Azure puede tardar hasta ~90s en
-                                   # despertarla en la primera conexión
+            connect_args={'timeout': 30, 'login_timeout': 15},  # pymssql: query / conexión, en segundos
+                                   # -- la base es Standard (Provisioned), no se auto-pausa,
+                                   # asi que no hace falta un login_timeout largo
         )
         return _engine
 
