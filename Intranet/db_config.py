@@ -32,11 +32,14 @@ def get_engine():
         )
         _engine = sa.create_engine(
             conn_str,
-            pool_size=10,
-            max_overflow=20,
+            pool_size=5,
+            max_overflow=5,       # tope bajo a propósito: con 20 DTU, más conexiones en paralelo
+                                   # saturan la base en vez de ayudar (confirmado empíricamente)
             pool_pre_ping=True,   # descarta conexiones muertas del pool antes de usarlas
             pool_recycle=280,     # recicla conexiones antes de que Azure las cierre por inactividad
-            connect_args={'timeout': 60, 'login_timeout': 60},  # pymssql: query / conexión, en segundos
+            connect_args={'timeout': 30, 'login_timeout': 15},  # pymssql: query / conexión, en segundos
+                                   # -- esta base es Standard (no Serverless), no se auto-pausa,
+                                   # asi que no hace falta un login_timeout largo
         )
         return _engine
 

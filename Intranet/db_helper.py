@@ -89,7 +89,7 @@ def get_kpi_lima(mes, anio, area='', dia=None, cumul=False, base_dias=30, agenci
         df = get_data(f"""
             SELECT
                 (SELECT COUNT(*) FROM dbo.winforce_lima
-                 WHERE MONTH([Fecha de registro]) = :mes AND YEAR([Fecha de registro]) = :anio
+                 WHERE [Fecha de registro] >= CONVERT(VARCHAR(10), DATEFROMPARTS(:anio, :mes, 1), 120) AND [Fecha de registro] < CONVERT(VARCHAR(10), DATEADD(MONTH, 1, DATEFROMPARTS(:anio, :mes, 1)), 120)
                  {_dl} {_ac} {_agc} {_dr}
                 ) AS ventas,
                 (SELECT COUNT(*) FROM dbo.winforce_lima
@@ -100,18 +100,18 @@ def get_kpi_lima(mes, anio, area='', dia=None, cumul=False, base_dias=30, agenci
                 ) AS altas,
                 (SELECT COUNT(*) FROM dbo.winforce_lima
                  WHERE [Estado orden] = 'Anulado'
-                   AND MONTH([Fecha de registro]) = :mes AND YEAR([Fecha de registro]) = :anio
+                   AND [Fecha de registro] >= CONVERT(VARCHAR(10), DATEFROMPARTS(:anio, :mes, 1), 120) AND [Fecha de registro] < CONVERT(VARCHAR(10), DATEADD(MONTH, 1, DATEFROMPARTS(:anio, :mes, 1)), 120)
                  {_dl} {_ac} {_agc} {_dr}
                 ) AS anulaciones,
                 (SELECT COUNT(*) FROM dbo.winforce_lima
                  WHERE [Estado del Pedido] = 'Validado'
-                   AND MONTH([Fecha de registro]) = :mes AND YEAR([Fecha de registro]) = :anio
+                   AND [Fecha de registro] >= CONVERT(VARCHAR(10), DATEFROMPARTS(:anio, :mes, 1), 120) AND [Fecha de registro] < CONVERT(VARCHAR(10), DATEADD(MONTH, 1, DATEFROMPARTS(:anio, :mes, 1)), 120)
                  {_dl} {_ac} {_agc} {_dr}
                 ) AS validado,
                 (SELECT DATEDIFF(DAY, DATEFROMPARTS(:anio, :mes, 1),
                          MAX(CAST([Fecha de registro] AS DATE))) + 1
                  FROM dbo.winforce_lima
-                 WHERE MONTH([Fecha de registro]) = :mes AND YEAR([Fecha de registro]) = :anio
+                 WHERE [Fecha de registro] >= CONVERT(VARCHAR(10), DATEFROMPARTS(:anio, :mes, 1), 120) AND [Fecha de registro] < CONVERT(VARCHAR(10), DATEADD(MONTH, 1, DATEFROMPARTS(:anio, :mes, 1)), 120)
                  {_dl}
                 ) AS dias_trans_db
         """, params=p)
@@ -158,7 +158,7 @@ def get_kpi_lima(mes, anio, area='', dia=None, cumul=False, base_dias=30, agenci
             df2 = get_data(f"""
                 SELECT AVG(TRY_CAST([Score_Minimo_KML] AS FLOAT)) AS score_prom
                 FROM dbo.winforce_lima
-                WHERE MONTH([Fecha de registro])=:mes AND YEAR([Fecha de registro])=:anio
+                WHERE [Fecha de registro] >= CONVERT(VARCHAR(10), DATEFROMPARTS(:anio, :mes, 1), 120) AND [Fecha de registro] < CONVERT(VARCHAR(10), DATEADD(MONTH, 1, DATEFROMPARTS(:anio, :mes, 1)), 120)
                   AND [Score_Minimo_KML] IS NOT NULL
                   {_dl} {_ac} {_agc} {_dr}
             """, params=p)
@@ -234,7 +234,7 @@ def get_kpi_lima(mes, anio, area='', dia=None, cumul=False, base_dias=30, agenci
                     df_ayer = get_data(f"""
                         SELECT
                             (SELECT COUNT(*) FROM dbo.winforce_lima
-                             WHERE MONTH([Fecha de registro]) = :mes AND YEAR([Fecha de registro]) = :anio
+                             WHERE [Fecha de registro] >= CONVERT(VARCHAR(10), DATEFROMPARTS(:anio, :mes, 1), 120) AND [Fecha de registro] < CONVERT(VARCHAR(10), DATEADD(MONTH, 1, DATEFROMPARTS(:anio, :mes, 1)), 120)
                                AND DAY([Fecha de registro]) <= :dia_corte_ayer
                              {_dl} {_ac} {_agc}
                             ) AS ventas_ayer,
@@ -447,7 +447,7 @@ def get_daily_trend_lima(mes, anio, area='', agencia_grupo=''):
             FROM (
                 SELECT DAY([Fecha de registro]) AS dia, 1 AS es_venta, 0 AS es_alta
                 FROM dbo.winforce_lima
-                WHERE MONTH([Fecha de registro]) = :mes AND YEAR([Fecha de registro]) = :anio
+                WHERE [Fecha de registro] >= CONVERT(VARCHAR(10), DATEFROMPARTS(:anio, :mes, 1), 120) AND [Fecha de registro] < CONVERT(VARCHAR(10), DATEADD(MONTH, 1, DATEFROMPARTS(:anio, :mes, 1)), 120)
                 {_dl} {_ac} {_agc}
 
                 UNION ALL
@@ -646,7 +646,7 @@ def get_distribucion_estados_lima(mes, anio, area='', dia=None, agencia_grupo=''
                 ISNULL([Estado orden], '') AS estado,
                 COUNT(*) AS registro
             FROM dbo.winforce_lima
-            WHERE MONTH([Fecha de registro]) = :mes AND YEAR([Fecha de registro]) = :anio
+            WHERE [Fecha de registro] >= CONVERT(VARCHAR(10), DATEFROMPARTS(:anio, :mes, 1), 120) AND [Fecha de registro] < CONVERT(VARCHAR(10), DATEADD(MONTH, 1, DATEFROMPARTS(:anio, :mes, 1)), 120)
             {_dl} {_ac} {_agc} {_dr}
             GROUP BY [Estado orden]
             ORDER BY [Estado orden]
@@ -741,7 +741,7 @@ def get_velocidad_planes_ventas_lima(mes, anio, area='', dia=None):
                 COUNT(*) AS ventas,
                 ROUND(100.0 * COUNT(*) / SUM(COUNT(*)) OVER (), 2) AS pct
             FROM dbo.winforce_lima
-            WHERE MONTH([Fecha de registro]) = :mes AND YEAR([Fecha de registro]) = :anio
+            WHERE [Fecha de registro] >= CONVERT(VARCHAR(10), DATEFROMPARTS(:anio, :mes, 1), 120) AND [Fecha de registro] < CONVERT(VARCHAR(10), DATEADD(MONTH, 1, DATEFROMPARTS(:anio, :mes, 1)), 120)
               AND [Plan] IS NOT NULL AND [Plan] <> ''
               {_dl} {_ac} {_dr}
             GROUP BY {_vel}
@@ -803,7 +803,7 @@ def get_tipo_vivienda_lima(mes, anio, area='', dia=None):
                 ISNULL([Tipo de domicilio], 'Desconocido') AS vivienda,
                 COUNT(*) AS ventas
             FROM dbo.winforce_lima
-            WHERE MONTH([Fecha de registro]) = :mes AND YEAR([Fecha de registro]) = :anio
+            WHERE [Fecha de registro] >= CONVERT(VARCHAR(10), DATEFROMPARTS(:anio, :mes, 1), 120) AND [Fecha de registro] < CONVERT(VARCHAR(10), DATEADD(MONTH, 1, DATEFROMPARTS(:anio, :mes, 1)), 120)
             {_dl} {_ac} {_dr}
             GROUP BY [Tipo de domicilio]
         """
@@ -1106,7 +1106,7 @@ def _subagencia_conteo(mes, anio, area, dia, metric, cumul=True):
         where_extra = f"wf.[Estado orden] = 'Ejecutada' AND MONTH({_fpw}) = :mes AND YEAR({_fpw}) = :anio AND {_fpw} IS NOT NULL"
     else:
         _dd = f"AND DAY(wf.[Fecha de registro]) {_op} :dia" if dia else ""
-        where_extra = "MONTH(wf.[Fecha de registro]) = :mes AND YEAR(wf.[Fecha de registro]) = :anio"
+        where_extra = "wf.[Fecha de registro] >= CONVERT(VARCHAR(10), DATEFROMPARTS(:anio, :mes, 1), 120) AND wf.[Fecha de registro] < CONVERT(VARCHAR(10), DATEADD(MONTH, 1, DATEFROMPARTS(:anio, :mes, 1)), 120)"
 
     p = {'mes': mes, 'anio': anio}
     if dia:
@@ -1195,7 +1195,7 @@ def get_pivot_planes_agencias_lima(mes, anio, dia=None):
         df_ventas = get_data(f"""
             SELECT wl.[Plan] AS nombre_plan, {_raw} AS raw_agencia, COUNT(*) AS cnt
             FROM dbo.winforce_lima wl {_joins}
-            WHERE MONTH(wl.[Fecha de registro]) = :mes AND YEAR(wl.[Fecha de registro]) = :anio
+            WHERE wl.[Fecha de registro] >= CONVERT(VARCHAR(10), DATEFROMPARTS(:anio, :mes, 1), 120) AND wl.[Fecha de registro] < CONVERT(VARCHAR(10), DATEADD(MONTH, 1, DATEFROMPARTS(:anio, :mes, 1)), 120)
               AND wl.[Plan] IS NOT NULL AND wl.[Plan] <> ''
               {_dlw} {_dr}
             GROUP BY wl.[Plan], {_raw}
@@ -1481,7 +1481,7 @@ def get_localizacion_lima(mes, anio, area='', agencia_grupo=''):
                 SUM(CASE WHEN [Zona_KML] = 'No Venta' THEN 1 ELSE 0 END) AS no_venta,
                 COUNT(*)                                               AS total
             FROM dbo.winforce_lima
-            WHERE MONTH([Fecha de registro]) = :mes AND YEAR([Fecha de registro]) = :anio
+            WHERE [Fecha de registro] >= CONVERT(VARCHAR(10), DATEFROMPARTS(:anio, :mes, 1), 120) AND [Fecha de registro] < CONVERT(VARCHAR(10), DATEADD(MONTH, 1, DATEFROMPARTS(:anio, :mes, 1)), 120)
             {_dl} {_ac} {_agc}
         """, params={'mes': mes, 'anio': anio})
         r = df.iloc[0]
@@ -1583,7 +1583,7 @@ def get_datos_distrito_lima(mes, anio, distrito, area=''):
         df_ventas = get_data(f"""
             SELECT COUNT(*) AS ventas
             FROM dbo.winforce_lima
-            WHERE MONTH([Fecha de registro]) = :mes AND YEAR([Fecha de registro]) = :anio
+            WHERE [Fecha de registro] >= CONVERT(VARCHAR(10), DATEFROMPARTS(:anio, :mes, 1), 120) AND [Fecha de registro] < CONVERT(VARCHAR(10), DATEADD(MONTH, 1, DATEFROMPARTS(:anio, :mes, 1)), 120)
               AND [Distrito] = :dist
               {_dl} {_ac}
         """, params=p_exact)
@@ -1635,7 +1635,7 @@ def get_anulaciones_agencia_lima(mes, anio, area=''):
             FROM dbo.winforce_lima l
             LEFT JOIN dbo.dim_usuarios_Aliv u ON l.[Vendedor real] = u.vendedor
             WHERE l.[Estado orden] = 'Anulado'
-              AND MONTH(l.[Fecha de registro]) = :mes AND YEAR(l.[Fecha de registro]) = :anio
+              AND l.[Fecha de registro] >= CONVERT(VARCHAR(10), DATEFROMPARTS(:anio, :mes, 1), 120) AND l.[Fecha de registro] < CONVERT(VARCHAR(10), DATEADD(MONTH, 1, DATEFROMPARTS(:anio, :mes, 1)), 120)
               {_dl} {_ac}
             GROUP BY ISNULL(u.agencia, l.[Agencia])
             ORDER BY anulaciones DESC
@@ -1754,7 +1754,7 @@ def get_registros_lima(mes, anio, area='', agencia_grupo=''):
                 ISNULL(ua.agencia, '')                    AS agencia
             FROM dbo.winforce_lima
             LEFT JOIN dbo.dim_usuarios_Aliv ua ON [Vendedor real] = ua.vendedor
-            WHERE MONTH([Fecha de registro]) = :mes AND YEAR([Fecha de registro]) = :anio
+            WHERE [Fecha de registro] >= CONVERT(VARCHAR(10), DATEFROMPARTS(:anio, :mes, 1), 120) AND [Fecha de registro] < CONVERT(VARCHAR(10), DATEADD(MONTH, 1, DATEFROMPARTS(:anio, :mes, 1)), 120)
             {_dl} {_ac} {_agc}
             ORDER BY [Fecha de registro] DESC
         """, params={'mes': mes, 'anio': anio})
@@ -2362,14 +2362,14 @@ def get_datos_agencia_lima(mes, anio, agencia, area='', dia=None):
         df_v = get_data(f"""
             SELECT COUNT(*) AS ventas FROM dbo.winforce_lima wl
             {_joins}
-            WHERE MONTH(wl.[Fecha de registro]) = :mes AND YEAR(wl.[Fecha de registro]) = :anio
+            WHERE wl.[Fecha de registro] >= CONVERT(VARCHAR(10), DATEFROMPARTS(:anio, :mes, 1), 120) AND wl.[Fecha de registro] < CONVERT(VARCHAR(10), DATEADD(MONTH, 1, DATEFROMPARTS(:anio, :mes, 1)), 120)
               AND {_ag_expr} = :ag {_dlw} {_dr}
         """, params=p)
         df_n = get_data(f"""
             SELECT COUNT(*) AS anulaciones FROM dbo.winforce_lima wl
             {_joins}
             WHERE wl.[Estado orden] = 'Anulado'
-              AND MONTH(wl.[Fecha de registro]) = :mes AND YEAR(wl.[Fecha de registro]) = :anio
+              AND wl.[Fecha de registro] >= CONVERT(VARCHAR(10), DATEFROMPARTS(:anio, :mes, 1), 120) AND wl.[Fecha de registro] < CONVERT(VARCHAR(10), DATEADD(MONTH, 1, DATEFROMPARTS(:anio, :mes, 1)), 120)
               AND {_ag_expr} = :ag {_dlw} {_dr}
         """, params=p)
         df_top = get_data(f"""
@@ -2447,7 +2447,7 @@ def get_ranking_agencias_lima(mes, anio, area='', dia=None):
             SELECT {_ag_expr} AS agencia, COUNT(*) AS ventas
             FROM dbo.winforce_lima wl
             {_joins}
-            WHERE MONTH(wl.[Fecha de registro]) = :mes AND YEAR(wl.[Fecha de registro]) = :anio
+            WHERE wl.[Fecha de registro] >= CONVERT(VARCHAR(10), DATEFROMPARTS(:anio, :mes, 1), 120) AND wl.[Fecha de registro] < CONVERT(VARCHAR(10), DATEADD(MONTH, 1, DATEFROMPARTS(:anio, :mes, 1)), 120)
               {_dlw} {_dr}
             GROUP BY {_ag_expr}
         """, params=p)
@@ -2456,7 +2456,7 @@ def get_ranking_agencias_lima(mes, anio, area='', dia=None):
             FROM dbo.winforce_lima wl
             {_joins}
             WHERE wl.[Estado orden] = 'Anulado'
-              AND MONTH(wl.[Fecha de registro]) = :mes AND YEAR(wl.[Fecha de registro]) = :anio
+              AND wl.[Fecha de registro] >= CONVERT(VARCHAR(10), DATEFROMPARTS(:anio, :mes, 1), 120) AND wl.[Fecha de registro] < CONVERT(VARCHAR(10), DATEADD(MONTH, 1, DATEFROMPARTS(:anio, :mes, 1)), 120)
               {_dlw} {_dr}
             GROUP BY {_ag_expr}
         """, params=p)
@@ -2487,7 +2487,7 @@ def get_datos_vendedor_lima(mes, anio, vendedor, dia=None):
             SELECT TOP 1 wl.[Vendedor real] AS vr
             FROM dbo.winforce_lima wl
             WHERE UPPER(wl.[Vendedor real]) LIKE :pat
-              AND MONTH(wl.[Fecha de registro]) = :mes AND YEAR(wl.[Fecha de registro]) = :anio
+              AND wl.[Fecha de registro] >= CONVERT(VARCHAR(10), DATEFROMPARTS(:anio, :mes, 1), 120) AND wl.[Fecha de registro] < CONVERT(VARCHAR(10), DATEADD(MONTH, 1, DATEFROMPARTS(:anio, :mes, 1)), 120)
               {_dlw}
             GROUP BY wl.[Vendedor real] ORDER BY COUNT(*) DESC
         """, params={'mes': mes, 'anio': anio, 'pat': f'%{vendedor.upper()}%'})
@@ -2510,7 +2510,7 @@ def get_datos_vendedor_lima(mes, anio, vendedor, dia=None):
                 SUM(CASE WHEN [Estado orden] = 'Anulado' THEN 1 ELSE 0 END) AS anulaciones
             FROM dbo.winforce_lima wl
             WHERE [Vendedor real] = :v
-              AND MONTH([Fecha de registro]) = :mes AND YEAR([Fecha de registro]) = :anio
+              AND [Fecha de registro] >= CONVERT(VARCHAR(10), DATEFROMPARTS(:anio, :mes, 1), 120) AND [Fecha de registro] < CONVERT(VARCHAR(10), DATEADD(MONTH, 1, DATEFROMPARTS(:anio, :mes, 1)), 120)
               {_dlw} {_dr}
         """, params=p)
         df_u = get_data("SELECT TOP 1 ISNULL(agencia,'') AS ag, ISNULL(supervisor,'') AS sv FROM dbo.dim_usuarios_Aliv WHERE vendedor = :v", params={'v': vr})
