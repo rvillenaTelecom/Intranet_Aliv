@@ -20,10 +20,10 @@ Uso desde otro archivo (Intranet/ o Pipeline/scripts/):
 import os
 import time
 import urllib
+import pymssql  # carga el driver real una sola vez al importar -- evita el "circular import"
+                 # cuando varios hilos lo disparan a la vez (ver Intranet/db_config.py)
 import sqlalchemy as sa
-import sqlalchemy.dialects.mssql  # carga el dialecto una sola vez al importar -- evita el
-                                    # "circular import" cuando varios hilos lo disparan a la vez
-                                    # (ver Intranet/db_config.py para el detalle)
+import sqlalchemy.dialects.mssql  # mismo motivo, un nivel mas arriba (el dialecto en si)
 
 _engine = None
 _cache = None

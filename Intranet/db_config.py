@@ -1,10 +1,11 @@
 import os
+import pymssql  # carga el driver real una sola vez, antes que exista concurrencia --
+                  # el dialecto de SQLAlchemy lo importa perezosamente, y si varios hilos
+                  # disparan esa primera carga a la vez (justo al arrancar un worker nuevo,
+                  # con el ThreadPoolExecutor de dashboard_ventas/reporte_gerente) queda a
+                  # medio inicializar y truena "circular import"
 import sqlalchemy as sa
-import sqlalchemy.dialects.mssql  # carga el dialecto una sola vez, al importar el módulo --
-                                    # si varios hilos disparan consultas en paralelo justo cuando
-                                    # arranca un worker (ThreadPoolExecutor en dashboard_ventas/
-                                    # reporte_gerente), pueden pisarse cargando este submódulo por
-                                    # primera vez a la vez y SQLAlchemy tira "circular import"
+import sqlalchemy.dialects.mssql  # mismo motivo, un nivel mas arriba (el dialecto en si)
 import pandas as pd
 import urllib
 
