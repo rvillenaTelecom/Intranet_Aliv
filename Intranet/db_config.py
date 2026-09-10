@@ -1,5 +1,10 @@
 import os
 import sqlalchemy as sa
+import sqlalchemy.dialects.mssql  # carga el dialecto una sola vez, al importar el módulo --
+                                    # si varios hilos disparan consultas en paralelo justo cuando
+                                    # arranca un worker (ThreadPoolExecutor en dashboard_ventas/
+                                    # reporte_gerente), pueden pisarse cargando este submódulo por
+                                    # primera vez a la vez y SQLAlchemy tira "circular import"
 import pandas as pd
 import urllib
 

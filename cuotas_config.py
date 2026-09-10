@@ -21,6 +21,9 @@ import os
 import time
 import urllib
 import sqlalchemy as sa
+import sqlalchemy.dialects.mssql  # carga el dialecto una sola vez al importar -- evita el
+                                    # "circular import" cuando varios hilos lo disparan a la vez
+                                    # (ver Intranet/db_config.py para el detalle)
 
 _engine = None
 _cache = None
