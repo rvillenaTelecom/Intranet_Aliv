@@ -15,8 +15,10 @@ from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 try:
     import db_helper
+    import ai_helper
 except ImportError:
     from . import db_helper
+    from . import ai_helper
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'AlivIntranet2026!')
@@ -24,7 +26,6 @@ app.secret_key = os.environ.get('SECRET_KEY', 'AlivIntranet2026!')
 
 @app.context_processor
 def _inject_ai_provider_label():
-    import ai_helper
     _label = {'claude': 'Claude', 'gemini': 'Gemini'}.get(ai_helper.active_provider(), 'IA')
     return {'ai_provider_label': _label}
 
@@ -759,7 +760,6 @@ def api_chat():
     if not messages:
         return jsonify({'error': 'Sin mensajes'}), 400
     try:
-        import ai_helper
         reply = ai_helper.generate_chat_response(
             messages=messages,
             user_role=session.get('role', ''),

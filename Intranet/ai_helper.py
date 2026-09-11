@@ -2,6 +2,11 @@ import os
 import json
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import anthropic       # cargados aca (eager, un solo hilo al arrancar) en vez de adentro de
+from google import genai  # _get_claude_client/_get_gemini_client -- si dos requests concurrentes
+from google.genai import types  # disparan esa primera carga a la vez (tipico al arrancar un
+                                  # worker nuevo), Python puede tronar "partially initialized
+                                  # module" (mismo tipo de carrera que con pymssql/sqlalchemy)
 
 try:
     import db_helper
@@ -890,7 +895,6 @@ def generate_chat_response(messages: list, user_role: str = "", user_name: str =
 def _get_claude_client():
     global _client
     if _client is None:
-        import anthropic
         _client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
     return _client
 
@@ -961,14 +965,11 @@ _gemini_client = None
 def _get_gemini_client():
     global _gemini_client
     if _gemini_client is None:
-        from google import genai
         _gemini_client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
     return _gemini_client
 
 
 def _generate_chat_response_gemini(messages: list, user_role: str = "", user_name: str = "") -> str:
-    from google.genai import types
-
     client = _get_gemini_client()
 
     contents = []
