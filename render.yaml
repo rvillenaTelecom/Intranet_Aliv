@@ -5,7 +5,7 @@ services:
     rootDir: Intranet
     plan: starter
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn --workers 2 --worker-class gthread --threads 8 --timeout 150 app:app
+    startCommand: gunicorn --workers 2 --worker-class gthread --threads 8 --timeout 150 --graceful-timeout 30 --max-requests 500 --max-requests-jitter 50 app:app
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.8

@@ -289,6 +289,15 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated
 
+@app.route('/healthz')
+def healthz():
+    """No toca la base de datos a propósito -- si un hilo del worker queda
+    trabado esperando algo (DB, IA, etc.), este endpoint sigue respondiendo
+    mientras haya al menos un hilo libre. Si el proceso entero se ahorca
+    (todos los hilos ocupados/muertos), Render deja de recibir 200 aquí y
+    reinicia el servicio solo -- ver Health Check Path en el dashboard."""
+    return 'ok', 200
+
 @app.route('/')
 def root():
     return redirect(url_for('login'))
