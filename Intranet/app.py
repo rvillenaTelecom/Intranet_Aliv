@@ -151,6 +151,44 @@ def _cache_set(key, data):
         _dashboard_cache.clear()
     _dashboard_cache[key] = (time.time(), data)
 
+
+_QUERIES_TIMEOUT = 25  # segundos
+
+
+def _run_parallel_queries(queries, log_prefix):
+    """Corre las lambdas de `queries` en paralelo (2 a la vez) y devuelve un
+    dict {nombre: resultado}. Si alguna se queda colgada (ej. una conexión a
+    Azure SQL que quedó a medio abrir y nunca avisa error ni éxito -- pasó el
+    2026-09-11, con la base en 0% de uso y sin nada bloqueado, la petición
+    igual se colgaba para siempre), no esperamos más de _QUERIES_TIMEOUT: las
+    que ya terminaron se usan, las que no quedan en None (la plantilla ya
+    tiene 'or {}'/'or []' de respaldo) y la página carga igual, en vez de
+    dejar al usuario esperando indefinidamente.
+    shutdown(wait=False): si algo sigue colgado, lo abandonamos en vez de
+    bloquear la respuesta esperándolo (antes el 'with' del ThreadPoolExecutor
+    esperaba a que TODOS terminaran al salir, aunque ya hubiéramos hecho
+    timeout arriba)."""
+    results = {}
+    executor = ThreadPoolExecutor(max_workers=2)
+    try:
+        futures = {executor.submit(fn): name for name, fn in queries.items()}
+        try:
+            for future in as_completed(futures, timeout=_QUERIES_TIMEOUT):
+                name = futures[future]
+                try:
+                    results[name] = future.result()
+                except Exception as e:
+                    print(f"[{log_prefix}] {name}: {e}")
+                    results[name] = None
+        except TimeoutError:
+            faltantes = [name for f, name in futures.items() if name not in results]
+            print(f"[{log_prefix}] timeout ({_QUERIES_TIMEOUT}s), sin completar: {faltantes}")
+            for name in faltantes:
+                results[name] = None
+    finally:
+        executor.shutdown(wait=False)
+    return results
+
 def _async_init_db():
     try:
         db_helper.init_dim_usuarios_table()
@@ -399,16 +437,7 @@ def dashboard_ventas():
             _fecha_ayer = datetime.now() - timedelta(days=1)
             _queries['pivot_agencia_cierre'] = lambda: db_helper.get_pivot_subagencias_lima(
                 _fecha_ayer.month, _fecha_ayer.year, dia=_fecha_ayer.day, cumul=False)
-        db_data = {}
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            futures = {executor.submit(fn): name for name, fn in _queries.items()}
-            for future in as_completed(futures):
-                name = futures[future]
-                try:
-                    db_data[name] = future.result()
-                except Exception as e:
-                    print(f"[dashboard] {name}: {e}")
-                    db_data[name] = None
+        db_data = _run_parallel_queries(_queries, 'dashboard')
         # Un hipo pasajero de conexion (varias consultas corren en paralelo y
         # Azure a veces tira una) no debe quedar pegado 5 minutos en cache --
         # solo se cachea si la consulta principal (kpi_lima) sí trajo datos.
@@ -1244,16 +1273,7 @@ def reporte_gerente():
             'trend_h':          lambda: db_helper.get_daily_trend_lima(mes, anio, area='Horizontal'),
             'activaciones_hoy': lambda: db_helper.get_activaciones_hoy(fecha=fecha_avance),
         }
-        db_data = {}
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            futures = {executor.submit(fn): name for name, fn in _queries.items()}
-            for future in as_completed(futures):
-                name = futures[future]
-                try:
-                    db_data[name] = future.result()
-                except Exception as e:
-                    print(f"[reporte_gerente] {name}: {e}")
-                    db_data[name] = None
+        db_data = _run_parallel_queries(_queries, 'reporte_gerente')
         if db_data.get('kpi_t') is not None:
             _cache_set(cache_key, db_data)
 
