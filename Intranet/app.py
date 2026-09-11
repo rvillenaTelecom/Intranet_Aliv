@@ -16,9 +16,11 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 try:
     import db_helper
     import ai_helper
+    import db_config
 except ImportError:
     from . import db_helper
     from . import ai_helper
+    from . import db_config
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'AlivIntranet2026!')
@@ -185,6 +187,19 @@ def _run_parallel_queries(queries, log_prefix):
             print(f"[{log_prefix}] timeout ({_QUERIES_TIMEOUT}s), sin completar: {faltantes}")
             for name in faltantes:
                 results[name] = None
+            # Si TODAS (o casi todas) las consultas se colgaron a la vez con la
+            # base en 0% de uso, lo mas probable es que alguna conexion del
+            # pool haya quedado en un estado raro (a medio leer un resultado
+            # anterior abandonado) y este contagiando a cada intento nuevo que
+            # la reutiliza. Se descarta el pool entero para forzar conexiones
+            # frescas en la proxima consulta, en vez de seguir reusando la
+            # que probablemente esta atascada.
+            if len(faltantes) >= len(futures) - 1:
+                try:
+                    db_config.get_engine().dispose()
+                    print(f"[{log_prefix}] pool de conexiones descartado (dispose) por timeout masivo")
+                except Exception as e:
+                    print(f"[{log_prefix}] no se pudo hacer dispose(): {e}")
     finally:
         executor.shutdown(wait=False)
     return results
@@ -1298,7 +1313,7 @@ def reporte_gerente():
         p['total'] = p['v_altas'] + p['h_altas']
 
     top_distritos = db_data.get('top_distritos') or []
-    pivot_sub = db_data.get('pivot_sub') or []
+    pivot_sub = db_data.get('pivot_sub') or {}
 
     # Serie diaria de altas del mes (para "Plan semana a semana" del panel de cuota).
     trend_v = db_data.get('trend_v') or []
