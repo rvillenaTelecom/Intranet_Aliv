@@ -1,4 +1,5 @@
 import os
+import threading
 import pymssql  # carga el driver real una sola vez, antes que exista concurrencia --
                   # el dialecto de SQLAlchemy lo importa perezosamente, y si varios hilos
                   # disparan esa primera carga a la vez (justo al arrancar un worker nuevo,
@@ -10,6 +11,7 @@ import pandas as pd
 import urllib
 
 _engine = None
+_connect_lock = threading.Lock()  # ver _serializar_conexiones() mas abajo
 
 
 def get_engine():
@@ -49,6 +51,22 @@ def get_engine():
                                    # -- la base es Standard (Provisioned), no se auto-pausa,
                                    # asi que no hace falta un login_timeout largo
         )
+
+        @sa.event.listens_for(_engine, "do_connect")
+        def _serializar_conexiones(dialect, conn_rec, cargs, cparams):
+            # pymssql (via FreeTDS) no es seguro para abrir dos conexiones NUEVAS
+            # a la vez desde hilos distintos -- se vio en producción el
+            # 2026-09-12: con 2 hilos pidiendo su primera conexión al mismo
+            # tiempo (dashboard_ventas/reporte_gerente arrancan con
+            # ThreadPoolExecutor), UNA se conectaba bien y la otra se quedaba
+            # colgada para siempre (ni error ni éxito, sin usar DTU). Esto
+            # serializa solo el hand-shake de conexión (con el candado); una
+            # vez que una conexión ya está abierta y en el pool, reusarla o
+            # ejecutar consultas en paralelo sobre conexiones distintas sigue
+            # funcionando normal, no pasa por acá.
+            with _connect_lock:
+                return pymssql.connect(*cargs, **cparams)
+
         return _engine
 
     SERVER = r'.\SQLEXPRESS'

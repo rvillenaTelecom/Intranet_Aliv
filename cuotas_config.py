@@ -19,6 +19,7 @@ Uso desde otro archivo (Intranet/ o Pipeline/scripts/):
 
 import os
 import time
+import threading
 import urllib
 import pymssql  # carga el driver real una sola vez al importar -- evita el "circular import"
                  # cuando varios hilos lo disparan a la vez (ver Intranet/db_config.py)
@@ -29,6 +30,7 @@ _engine = None
 _cache = None
 _cache_ts = 0
 _CACHE_TTL = 60  # segundos
+_connect_lock = threading.Lock()  # ver el listener "do_connect" en _get_engine()
 
 
 def _get_engine():
@@ -46,6 +48,15 @@ def _get_engine():
             f"@{azure_server}:1433/{azure_db}"
         )
         _engine = sa.create_engine(conn_str)
+
+        @sa.event.listens_for(_engine, "do_connect")
+        def _serializar_conexiones(dialect, conn_rec, cargs, cparams):
+            # pymssql/FreeTDS no es seguro para abrir dos conexiones NUEVAS a
+            # la vez desde hilos distintos -- ver Intranet/db_config.py, mismo
+            # patrón, mismo motivo (se vio en producción el 2026-09-12).
+            with _connect_lock:
+                return pymssql.connect(*cargs, **cparams)
+
         return _engine
 
     SERVER = r'.\SQLEXPRESS'
