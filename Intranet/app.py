@@ -154,16 +154,28 @@ def _cache_set(key, data):
     _dashboard_cache[key] = (time.time(), data)
 
 
-_QUERIES_TIMEOUT = 25  # segundos
+_QUERIES_TIMEOUT = 40  # segundos
 
 
 def _run_parallel_queries(queries, log_prefix):
-    """Corre las lambdas de `queries` en paralelo (2 a la vez) y devuelve un
-    dict {nombre: resultado}. Si alguna se queda colgada (ej. una conexión a
-    Azure SQL que quedó a medio abrir y nunca avisa error ni éxito -- pasó el
-    2026-09-11, con la base en 0% de uso y sin nada bloqueado, la petición
-    igual se colgaba para siempre), no esperamos más de _QUERIES_TIMEOUT: las
-    que ya terminaron se usan, las que no quedan en None (la plantilla ya
+    """Corre las lambdas de `queries` UNA A LA VEZ (max_workers=1) y devuelve
+    un dict {nombre: resultado}.
+
+    Antes corrían 2 a la vez, pero en producción (2026-09-11/12) se vio que
+    dos hilos pidiendo su primera conexión a Azure SQL AL MISMO TIEMPO, desde
+    dentro de un worker real de gunicorn sirviendo tráfico, se colgaban --
+    aunque el mismo código (SQLAlchemy + ThreadPoolExecutor) probado a mano
+    en la Shell de Render, sin tráfico real alrededor, funcionaba bien. No se
+    encontró la causa exacta (no es Azure/red -- probado con pymssql directo
+    desde el mismo contenedor, conexión tras conexión, sin problema). En vez
+    de seguir persiguiendo la condición de carrera, se elimina la concurrencia
+    de raíz: una sola conexión nueva a la vez, nunca dos simultáneas. Más
+    lento (las ~10 consultas se suman en vez de repartirse en 2 hilos) pero
+    confiable, que es lo que importa ahora mismo.
+
+    Si alguna igual se cuelga (ej. una conexión a Azure SQL que queda a medio
+    abrir y nunca avisa error ni éxito), no esperamos más de _QUERIES_TIMEOUT:
+    las que ya terminaron se usan, las que no quedan en None (la plantilla ya
     tiene 'or {}'/'or []' de respaldo) y la página carga igual, en vez de
     dejar al usuario esperando indefinidamente.
     shutdown(wait=False): si algo sigue colgado, lo abandonamos en vez de
@@ -171,7 +183,7 @@ def _run_parallel_queries(queries, log_prefix):
     esperaba a que TODOS terminaran al salir, aunque ya hubiéramos hecho
     timeout arriba)."""
     results = {}
-    executor = ThreadPoolExecutor(max_workers=2)
+    executor = ThreadPoolExecutor(max_workers=1)
     try:
         futures = {executor.submit(fn): name for name, fn in queries.items()}
         try:
