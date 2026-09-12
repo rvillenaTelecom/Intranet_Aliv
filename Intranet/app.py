@@ -158,64 +158,39 @@ _QUERIES_TIMEOUT = 40  # segundos
 
 
 def _run_parallel_queries(queries, log_prefix):
-    """Corre las lambdas de `queries` UNA A LA VEZ (max_workers=1) y devuelve
-    un dict {nombre: resultado}.
+    """Corre las lambdas de `queries` UNA A LA VEZ, directo en el mismo hilo
+    que ya está atendiendo la petición -- SIN ThreadPoolExecutor. Devuelve un
+    dict {nombre: resultado}.
 
-    Antes corrían 2 a la vez, pero en producción (2026-09-11/12) se vio que
-    dos hilos pidiendo su primera conexión a Azure SQL AL MISMO TIEMPO, desde
-    dentro de un worker real de gunicorn sirviendo tráfico, se colgaban --
-    aunque el mismo código (SQLAlchemy + ThreadPoolExecutor) probado a mano
-    en la Shell de Render, sin tráfico real alrededor, funcionaba bien. No se
-    encontró la causa exacta (no es Azure/red -- probado con pymssql directo
-    desde el mismo contenedor, conexión tras conexión, sin problema). En vez
-    de seguir persiguiendo la condición de carrera, se elimina la concurrencia
-    de raíz: una sola conexión nueva a la vez, nunca dos simultáneas. Más
-    lento (las ~10 consultas se suman en vez de repartirse en 2 hilos) pero
-    confiable, que es lo que importa ahora mismo.
+    Historia (2026-09-11/12): primero corrían 2 a la vez en un
+    ThreadPoolExecutor y se colgaban. Se bajó a max_workers=1 (una conexión
+    nueva a la vez) y SEGUÍA colgándose -- ni la primera consulta lograba
+    terminar en producción, aunque la misma función llamada directo en la
+    Shell de Render (sin gunicorn, sin ningún hilo de por medio) respondía en
+    8 segundos. Eso aisló la causa: no es la consulta, no es Azure, no es la
+    concurrencia entre consultas -- es el ThreadPoolExecutor anidado DENTRO
+    de un hilo que gunicorn (--worker-class gthread) ya está usando para
+    atender la petición. Se elimina esa capa por completo.
 
-    Si alguna igual se cuelga (ej. una conexión a Azure SQL que queda a medio
-    abrir y nunca avisa error ni éxito), no esperamos más de _QUERIES_TIMEOUT:
-    las que ya terminaron se usan, las que no quedan en None (la plantilla ya
-    tiene 'or {}'/'or []' de respaldo) y la página carga igual, en vez de
-    dejar al usuario esperando indefinidamente.
-    shutdown(wait=False): si algo sigue colgado, lo abandonamos en vez de
-    bloquear la respuesta esperándolo (antes el 'with' del ThreadPoolExecutor
-    esperaba a que TODOS terminaran al salir, aunque ya hubiéramos hecho
-    timeout arriba)."""
+    Costo: si una consulta individual se cuelga de verdad, ya no hay un hilo
+    aparte para abandonarla -- se depende de los timeouts de conexión/query
+    ya puestos en db_config.py (connect_args timeout=30/login_timeout=15)
+    para no quedar colgado para siempre. _QUERIES_TIMEOUT sigue cortando el
+    LOTE completo si se pasa del tiempo total: lo que ya se alcanzó a pedir
+    se usa, el resto queda en None (la plantilla ya tiene 'or {}'/'or []')."""
     results = {}
     t_inicio = time.time()
-    executor = ThreadPoolExecutor(max_workers=1)
-    try:
-        futures = {executor.submit(fn): name for name, fn in queries.items()}
+    for name, fn in queries.items():
+        if time.time() - t_inicio > _QUERIES_TIMEOUT:
+            print(f"[{log_prefix}] {name}: no se llegó a pedir, timeout de lote ({_QUERIES_TIMEOUT}s)")
+            results[name] = None
+            continue
         try:
-            for future in as_completed(futures, timeout=_QUERIES_TIMEOUT):
-                name = futures[future]
-                try:
-                    results[name] = future.result()
-                    print(f"[{log_prefix}] {name}: OK en {time.time()-t_inicio:.2f}s (acumulado)")
-                except Exception as e:
-                    print(f"[{log_prefix}] {name}: FALLO en {time.time()-t_inicio:.2f}s -- {e}")
-                    results[name] = None
-        except TimeoutError:
-            faltantes = [name for f, name in futures.items() if name not in results]
-            print(f"[{log_prefix}] timeout ({_QUERIES_TIMEOUT}s), sin completar: {faltantes}")
-            for name in faltantes:
-                results[name] = None
-            # Si TODAS (o casi todas) las consultas se colgaron a la vez con la
-            # base en 0% de uso, lo mas probable es que alguna conexion del
-            # pool haya quedado en un estado raro (a medio leer un resultado
-            # anterior abandonado) y este contagiando a cada intento nuevo que
-            # la reutiliza. Se descarta el pool entero para forzar conexiones
-            # frescas en la proxima consulta, en vez de seguir reusando la
-            # que probablemente esta atascada.
-            if len(faltantes) >= len(futures) - 1:
-                try:
-                    db_config.get_engine().dispose()
-                    print(f"[{log_prefix}] pool de conexiones descartado (dispose) por timeout masivo")
-                except Exception as e:
-                    print(f"[{log_prefix}] no se pudo hacer dispose(): {e}")
-    finally:
-        executor.shutdown(wait=False)
+            results[name] = fn()
+            print(f"[{log_prefix}] {name}: OK en {time.time()-t_inicio:.2f}s (acumulado)")
+        except Exception as e:
+            print(f"[{log_prefix}] {name}: FALLO en {time.time()-t_inicio:.2f}s -- {e}")
+            results[name] = None
     return results
 
 def _async_init_db():
