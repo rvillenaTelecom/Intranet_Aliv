@@ -16,4 +16,4 @@ python-dotenv
 fastapi
 uvicorn[standard]
 gunicorn
-pymssql
+pymssql==2.4.0
