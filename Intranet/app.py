@@ -183,6 +183,7 @@ def _run_parallel_queries(queries, log_prefix):
     esperaba a que TODOS terminaran al salir, aunque ya hubiéramos hecho
     timeout arriba)."""
     results = {}
+    t_inicio = time.time()
     executor = ThreadPoolExecutor(max_workers=1)
     try:
         futures = {executor.submit(fn): name for name, fn in queries.items()}
@@ -191,8 +192,9 @@ def _run_parallel_queries(queries, log_prefix):
                 name = futures[future]
                 try:
                     results[name] = future.result()
+                    print(f"[{log_prefix}] {name}: OK en {time.time()-t_inicio:.2f}s (acumulado)")
                 except Exception as e:
-                    print(f"[{log_prefix}] {name}: {e}")
+                    print(f"[{log_prefix}] {name}: FALLO en {time.time()-t_inicio:.2f}s -- {e}")
                     results[name] = None
         except TimeoutError:
             faltantes = [name for f, name in futures.items() if name not in results]
