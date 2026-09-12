@@ -158,39 +158,56 @@ _QUERIES_TIMEOUT = 40  # segundos
 
 
 def _run_parallel_queries(queries, log_prefix):
-    """Corre las lambdas de `queries` UNA A LA VEZ, directo en el mismo hilo
-    que ya está atendiendo la petición -- SIN ThreadPoolExecutor. Devuelve un
-    dict {nombre: resultado}.
+    """Corre las lambdas de `queries` UNA A LA VEZ (un solo hilo aparte, para
+    poder abandonarlo si se cuelga) y devuelve un dict {nombre: resultado}.
 
-    Historia (2026-09-11/12): primero corrían 2 a la vez en un
-    ThreadPoolExecutor y se colgaban. Se bajó a max_workers=1 (una conexión
-    nueva a la vez) y SEGUÍA colgándose -- ni la primera consulta lograba
-    terminar en producción, aunque la misma función llamada directo en la
-    Shell de Render (sin gunicorn, sin ningún hilo de por medio) respondía en
-    8 segundos. Eso aisló la causa: no es la consulta, no es Azure, no es la
-    concurrencia entre consultas -- es el ThreadPoolExecutor anidado DENTRO
-    de un hilo que gunicorn (--worker-class gthread) ya está usando para
-    atender la petición. Se elimina esa capa por completo.
+    Historia (2026-09-11/12): probado con 2 hilos a la vez (se colgaban),
+    con 1 hilo (seguía sin completar ni la primera en producción, aunque la
+    misma función llamada directo en la Shell de Render -- sin gunicorn, sin
+    hilos -- respondía en 8s), y SIN ningún hilo/Executor (llamadas directas
+    en el hilo de la petición): esto último fue lo peor de todo -- 0 bytes de
+    respuesta en 60s+, porque sin un hilo aparte no hay nada que abandonar si
+    una consulta se cuelga de verdad. La causa exacta de por qué una consulta
+    individual a veces se cuelga sigue sin encontrarse (no es Azure/red, no
+    es la query en sí -- probado ambos directo), pero mientras eso pase, lo
+    que SÍ importa es que la petición HTTP nunca se quede sin responder: por
+    eso se mantiene el patrón hilo+timeout+abandono, con un solo hilo (no 2)
+    para minimizar el riesgo de la carrera de conexiones concurrentes que se
+    vio con 2.
 
-    Costo: si una consulta individual se cuelga de verdad, ya no hay un hilo
-    aparte para abandonarla -- se depende de los timeouts de conexión/query
-    ya puestos en db_config.py (connect_args timeout=30/login_timeout=15)
-    para no quedar colgado para siempre. _QUERIES_TIMEOUT sigue cortando el
-    LOTE completo si se pasa del tiempo total: lo que ya se alcanzó a pedir
-    se usa, el resto queda en None (la plantilla ya tiene 'or {}'/'or []')."""
+    Si una consulta se cuelga, no esperamos más de _QUERIES_TIMEOUT: las que
+    ya terminaron se usan, las que no quedan en None (la plantilla ya tiene
+    'or {}'/'or []' de respaldo) y la página carga igual, aunque sea con
+    datos parciales, en vez de dejar al usuario esperando indefinidamente.
+    shutdown(wait=False): el hilo colgado se abandona en vez de bloquear la
+    respuesta esperándolo."""
     results = {}
     t_inicio = time.time()
-    for name, fn in queries.items():
-        if time.time() - t_inicio > _QUERIES_TIMEOUT:
-            print(f"[{log_prefix}] {name}: no se llegó a pedir, timeout de lote ({_QUERIES_TIMEOUT}s)")
-            results[name] = None
-            continue
+    executor = ThreadPoolExecutor(max_workers=1)
+    try:
+        futures = {executor.submit(fn): name for name, fn in queries.items()}
         try:
-            results[name] = fn()
-            print(f"[{log_prefix}] {name}: OK en {time.time()-t_inicio:.2f}s (acumulado)")
-        except Exception as e:
-            print(f"[{log_prefix}] {name}: FALLO en {time.time()-t_inicio:.2f}s -- {e}")
-            results[name] = None
+            for future in as_completed(futures, timeout=_QUERIES_TIMEOUT):
+                name = futures[future]
+                try:
+                    results[name] = future.result()
+                    print(f"[{log_prefix}] {name}: OK en {time.time()-t_inicio:.2f}s (acumulado)")
+                except Exception as e:
+                    print(f"[{log_prefix}] {name}: FALLO en {time.time()-t_inicio:.2f}s -- {e}")
+                    results[name] = None
+        except TimeoutError:
+            faltantes = [name for f, name in futures.items() if name not in results]
+            print(f"[{log_prefix}] timeout ({_QUERIES_TIMEOUT}s), sin completar: {faltantes}")
+            for name in faltantes:
+                results[name] = None
+            if len(faltantes) >= len(futures) - 1:
+                try:
+                    db_config.get_engine().dispose()
+                    print(f"[{log_prefix}] pool de conexiones descartado (dispose) por timeout masivo")
+                except Exception as e:
+                    print(f"[{log_prefix}] no se pudo hacer dispose(): {e}")
+    finally:
+        executor.shutdown(wait=False)
     return results
 
 def _async_init_db():
