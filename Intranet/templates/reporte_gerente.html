@@ -700,9 +700,7 @@ function proySetBasis(btn, basis) {
     });
     proyRecalc(block);
 }
-document.querySelectorAll('.proy-cuota-block').forEach(function (b) { proyBuildWeekly(b, b.querySelector('.proy-extra-toggle').checked
-    ? Math.round(parseFloat(b.dataset.cuota) * (parseFloat(b.querySelector('.proy-extra-pct').value) || 100) / 100)
-    : parseFloat(b.dataset.cuota), (parseFloat(b.dataset.diasTotales) || 0) - parseFloat(b.dataset.diasDefault)); });
+document.querySelectorAll('.proy-cuota-block').forEach(function (b) { proyRecalc(b); });
 </script>
 
 <!-- ══════════════════════════════════════════════════ -->
