@@ -1461,6 +1461,72 @@ def delete_usuario(uid):
         return False
 
 
+_ALIV_HORIZONTAL_SUPERVISORES = [
+    'LAGOS PONCE EDWIN FRANZ',
+    'SOTO YABAR HRISTO ALAIN PETER',
+    'BOCKOS CERVERA ROBERTO LEONIDAS',
+    'CASTILLON CARHUAYANO LUIS ALBERTO',
+    'SOTELO CASTAÑEDA ANYI CAROLINA',
+    'UGARTE . ZOMARCELY JOSEFINA',
+    'LUCUMBER LOZANO CRISTINA ISABEL',
+    'MARTICORENA RODRíGUEZ JORGE AUGUSTO',
+    'VILLALOBOS RAMíREZ LUIS GABRIEL',
+    'PUPPO EGUSQUIZA RONALD ROBERTO',
+    'RODRIGUEZ CUBA CARLOS',
+    'FERMIN VALDEZ ELIS ANTONIO',
+    'AVALOS  ROBLES ANGEL ALEJANDRO',
+    'PASSALACQUA CARVAJAL MARIANTONIETA DEL VALLE',
+]
+
+
+def _aliv_horizontal_sup_params():
+    placeholders = ', '.join(f':sup{i}' for i in range(len(_ALIV_HORIZONTAL_SUPERVISORES)))
+    params = {f'sup{i}': s for i, s in enumerate(_ALIV_HORIZONTAL_SUPERVISORES)}
+    return placeholders, params
+
+
+def get_aliv_horizontal_avance_dia(dia, mes):
+    """Avance del día del equipo Aliv Horizontal (ventas_referidos) -- tabla
+    pedida a mano por el equipo, ver SQL/Aliv SQL/Activaciones_Jesus.sql."""
+    placeholders, params = _aliv_horizontal_sup_params()
+    params['fecha'] = f'%{dia:02d}-{mes:02d}-%'
+    df = get_data(f"""
+        SELECT Supervisor, COUNT(*) AS conteo
+        FROM dbo.ventas_referidos
+        WHERE [Fecha Ingreso] LIKE :fecha
+          AND Supervisor IN ({placeholders})
+        GROUP BY Supervisor
+        ORDER BY conteo DESC
+    """, params=params)
+    return df.to_dict(orient='records')
+
+
+def get_aliv_horizontal_proyeccion(mes, anio):
+    """Ventas del mes por supervisor del equipo Aliv Horizontal (ventas_aliv).
+    La proyección (días laborales/transcurridos) se calcula en el navegador,
+    editable a mano -- la base de WIN no siempre está al día, así que el
+    usuario ajusta los días él mismo en vez de un cálculo fijo del server."""
+    import pandas as pd
+    placeholders, params = _aliv_horizontal_sup_params()
+    params['mes'] = mes
+    params['anio'] = anio
+    df = get_data(f"""
+        SELECT Supervisor,
+            COUNT(*) AS ventas_mes,
+            MAX(TRY_CONVERT(DATE, [Fecha Activacion], 105)) AS ultima_activacion
+        FROM dbo.ventas_aliv
+        WHERE MONTH(TRY_CONVERT(DATE, [Fecha Activacion], 105)) = :mes
+          AND YEAR(TRY_CONVERT(DATE, [Fecha Activacion], 105)) = :anio
+          AND Supervisor IN ({placeholders})
+        GROUP BY Supervisor
+        ORDER BY ventas_mes DESC
+    """, params=params)
+    if 'ultima_activacion' in df.columns:
+        df['ultima_activacion'] = df['ultima_activacion'].apply(
+            lambda d: d.strftime('%d-%m-%Y') if pd.notna(d) else '')
+    return df.to_dict(orient='records')
+
+
 def get_localizacion_lima(mes, anio, area='', agencia_grupo=''):
     """Score, Zona KML y comparativa P2 — Lima.
     Retorna None si la columna Zona_KML no está disponible."""

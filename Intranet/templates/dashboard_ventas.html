@@ -281,6 +281,11 @@
             <button class="tab-btn" onclick="switchTab('localizacion',this)">
                 <i class="fa-solid fa-location-dot"></i> Localización
             </button>
+            {% if area == 'Horizontal' and agencia == 'Aliv' %}
+            <button class="tab-btn" onclick="switchTab('aliv',this)">
+                <i class="fa-solid fa-users-line"></i> Aliv
+            </button>
+            {% endif %}
         </div>
         <div class="filter-right">
             <form method="GET" id="filterForm" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
@@ -1094,6 +1099,69 @@ function proySetBasis(btn, basis) {
 
 </div><!-- /tab-localizacion -->
 
+{% if area == 'Horizontal' and agencia == 'Aliv' %}
+<!-- ═══════════════════════════════════════════════════════════
+     TAB 4 — ALIV (avance del día + proyección del mes)
+════════════════════════════════════════════════════════════ -->
+<div id="tab-aliv" class="tab-content">
+<div class="grid-1-1">
+
+    <div class="panel" style="display:flex; flex-direction:column; max-height:480px;">
+        <div class="panel-title" style="flex-shrink:0;"><i class="fa-solid fa-calendar-day"></i> Avance del día — {{ "%02d"|format(hoy_dia) }}/{{ "%02d"|format(hoy_mes) }}</div>
+        <div class="tbl-scroll-v" style="overflow-y:auto; flex:1;">
+            <table class="data-table">
+                <thead><tr><th>Supervisor</th><th class="num">Conteo</th></tr></thead>
+                <tbody>
+                    {% for r in aliv_avance_dia %}
+                    <tr><td>{{ r.Supervisor }}</td><td class="num">{{ r.conteo }}</td></tr>
+                    {% else %}
+                    <tr><td colspan="2" style="text-align:center; color:var(--text-light);">Sin registros hoy.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="panel" style="display:flex; flex-direction:column; max-height:480px;">
+        <div class="panel-title" style="flex-shrink:0;"><i class="fa-solid fa-chart-line"></i> Proyección del mes</div>
+        <div style="display:flex; gap:16px; align-items:center; margin-bottom:12px; font-size:12px; color:var(--text-secondary); flex-wrap:wrap; flex-shrink:0;">
+            <label style="display:flex; align-items:center; gap:6px;">
+                Días laborales:
+                <input type="number" id="alivDiasLaborales" value="{{ dias_tot_mes }}" min="1" step="1"
+                       style="width:56px; background:var(--bg-inset); border:1px solid var(--border); border-radius:6px; color:var(--text-primary); padding:4px 6px; font-size:12px;"
+                       oninput="alivRecalcProyeccion()">
+            </label>
+            <label style="display:flex; align-items:center; gap:6px;">
+                Días transcurridos:
+                <input type="number" id="alivDiasTranscurridos" value="{{ dias_trans_mes }}" min="1" step="1"
+                       style="width:56px; background:var(--bg-inset); border:1px solid var(--border); border-radius:6px; color:var(--text-primary); padding:4px 6px; font-size:12px;"
+                       oninput="alivRecalcProyeccion()">
+            </label>
+            <span style="font-size:11px; opacity:0.75;">(ajústalos a mano si la base de WIN no está al día)</span>
+        </div>
+        <div class="tbl-scroll-v" style="overflow-y:auto; flex:1;">
+            <table class="data-table" id="alivProyTable">
+                <thead><tr><th>Supervisor</th><th class="num">Ventas mes</th><th class="num">Proyección</th><th>Última activación</th></tr></thead>
+                <tbody>
+                    {% for r in aliv_proyeccion %}
+                    <tr data-ventas="{{ r.ventas_mes }}">
+                        <td>{{ r.Supervisor }}</td>
+                        <td class="num">{{ r.ventas_mes }}</td>
+                        <td class="num aliv-proy-cell">—</td>
+                        <td>{{ r.ultima_activacion or '—' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="4" style="text-align:center; color:var(--text-light);">Sin ventas este mes.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+</div><!-- /tab-aliv -->
+{% endif %}
+
 
 <!-- ════ SCRIPTS ════════════════════════════════════════════ -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -1258,6 +1326,23 @@ function switchTab(name, btn) {
         if (btn) switchTab(tab, btn);
     }
 })();
+
+// Tab Aliv -- proyección editable (días laborales/transcurridos a mano,
+// porque la base de WIN no siempre está al día y el usuario ajusta el
+// cálculo él mismo en vez de un valor fijo del server).
+function alivRecalcProyeccion() {
+    var lInput = document.getElementById('alivDiasLaborales');
+    var tInput = document.getElementById('alivDiasTranscurridos');
+    if (!lInput || !tInput) return;
+    var laborales = parseFloat(lInput.value) || 0;
+    var transcurridos = parseFloat(tInput.value) || 0;
+    document.querySelectorAll('#alivProyTable tbody tr[data-ventas]').forEach(function (row) {
+        var ventas = parseFloat(row.dataset.ventas) || 0;
+        var cell = row.querySelector('.aliv-proy-cell');
+        cell.textContent = transcurridos > 0 ? Math.round(ventas / transcurridos * laborales).toLocaleString('en-US') : '—';
+    });
+}
+alivRecalcProyeccion();
 
 const ORANGE = '#f97316', BLUE = DV_EARTH ? '#8B5A3C' : '#0066CC', GREEN = '#10b981', PURPLE = '#8b5cf6',
       ORANGE20 = '#f9731620', BLUE20 = DV_EARTH ? '#8B5A3C20' : '#0066CC20';

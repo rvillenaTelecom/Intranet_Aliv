@@ -458,6 +458,10 @@ def dashboard_ventas():
             _fecha_ayer = datetime.now() - timedelta(days=1)
             _queries['pivot_agencia_cierre'] = lambda: db_helper.get_pivot_subagencias_lima(
                 _fecha_ayer.month, _fecha_ayer.year, dia=_fecha_ayer.day, cumul=False)
+        if area == 'Horizontal' and agencia == 'Aliv':
+            _hoy = datetime.now()
+            _queries['aliv_avance_dia'] = lambda: db_helper.get_aliv_horizontal_avance_dia(_hoy.day, _hoy.month)
+            _queries['aliv_proyeccion'] = lambda: db_helper.get_aliv_horizontal_proyeccion(mes, anio)
         db_data = _run_parallel_queries(_queries, 'dashboard')
         # Un hipo pasajero de conexion (varias consultas corren en paralelo y
         # Azure a veces tira una) no debe quedar pegado 5 minutos en cache --
@@ -467,6 +471,8 @@ def dashboard_ventas():
 
     loc_lima = db_data.get('loc_lima')
     fecha_cierre = (datetime.now() - timedelta(days=1)).strftime('%d/%m/%Y')
+    _hoy_now = datetime.now()
+    _dias_trans_mes, _dias_tot_mes, _ = db_helper._dias_mes(mes, anio)
     return render_template('dashboard_ventas.html',
                            user=session['name'], role=session['role'],
                            mes_actual=mes, anio_actual=anio,
@@ -483,7 +489,11 @@ def dashboard_ventas():
                            loc_zonas=loc_lima['zonas'] if loc_lima else [],
                            puntos_mapa=db_data.get('puntos_mapa'),
                            registros_lima=db_data.get('registros_lima') or [],
-                           pivot_agencia=db_data.get('pivot_agencia'))
+                           pivot_agencia=db_data.get('pivot_agencia'),
+                           aliv_avance_dia=db_data.get('aliv_avance_dia') or [],
+                           aliv_proyeccion=db_data.get('aliv_proyeccion') or [],
+                           hoy_dia=_hoy_now.day, hoy_mes=_hoy_now.month,
+                           dias_tot_mes=_dias_tot_mes, dias_trans_mes=_dias_trans_mes)
 
 
 @app.route('/api/dashboard/registros-lima/excel')
