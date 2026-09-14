@@ -1493,12 +1493,14 @@ def _aliv_horizontal_sup_params(supervisores):
     return placeholders, params
 
 
-def get_aliv_horizontal_avance_dia(dia, mes):
+def get_aliv_horizontal_avance_dia(dia, mes, anio):
     """Avance del día del equipo Aliv Horizontal (ventas_referidos) -- tabla
-    pedida a mano por el equipo, ver SQL/Aliv SQL/Activaciones_Jesus.sql."""
+    pedida a mano por el equipo, ver SQL/Aliv SQL/Activaciones_Jesus.sql.
+    [Fecha Ingreso] es texto 'dd-mm-yyyy HH:MM', por eso el LIKE incluye
+    año -- sin él, un 14-09 de un año se mezclaba con el de otro."""
     import pandas as pd
     placeholders, params = _aliv_horizontal_sup_params(_ALIV_HORIZONTAL_SUPERVISORES)
-    params['fecha'] = f'%{dia:02d}-{mes:02d}-%'
+    params['fecha'] = f'{dia:02d}-{mes:02d}-{anio:04d}%'
     df = get_data(f"""
         SELECT Supervisor, COUNT(*) AS conteo
         FROM dbo.ventas_referidos

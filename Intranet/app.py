@@ -460,7 +460,7 @@ def dashboard_ventas():
                 _fecha_ayer.month, _fecha_ayer.year, dia=_fecha_ayer.day, cumul=False)
         if area == 'Horizontal' and agencia == 'Aliv':
             _hoy = datetime.now()
-            _queries['aliv_avance_dia'] = lambda: db_helper.get_aliv_horizontal_avance_dia(_hoy.day, _hoy.month)
+            _queries['aliv_avance_dia'] = lambda: db_helper.get_aliv_horizontal_avance_dia(_hoy.day, _hoy.month, _hoy.year)
             _queries['aliv_proyeccion'] = lambda: db_helper.get_aliv_horizontal_proyeccion(mes, anio)
         db_data = _run_parallel_queries(_queries, 'dashboard')
         # Un hipo pasajero de conexion (varias consultas corren en paralelo y
