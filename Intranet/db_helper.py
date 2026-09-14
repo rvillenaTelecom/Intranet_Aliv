@@ -1461,28 +1461,11 @@ def delete_usuario(uid):
         return False
 
 
-_ALIV_HORIZONTAL_SUPERVISORES_DIA = [
-    'LAGOS PONCE EDWIN FRANZ',
-    'SOTO YABAR HRISTO ALAIN PETER',
-    'BOCKOS CERVERA ROBERTO LEONIDAS',
-    'CASTILLON CARHUAYANO LUIS ALBERTO',
-    'SOTELO CASTAÑEDA ANYI CAROLINA',
-    'UGARTE . ZOMARCELY JOSEFINA',
-    'LUCUMBER LOZANO CRISTINA ISABEL',
-    'MARTICORENA RODRíGUEZ JORGE AUGUSTO',
-    'VILLALOBOS RAMíREZ LUIS GABRIEL',
-    'PUPPO EGUSQUIZA RONALD ROBERTO',
-    'RODRIGUEZ CUBA CARLOS',
-    'FERMIN VALDEZ ELIS ANTONIO',
-    'AVALOS  ROBLES ANGEL ALEJANDRO',
-    'PASSALACQUA CARVAJAL MARIANTONIETA DEL VALLE',
-]
-
-# Lista de la tabla de Proyección (ventas_aliv) -- dejó de tener a Avalos
-# Robles y en su lugar entró Méndez Piña, cuyas ventas se muestran bajo el
-# nombre de su reemplazo (ver _ALIV_HORIZONTAL_RENOMBRE_MES). Las dos listas
-# ya no son iguales, por eso están separadas.
-_ALIV_HORIZONTAL_SUPERVISORES_MES = [
+# Sale Avalos Robles Angel Alejandro, entra Méndez Piña Jesús Ramón -- sus
+# ventas se muestran bajo el nombre de su reemplazo (ver
+# _ALIV_HORIZONTAL_RENOMBRE). Aplica a las dos tablas (avance del día y
+# proyección), igual que el CASE WHEN de SQL/Aliv SQL/Activaciones_Jesus.sql.
+_ALIV_HORIZONTAL_SUPERVISORES = [
     'LAGOS PONCE EDWIN FRANZ',
     'SOTO YABAR HRISTO ALAIN PETER',
     'BOCKOS CERVERA ROBERTO LEONIDAS',
@@ -1499,7 +1482,7 @@ _ALIV_HORIZONTAL_SUPERVISORES_MES = [
     'PASSALACQUA CARVAJAL MARIANTONIETA DEL VALLE',
 ]
 
-_ALIV_HORIZONTAL_RENOMBRE_MES = {
+_ALIV_HORIZONTAL_RENOMBRE = {
     'MÉNDEZ PIñA JESÚS RAMÓN': 'ELWYN ALEJANDRO LOPEZ CANIZALEZ',
 }
 
@@ -1513,7 +1496,8 @@ def _aliv_horizontal_sup_params(supervisores):
 def get_aliv_horizontal_avance_dia(dia, mes):
     """Avance del día del equipo Aliv Horizontal (ventas_referidos) -- tabla
     pedida a mano por el equipo, ver SQL/Aliv SQL/Activaciones_Jesus.sql."""
-    placeholders, params = _aliv_horizontal_sup_params(_ALIV_HORIZONTAL_SUPERVISORES_DIA)
+    import pandas as pd
+    placeholders, params = _aliv_horizontal_sup_params(_ALIV_HORIZONTAL_SUPERVISORES)
     params['fecha'] = f'%{dia:02d}-{mes:02d}-%'
     df = get_data(f"""
         SELECT Supervisor, COUNT(*) AS conteo
@@ -1523,6 +1507,9 @@ def get_aliv_horizontal_avance_dia(dia, mes):
         GROUP BY Supervisor
         ORDER BY conteo DESC
     """, params=params)
+    df['Supervisor'] = df['Supervisor'].replace(_ALIV_HORIZONTAL_RENOMBRE)
+    if not df.empty:
+        df = df.groupby('Supervisor', as_index=False)['conteo'].sum().sort_values('conteo', ascending=False)
     return df.to_dict(orient='records')
 
 
@@ -1532,7 +1519,7 @@ def get_aliv_horizontal_proyeccion(mes, anio):
     editable a mano -- la base de WIN no siempre está al día, así que el
     usuario ajusta los días él mismo en vez de un cálculo fijo del server."""
     import pandas as pd
-    placeholders, params = _aliv_horizontal_sup_params(_ALIV_HORIZONTAL_SUPERVISORES_MES)
+    placeholders, params = _aliv_horizontal_sup_params(_ALIV_HORIZONTAL_SUPERVISORES)
     params['mes'] = mes
     params['anio'] = anio
     df = get_data(f"""
@@ -1546,7 +1533,7 @@ def get_aliv_horizontal_proyeccion(mes, anio):
         GROUP BY Supervisor
         ORDER BY ventas_mes DESC
     """, params=params)
-    df['Supervisor'] = df['Supervisor'].replace(_ALIV_HORIZONTAL_RENOMBRE_MES)
+    df['Supervisor'] = df['Supervisor'].replace(_ALIV_HORIZONTAL_RENOMBRE)
     if 'ultima_activacion' in df.columns:
         df['ultima_activacion'] = df['ultima_activacion'].apply(
             lambda d: d.strftime('%d-%m-%Y') if pd.notna(d) else '')
