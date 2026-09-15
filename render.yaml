@@ -5,7 +5,11 @@ services:
     rootDir: Intranet
     plan: starter
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn --workers 3 --timeout 150 --graceful-timeout 30 --max-requests 25 --max-requests-jitter 10 app:app
+    # max-requests cuenta TODOS los requests, incluido el /healthz que Render
+    # pega cada 5s -- con 25, cada worker se reciclaba cada ~2-6 min y casi
+    # siempre te tocaba un worker recién nacido con el pool de conexiones
+    # vacío (visto el 2026-09-14). 300 = reciclado cada ~1h aprox.
+    startCommand: gunicorn --workers 3 --timeout 150 --graceful-timeout 30 --max-requests 300 --max-requests-jitter 50 app:app
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.8

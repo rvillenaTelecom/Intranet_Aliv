@@ -207,16 +207,17 @@ def _run_parallel_queries(queries, log_prefix):
                 except Exception as e:
                     print(f"[{log_prefix}] no se pudo hacer dispose(): {e}")
     finally:
-        executor.shutdown(wait=False)
+        # cancel_futures=True es clave: sin él, shutdown(wait=False) solo
+        # deja de aceptar trabajo nuevo, pero el hilo sigue ejecutando TODAS
+        # las consultas que quedaron en cola aunque la petición ya respondió.
+        # Visto en producción el 2026-09-14: cada recarga que daba timeout
+        # dejaba un "zombi" corriendo las ~9 consultas restantes en segundo
+        # plano, cada una peleando el candado de conexión -- y la siguiente
+        # petición real se quedaba esperando detrás de todos ellos. Con esto,
+        # solo la consulta que ya estaba corriendo queda huérfana (eso no se
+        # puede evitar, Python no mata hilos); las demás se descartan.
+        executor.shutdown(wait=False, cancel_futures=True)
     return results
-
-def _async_init_db():
-    try:
-        db_helper.init_dim_usuarios_table()
-    except Exception as _e:
-        print(f"init dim_usuarios: {_e}")
-
-threading.Thread(target=_async_init_db, daemon=True).start()
 
 
 def _auto_download_lima_geo():
@@ -637,6 +638,11 @@ def usuarios():
         'cargo':      request.args.get('cargo', ''),
         'estado':     request.args.get('estado', ''),
     }
+    # Antes esto corría en un hilo aparte al arrancar cada worker -- o sea,
+    # un hilo extra peleando el candado de conexión justo cuando llega la
+    # primera petición real del worker recién nacido. La tabla ya existe;
+    # basta con asegurarla acá, en la única página que la usa.
+    db_helper.init_dim_usuarios_table()
     return render_template(
         'usuarios.html',
         user=session['name'], role=session['role'],
