@@ -64,8 +64,20 @@ def get_engine():
             # vez que una conexión ya está abierta y en el pool, reusarla o
             # ejecutar consultas en paralelo sobre conexiones distintas sigue
             # funcionando normal, no pasa por acá.
-            with _connect_lock:
+            #
+            # El acquire tiene timeout a propósito: visto en producción el
+            # 2026-09-14 que pymssql.connect() a veces se cuelga para siempre
+            # (ni error ni éxito) incluso solo, sin carrera de por medio. Sin
+            # timeout, ese hilo se queda sosteniendo el candado para siempre y
+            # CUALQUIER otra petición en el mismo worker que necesite una
+            # conexión nueva queda colgada detrás de él, no solo la primera --
+            # mejor fallar rápido que colgar todo el worker indefinidamente.
+            if not _connect_lock.acquire(timeout=20):
+                raise TimeoutError("timeout esperando el candado de conexión (otro hilo sigue colgado conectando)")
+            try:
                 return pymssql.connect(*cargs, **cparams)
+            finally:
+                _connect_lock.release()
 
         return _engine
 

@@ -54,8 +54,15 @@ def _get_engine():
             # pymssql/FreeTDS no es seguro para abrir dos conexiones NUEVAS a
             # la vez desde hilos distintos -- ver Intranet/db_config.py, mismo
             # patrón, mismo motivo (se vio en producción el 2026-09-12).
-            with _connect_lock:
+            # Timeout en el acquire: si pymssql.connect() se cuelga para
+            # siempre (visto en producción el 2026-09-14), que falle rápido
+            # en vez de colgar a cualquier otro hilo que necesite el candado.
+            if not _connect_lock.acquire(timeout=20):
+                raise TimeoutError("timeout esperando el candado de conexión (otro hilo sigue colgado conectando)")
+            try:
                 return pymssql.connect(*cargs, **cparams)
+            finally:
+                _connect_lock.release()
 
         return _engine
 
