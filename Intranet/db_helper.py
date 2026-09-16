@@ -1516,10 +1516,12 @@ def get_aliv_horizontal_avance_dia(dia, mes, anio):
 
 
 def get_aliv_horizontal_proyeccion(mes, anio):
-    """Ventas del mes por supervisor del equipo Aliv Horizontal (ventas_aliv).
-    La proyección (días laborales/transcurridos) se calcula en el navegador,
-    editable a mano -- la base de WIN no siempre está al día, así que el
-    usuario ajusta los días él mismo en vez de un cálculo fijo del server."""
+    """Ventas del mes por supervisor del equipo Aliv Horizontal (ventas_referidos,
+    misma fuente que get_aliv_horizontal_avance_dia -- ver
+    SQL/Aliv SQL/Activaciones_Jesus.sql). La proyección (días laborales/
+    transcurridos) se calcula en el navegador, editable a mano -- la base de
+    WIN no siempre está al día, así que el usuario ajusta los días él mismo
+    en vez de un cálculo fijo del server."""
     import pandas as pd
     placeholders, params = _aliv_horizontal_sup_params(_ALIV_HORIZONTAL_SUPERVISORES)
     params['mes'] = mes
@@ -1527,15 +1529,19 @@ def get_aliv_horizontal_proyeccion(mes, anio):
     df = get_data(f"""
         SELECT Supervisor,
             COUNT(*) AS ventas_mes,
-            MAX(TRY_CONVERT(DATE, [Fecha Activacion], 105)) AS ultima_activacion
-        FROM dbo.ventas_aliv
-        WHERE MONTH(TRY_CONVERT(DATE, [Fecha Activacion], 105)) = :mes
-          AND YEAR(TRY_CONVERT(DATE, [Fecha Activacion], 105)) = :anio
+            MAX(TRY_CONVERT(DATE, [Fecha Ingreso], 105)) AS ultima_activacion
+        FROM dbo.ventas_referidos
+        WHERE MONTH(TRY_CONVERT(DATE, [Fecha Ingreso], 105)) = :mes
+          AND YEAR(TRY_CONVERT(DATE, [Fecha Ingreso], 105)) = :anio
           AND Supervisor IN ({placeholders})
         GROUP BY Supervisor
         ORDER BY ventas_mes DESC
     """, params=params)
     df['Supervisor'] = df['Supervisor'].replace(_ALIV_HORIZONTAL_RENOMBRE)
+    if not df.empty:
+        df = df.groupby('Supervisor', as_index=False).agg(
+            ventas_mes=('ventas_mes', 'sum'), ultima_activacion=('ultima_activacion', 'max')
+        ).sort_values('ventas_mes', ascending=False)
     if 'ultima_activacion' in df.columns:
         df['ultima_activacion'] = df['ultima_activacion'].apply(
             lambda d: d.strftime('%d-%m-%Y') if pd.notna(d) else '')
