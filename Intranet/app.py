@@ -466,8 +466,11 @@ def dashboard_ventas():
         db_data = _run_parallel_queries(_queries, 'dashboard')
         # Un hipo pasajero de conexion (varias consultas corren en paralelo y
         # Azure a veces tira una) no debe quedar pegado 5 minutos en cache --
-        # solo se cachea si la consulta principal (kpi_lima) sí trajo datos.
-        if db_data.get('kpi_lima') is not None:
+        # antes solo se revisaba kpi_lima, pero una consulta MAS ADELANTE en
+        # la cola podía quedarse sin tiempo y ese hueco (None -> 0 en la
+        # plantilla) se cacheaba igual, sirviendo el mismo resultado
+        # incompleto hasta que expirara. Ahora exige que TODAS llegaran.
+        if all(v is not None for v in db_data.values()):
             _cache_set(cache_key, db_data)
 
     loc_lima = db_data.get('loc_lima')
@@ -1311,7 +1314,14 @@ def reporte_gerente():
             'activaciones_hoy': lambda: db_helper.get_activaciones_hoy(fecha=fecha_avance),
         }
         db_data = _run_parallel_queries(_queries, 'reporte_gerente')
-        if db_data.get('kpi_t') is not None:
+        # Antes solo se revisaba kpi_t: si una consulta MAS ADELANTE en la cola
+        # (trend_v/trend_h/activaciones_hoy) se quedaba sin tiempo dentro de la
+        # ventana de _run_parallel_queries, ese resultado parcial (con esos
+        # campos en None -> la plantilla los muestra en 0) se guardaba en
+        # cache 5 minutos IGUAL -- recargar la pagina no arreglaba nada, servia
+        # el mismo hueco hasta que el cache expiraba. Ahora solo se cachea si
+        # TODAS las consultas llegaron.
+        if all(v is not None for v in db_data.values()):
             _cache_set(cache_key, db_data)
 
     kpi_t = db_data.get('kpi_t') or {}
