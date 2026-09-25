@@ -1825,18 +1825,19 @@ def get_rechazadas_lima(fecha_desde, fecha_hasta, area='', agencia_grupo=''):
     _fp  = "TRY_CONVERT(DATE, LEFT(wf.[Fecha programación], 10), 105)"
     df = get_data(f"""
         SELECT
-            ISNULL(ua.vendedor, wf.[Vendedor real])          AS vendedor,
-            ISNULL(ua.supervisor, '')                         AS supervisor,
+            ISNULL(wf.Cliente, '')                            AS cliente,
+            ISNULL(ua.agencia, '')                             AS agencia,
+            ISNULL(wf.[Tipo de domicilio], '')                AS tipo_domicilio,
             ISNULL(wf.[Telf. cliente], '')                    AS telefono,
             ISNULL(wf.[N° doc cliente], '')                   AS doc,
             wf.[Fecha de registro]                            AS fecha_registro,
             wf.[Fecha programación]                           AS fecha_programacion,
-            ISNULL(wf.Cliente, '')                            AS cliente,
+            ISNULL(wf.[Motivo rechazo orden], '')             AS motivo_rechazo_orden,
+            ISNULL(wf.[Motivo Rechazo Pedido], '')            AS motivo_rechazo_pedido,
             ISNULL(wf.[Estado del Pedido], '')                AS estado_pedido,
             ISNULL(wf.[Estado orden], '')                     AS estado_orden,
             ISNULL(wf.[Dirección de Instalación], '')         AS direccion,
             ISNULL(wf.Distrito, '')                           AS distrito,
-            ISNULL(wf.[Tipo de domicilio], '')                AS tipo_domicilio,
             COALESCE(NULLIF(wf.[Motivo rechazo orden], ''),
                      NULLIF(wf.[Motivo Rechazo Pedido], ''), '') AS motivo_rechazo
         FROM dbo.winforce_lima wf

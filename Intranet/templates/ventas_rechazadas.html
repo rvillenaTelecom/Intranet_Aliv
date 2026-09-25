@@ -59,40 +59,42 @@
         <table class="u-table">
             <thead style="position:sticky; top:0; z-index:1;">
                 <tr>
-                    <th>Vendedor</th>
-                    <th>Supervisor</th>
+                    <th>Cliente</th>
+                    <th>Agencia</th>
+                    <th>Tipo de domicilio</th>
                     <th>Teléfono</th>
                     <th>Doc. cliente</th>
-                    <th>Cliente</th>
                     <th>F. Registro</th>
                     <th>F. Programación</th>
+                    <th>Motivo rechazo orden</th>
+                    <th>Motivo Rechazo Pedido</th>
                     <th>Estado pedido</th>
                     <th>Estado orden</th>
-                    <th>Motivo rechazo</th>
                     <th>Dirección</th>
                     <th>Distrito</th>
-                    <th>Tipo de domicilio</th>
+                    <th>Motivo rechazo</th>
                 </tr>
             </thead>
             <tbody>
                 {% for r in rows %}
                 <tr>
-                    <td>{{ r.vendedor }}</td>
-                    <td>{{ r.supervisor }}</td>
+                    <td>{{ r.cliente }}</td>
+                    <td>{{ r.agencia }}</td>
+                    <td>{{ r.tipo_domicilio }}</td>
                     <td>{{ r.telefono }}</td>
                     <td>{{ r.doc }}</td>
-                    <td>{{ r.cliente }}</td>
                     <td>{{ r.fecha_registro }}</td>
                     <td>{{ r.fecha_programacion }}</td>
+                    <td>{{ r.motivo_rechazo_orden or '—' }}</td>
+                    <td>{{ r.motivo_rechazo_pedido or '—' }}</td>
                     <td>{{ r.estado_pedido }}</td>
                     <td>{{ r.estado_orden }}</td>
-                    <td>{{ r.motivo_rechazo or '—' }}</td>
                     <td>{{ r.direccion }}</td>
                     <td>{{ r.distrito }}</td>
-                    <td>{{ r.tipo_domicilio }}</td>
+                    <td>{{ r.motivo_rechazo or '—' }}</td>
                 </tr>
                 {% else %}
-                <tr><td colspan="13" style="text-align:center; color:var(--text-light); padding:24px;">Sin rechazadas para esta fecha/filtro.</td></tr>
+                <tr><td colspan="14" style="text-align:center; color:var(--text-light); padding:24px;">Sin rechazadas para esta fecha/filtro.</td></tr>
                 {% endfor %}
             </tbody>
         </table>

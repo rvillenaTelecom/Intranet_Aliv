@@ -638,12 +638,12 @@ def api_ventas_rechazadas_excel():
             return jsonify({'error': 'Sin datos para exportar'}), 404
 
         col_names = {
-            'vendedor': 'Vendedor', 'supervisor': 'Supervisor', 'telefono': 'Teléfono',
-            'doc': 'Doc. cliente', 'cliente': 'Cliente',
+            'cliente': 'Cliente', 'agencia': 'Agencia', 'tipo_domicilio': 'Tipo de domicilio',
+            'telefono': 'Teléfono', 'doc': 'Doc. cliente',
             'fecha_registro': 'F. Registro', 'fecha_programacion': 'F. Programación',
+            'motivo_rechazo_orden': 'Motivo rechazo orden', 'motivo_rechazo_pedido': 'Motivo Rechazo Pedido',
             'estado_pedido': 'Estado pedido', 'estado_orden': 'Estado orden',
-            'direccion': 'Dirección', 'distrito': 'Distrito', 'tipo_domicilio': 'Tipo de domicilio',
-            'motivo_rechazo': 'Motivo rechazo',
+            'direccion': 'Dirección', 'distrito': 'Distrito', 'motivo_rechazo': 'Motivo rechazo',
         }
         df = pd.DataFrame(rows).rename(columns=col_names)
         buf = io.BytesIO()
