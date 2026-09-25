@@ -73,6 +73,15 @@
     }
     /* El anillo del logo estaba fijo en naranja de marca — lo alineamos */
     .logo-icon { box-shadow: 0 0 0 1px rgba(139,90,60,.35), 0 4px 14px var(--brand-glow); }
+    /* .welcome-banner traía un degradado oscuro fijo (pensado para el tema
+       negro de siempre) -- con texto oscuro del tema claro encima quedaba
+       casi ilegible. Ventas Rechazadas fue la primera página con banner que
+       vio este rol (antes solo entraba a dashboard_ventas, que no lo usa). */
+    .welcome-banner {
+        background:
+            radial-gradient(480px 260px at 88% -10%, var(--brand-glow-soft), transparent 60%),
+            linear-gradient(120deg, #FFFFFF 0%, #FBF3E7 55%, #F3E2C8 100%);
+    }
     /* Firma: una veta de estratos de tierra, una sola vez, sobre la topbar */
     .topbar {
         border-top: 4px solid transparent;
