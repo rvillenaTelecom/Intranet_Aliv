@@ -11,8 +11,12 @@
 
 <form method="GET" action="{{ url_for('ventas_rechazadas') }}" style="display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap; align-items:flex-end;">
     <div class="form-group" style="margin:0; min-width:160px;">
-        <label>Fecha programada</label>
-        <input type="date" name="fecha" value="{{ fecha }}" class="u-input">
+        <label>Fecha programada desde</label>
+        <input type="date" name="fecha_desde" value="{{ fecha_desde }}" class="u-input">
+    </div>
+    <div class="form-group" style="margin:0; min-width:160px;">
+        <label>Hasta</label>
+        <input type="date" name="fecha_hasta" value="{{ fecha_hasta }}" class="u-input">
     </div>
     {% if role in ('admin', 'ejecutivo') %}
     <div class="form-group" style="margin:0; min-width:150px;">
@@ -44,7 +48,7 @@
     <button type="submit" class="btn btn-primary" style="height:38px; align-self:flex-end;">
         <i class="fa-solid fa-filter"></i> Filtrar
     </button>
-    <a href="{{ url_for('api_ventas_rechazadas_excel', fecha=fecha, area=area, agencia=agencia) }}"
+    <a href="{{ url_for('api_ventas_rechazadas_excel', fecha_desde=fecha_desde, fecha_hasta=fecha_hasta, area=area, agencia=agencia) }}"
        class="btn btn-outline" style="height:38px; align-self:flex-end; display:inline-flex; align-items:center; gap:6px;">
         <i class="fa-solid fa-file-excel"></i> Descargar Excel
     </a>

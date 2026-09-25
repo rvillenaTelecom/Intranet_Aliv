@@ -1812,15 +1812,17 @@ def get_puntos_mapa_lima(mes, anio, area='', agencia_grupo=''):
             print(f"[mapa] Score cols no disponibles, usando base: {e}")
 
 
-def get_rechazadas_lima(fecha, area='', agencia_grupo=''):
-    """Órdenes programadas para `fecha` (date de Python) que NO se ejecutaron
-    -- 'rechazadas', para que el equipo llame y trate de recuperar la venta.
-    Basado en SQL/Winforce SQL/Prog_Lose_Lu.sql (Renzo, 2026-09-25): mismo
-    JOIN corregido que _AG_JOIN (typo 'CARHUAY' -> 'CARHUAYANO' de un
-    vendedor) para no perder su fila del cruce con dim_usuarios_Aliv."""
+def get_rechazadas_lima(fecha_desde, fecha_hasta, area='', agencia_grupo=''):
+    """Órdenes programadas entre `fecha_desde` y `fecha_hasta` (date de Python,
+    inclusive ambos) que NO se ejecutaron -- 'rechazadas', para que el equipo
+    llame y trate de recuperar la venta. Basado en
+    SQL/Winforce SQL/Prog_Lose_Lu.sql (Renzo, 2026-09-25): mismo JOIN
+    corregido que _AG_JOIN (typo 'CARHUAY' -> 'CARHUAYANO' de un vendedor)
+    para no perder su fila del cruce con dim_usuarios_Aliv."""
     _ac  = _area_clause(area, col='wf.[Tipo de domicilio]')
     _dl  = _dept_lima('wf')
     _agc = _agencia_clause(agencia_grupo, col='wf.[Vendedor real]')
+    _fp  = "TRY_CONVERT(DATE, LEFT(wf.[Fecha programación], 10), 105)"
     df = get_data(f"""
         SELECT
             ISNULL(ua.vendedor, wf.[Vendedor real])          AS vendedor,
@@ -1838,13 +1840,11 @@ def get_rechazadas_lima(fecha, area='', agencia_grupo=''):
                      NULLIF(wf.[Motivo Rechazo Pedido], ''), '') AS motivo_rechazo
         FROM dbo.winforce_lima wf
         {_AG_JOIN}
-        WHERE DAY(TRY_CONVERT(DATE, LEFT(wf.[Fecha programación], 10), 105))   = :dia
-          AND MONTH(TRY_CONVERT(DATE, LEFT(wf.[Fecha programación], 10), 105)) = :mes
-          AND YEAR(TRY_CONVERT(DATE, LEFT(wf.[Fecha programación], 10), 105))  = :anio
+        WHERE {_fp} BETWEEN :desde AND :hasta
           AND wf.[Estado orden] <> 'Ejecutada'
           {_dl} {_ac} {_agc}
         ORDER BY wf.[Fecha de registro] DESC
-    """, params={'dia': fecha.day, 'mes': fecha.month, 'anio': fecha.year})
+    """, params={'desde': fecha_desde, 'hasta': fecha_hasta})
     return df.to_dict(orient='records')
 
 

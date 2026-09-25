@@ -565,12 +565,9 @@ def api_registros_lima_excel():
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/ventas-rechazadas')
-@login_required
-def ventas_rechazadas():
-    """Órdenes programadas para una fecha que no se ejecutaron ('rechazadas'),
-    con motivo y contacto, para que el equipo llame y trate de recuperar la
-    venta. Respeta el mismo bloqueo de área/agencia por rol que dashboard_ventas."""
+def _parse_rechazadas_filtros():
+    """área/agencia (forzados por rol si aplica) + rango de fechas (desde/hasta,
+    por defecto ambos = ayer) para las dos rutas de Ventas Rechazadas."""
     from datetime import timedelta
     _scope = ROLE_SCOPE.get(session['role'])
     if _scope:
@@ -581,19 +578,36 @@ def ventas_rechazadas():
         _agencia = request.args.get('agencia', '')
         agencia  = _agencia if _agencia in ('Aliv', 'Sub') else ''
 
-    _fecha_arg = request.args.get('fecha', '')
-    try:
-        fecha = datetime.strptime(_fecha_arg, '%Y-%m-%d').date() if _fecha_arg else None
-    except ValueError:
-        fecha = None
-    if fecha is None:
-        fecha = (datetime.now() - timedelta(days=1)).date()
+    ayer = (datetime.now() - timedelta(days=1)).date()
 
-    cache_key = ('ventas_rechazadas', fecha, area, agencia)
+    def _parse(argname, default):
+        raw = request.args.get(argname, '')
+        try:
+            return datetime.strptime(raw, '%Y-%m-%d').date() if raw else default
+        except ValueError:
+            return default
+
+    fecha_desde = _parse('fecha_desde', ayer)
+    fecha_hasta = _parse('fecha_hasta', ayer)
+    if fecha_hasta < fecha_desde:
+        fecha_desde, fecha_hasta = fecha_hasta, fecha_desde
+    return area, agencia, fecha_desde, fecha_hasta
+
+
+@app.route('/ventas-rechazadas')
+@login_required
+def ventas_rechazadas():
+    """Órdenes programadas en un rango de fechas que no se ejecutaron
+    ('rechazadas'), con motivo y contacto, para que el equipo llame y trate
+    de recuperar la venta. Respeta el mismo bloqueo de área/agencia por rol
+    que dashboard_ventas."""
+    area, agencia, fecha_desde, fecha_hasta = _parse_rechazadas_filtros()
+
+    cache_key = ('ventas_rechazadas', fecha_desde, fecha_hasta, area, agencia)
     rows = _cache_get(cache_key)
     if rows is None:
         try:
-            rows = db_helper.get_rechazadas_lima(fecha, area=area, agencia_grupo=agencia)
+            rows = db_helper.get_rechazadas_lima(fecha_desde, fecha_hasta, area=area, agencia_grupo=agencia)
             _cache_set(cache_key, rows)
         except Exception as e:
             print(f"[ventas_rechazadas] {e}")
@@ -602,7 +616,8 @@ def ventas_rechazadas():
     return render_template(
         'ventas_rechazadas.html',
         user=session['name'], role=session['role'],
-        area=area, agencia=agencia, fecha=fecha.strftime('%Y-%m-%d'),
+        area=area, agencia=agencia,
+        fecha_desde=fecha_desde.strftime('%Y-%m-%d'), fecha_hasta=fecha_hasta.strftime('%Y-%m-%d'),
         rows=rows,
     )
 
@@ -610,31 +625,15 @@ def ventas_rechazadas():
 @app.route('/api/ventas-rechazadas/excel')
 @login_required
 def api_ventas_rechazadas_excel():
-    """Excel de la lista de Ventas Rechazadas, con el mismo filtro (fecha/área/agencia)
+    """Excel de la lista de Ventas Rechazadas, con el mismo filtro (fechas/área/agencia)
     que el usuario tenía aplicado en pantalla."""
     import io
     import pandas as pd
-    from datetime import timedelta
 
-    _scope = ROLE_SCOPE.get(session['role'])
-    if _scope:
-        area, agencia = _scope.get('area', ''), _scope.get('agencia', '')
-    else:
-        _area    = request.args.get('area', '')
-        area     = _area if _area in ('Vertical', 'Horizontal') else ''
-        _agencia = request.args.get('agencia', '')
-        agencia  = _agencia if _agencia in ('Aliv', 'Sub') else ''
-
-    _fecha_arg = request.args.get('fecha', '')
-    try:
-        fecha = datetime.strptime(_fecha_arg, '%Y-%m-%d').date() if _fecha_arg else None
-    except ValueError:
-        fecha = None
-    if fecha is None:
-        fecha = (datetime.now() - timedelta(days=1)).date()
+    area, agencia, fecha_desde, fecha_hasta = _parse_rechazadas_filtros()
 
     try:
-        rows = db_helper.get_rechazadas_lima(fecha, area=area, agencia_grupo=agencia)
+        rows = db_helper.get_rechazadas_lima(fecha_desde, fecha_hasta, area=area, agencia_grupo=agencia)
         if not rows:
             return jsonify({'error': 'Sin datos para exportar'}), 404
 
@@ -655,7 +654,8 @@ def api_ventas_rechazadas_excel():
                 ws.column_dimensions[col[0].column_letter].width = min(max_len + 2, 40)
 
         buf.seek(0)
-        fname = f"ventas_rechazadas_{area or 'todos'}_{fecha.strftime('%Y%m%d')}.xlsx"
+        _rango = fecha_desde.strftime('%Y%m%d') if fecha_desde == fecha_hasta else f"{fecha_desde.strftime('%Y%m%d')}-{fecha_hasta.strftime('%Y%m%d')}"
+        fname = f"ventas_rechazadas_{area or 'todos'}_{_rango}.xlsx"
         return Response(
             buf.getvalue(),
             mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
