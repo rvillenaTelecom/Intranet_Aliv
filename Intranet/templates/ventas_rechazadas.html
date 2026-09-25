@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Ventas Rechazadas — Intranet AlivTelecom{% endblock %}
+{% block page_title %}Ventas Rechazadas{% endblock %}
+
+{% block content %}
+
+<div class="welcome-banner">
+    <div class="welcome-title"><i class="fa-solid fa-phone-slash" style="margin-right:10px;"></i>Ventas Rechazadas</div>
+    <div class="welcome-sub">Órdenes programadas que no se ejecutaron, con su motivo — para llamar al cliente y tratar de recuperar la venta.</div>
+</div>
+
+<form method="GET" action="{{ url_for('ventas_rechazadas') }}" style="display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap; align-items:flex-end;">
+    <div class="form-group" style="margin:0; min-width:160px;">
+        <label>Fecha programada</label>
+        <input type="date" name="fecha" value="{{ fecha }}" class="u-input">
+    </div>
+    {% if role in ('admin', 'ejecutivo') %}
+    <div class="form-group" style="margin:0; min-width:150px;">
+        <label>Área</label>
+        <select name="area" class="u-input">
+            <option value="" {% if not area %}selected{% endif %}>-- Todas --</option>
+            <option value="Vertical" {% if area == 'Vertical' %}selected{% endif %}>Vertical</option>
+            <option value="Horizontal" {% if area == 'Horizontal' %}selected{% endif %}>Horizontal</option>
+        </select>
+    </div>
+    {% if area == 'Horizontal' %}
+    <div class="form-group" style="margin:0; min-width:150px;">
+        <label>Agencia</label>
+        <select name="agencia" class="u-input">
+            <option value="" {% if not agencia %}selected{% endif %}>-- Todas --</option>
+            <option value="Aliv" {% if agencia == 'Aliv' %}selected{% endif %}>Aliv directo</option>
+            <option value="Sub" {% if agencia == 'Sub' %}selected{% endif %}>Subagencias</option>
+        </select>
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="form-group" style="margin:0;">
+        <label>Área</label>
+        <div class="u-input" style="display:flex; align-items:center; background:var(--bg-inset); opacity:0.85;">
+            {{ area }}{% if agencia %} · {{ 'Aliv directo' if agencia == 'Aliv' else 'Subagencias' }}{% endif %}
+        </div>
+    </div>
+    {% endif %}
+    <button type="submit" class="btn btn-primary" style="height:38px; align-self:flex-end;">
+        <i class="fa-solid fa-filter"></i> Filtrar
+    </button>
+    <a href="{{ url_for('api_ventas_rechazadas_excel', fecha=fecha, area=area, agencia=agencia) }}"
+       class="btn btn-outline" style="height:38px; align-self:flex-end; display:inline-flex; align-items:center; gap:6px;">
+        <i class="fa-solid fa-file-excel"></i> Descargar Excel
+    </a>
+</form>
+
+<div class="card" style="padding:0; overflow:hidden;">
+    <div style="overflow-x:auto;">
+        <table class="u-table">
+            <thead>
+                <tr>
+                    <th>Vendedor</th>
+                    <th>Supervisor</th>
+                    <th>Teléfono</th>
+                    <th>Doc. cliente</th>
+                    <th>Cliente</th>
+                    <th>F. Registro</th>
+                    <th>F. Programación</th>
+                    <th>Estado pedido</th>
+                    <th>Estado orden</th>
+                    <th>Motivo rechazo</th>
+                    <th>Dirección</th>
+                    <th>Distrito</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in rows %}
+                <tr>
+                    <td>{{ r.vendedor }}</td>
+                    <td>{{ r.supervisor }}</td>
+                    <td>{{ r.telefono }}</td>
+                    <td>{{ r.doc }}</td>
+                    <td>{{ r.cliente }}</td>
+                    <td>{{ r.fecha_registro }}</td>
+                    <td>{{ r.fecha_programacion }}</td>
+                    <td>{{ r.estado_pedido }}</td>
+                    <td>{{ r.estado_orden }}</td>
+                    <td>{{ r.motivo_rechazo or '—' }}</td>
+                    <td>{{ r.direccion }}</td>
+                    <td>{{ r.distrito }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="12" style="text-align:center; color:var(--text-light); padding:24px;">Sin rechazadas para esta fecha/filtro.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}

@@ -126,9 +126,13 @@
         <nav class="sidebar-nav">
             {% if role in _locked_home %}
             <div class="nav-section-label">Mi dashboard</div>
-            <a href="{{ url_for(_locked_home[role]) }}" class="nav-item active">
+            <a href="{{ url_for(_locked_home[role]) }}" class="nav-item {% if request.endpoint == _locked_home[role] %}active{% endif %}">
                 <i class="fa-solid fa-gauge-high"></i>
                 <span>{{ role | capitalize | replace('_', ' ') }}</span>
+            </a>
+            <a href="{{ url_for('ventas_rechazadas') }}" class="nav-item {% if request.endpoint == 'ventas_rechazadas' %}active{% endif %}">
+                <i class="fa-solid fa-phone-slash"></i>
+                <span>Ventas Rechazadas</span>
             </a>
             {% else %}
             <div class="nav-section-label">Principal</div>
@@ -159,6 +163,10 @@
             <a href="{{ url_for('dashboards') }}" class="nav-item {% if request.endpoint in ['dashboards', 'reporte_gerente'] %}active{% endif %}">
                 <i class="fa-solid fa-gauge-high"></i>
                 <span>Dashboards</span>
+            </a>
+            <a href="{{ url_for('ventas_rechazadas') }}" class="nav-item {% if request.endpoint == 'ventas_rechazadas' %}active{% endif %}">
+                <i class="fa-solid fa-phone-slash"></i>
+                <span>Ventas Rechazadas</span>
             </a>
 
             <div class="nav-section-label">Gestión</div>

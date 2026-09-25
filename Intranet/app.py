@@ -322,6 +322,7 @@ _LOCKED_ROLE_ALLOWED_ENDPOINTS = {
     'dashboard_ventas', 'reporte_gerente',
     'lima_distritos_geo', 'api_chat',
     'api_registros_lima_excel',
+    'ventas_rechazadas', 'api_ventas_rechazadas_excel',
 }
 # resumen-tabla/proyeccion-cierre devuelven el consolidado Vertical+Horizontal
 # (para el toggle interno de Ejecutivo) — no deben quedar accesibles por URL
@@ -554,6 +555,107 @@ def api_registros_lima_excel():
 
         buf.seek(0)
         fname = f"registros_lima_{area or 'todos'}_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
+        return Response(
+            buf.getvalue(),
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            headers={'Content-Disposition': f'attachment; filename="{fname}"'}
+        )
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/ventas-rechazadas')
+@login_required
+def ventas_rechazadas():
+    """Órdenes programadas para una fecha que no se ejecutaron ('rechazadas'),
+    con motivo y contacto, para que el equipo llame y trate de recuperar la
+    venta. Respeta el mismo bloqueo de área/agencia por rol que dashboard_ventas."""
+    from datetime import timedelta
+    _scope = ROLE_SCOPE.get(session['role'])
+    if _scope:
+        area, agencia = _scope.get('area', ''), _scope.get('agencia', '')
+    else:
+        _area    = request.args.get('area', '')
+        area     = _area if _area in ('Vertical', 'Horizontal') else ''
+        _agencia = request.args.get('agencia', '')
+        agencia  = _agencia if _agencia in ('Aliv', 'Sub') else ''
+
+    _fecha_arg = request.args.get('fecha', '')
+    try:
+        fecha = datetime.strptime(_fecha_arg, '%Y-%m-%d').date() if _fecha_arg else None
+    except ValueError:
+        fecha = None
+    if fecha is None:
+        fecha = (datetime.now() - timedelta(days=1)).date()
+
+    cache_key = ('ventas_rechazadas', fecha, area, agencia)
+    rows = _cache_get(cache_key)
+    if rows is None:
+        try:
+            rows = db_helper.get_rechazadas_lima(fecha, area=area, agencia_grupo=agencia)
+            _cache_set(cache_key, rows)
+        except Exception as e:
+            print(f"[ventas_rechazadas] {e}")
+            rows = []
+
+    return render_template(
+        'ventas_rechazadas.html',
+        user=session['name'], role=session['role'],
+        area=area, agencia=agencia, fecha=fecha.strftime('%Y-%m-%d'),
+        rows=rows,
+    )
+
+
+@app.route('/api/ventas-rechazadas/excel')
+@login_required
+def api_ventas_rechazadas_excel():
+    """Excel de la lista de Ventas Rechazadas, con el mismo filtro (fecha/área/agencia)
+    que el usuario tenía aplicado en pantalla."""
+    import io
+    import pandas as pd
+    from datetime import timedelta
+
+    _scope = ROLE_SCOPE.get(session['role'])
+    if _scope:
+        area, agencia = _scope.get('area', ''), _scope.get('agencia', '')
+    else:
+        _area    = request.args.get('area', '')
+        area     = _area if _area in ('Vertical', 'Horizontal') else ''
+        _agencia = request.args.get('agencia', '')
+        agencia  = _agencia if _agencia in ('Aliv', 'Sub') else ''
+
+    _fecha_arg = request.args.get('fecha', '')
+    try:
+        fecha = datetime.strptime(_fecha_arg, '%Y-%m-%d').date() if _fecha_arg else None
+    except ValueError:
+        fecha = None
+    if fecha is None:
+        fecha = (datetime.now() - timedelta(days=1)).date()
+
+    try:
+        rows = db_helper.get_rechazadas_lima(fecha, area=area, agencia_grupo=agencia)
+        if not rows:
+            return jsonify({'error': 'Sin datos para exportar'}), 404
+
+        col_names = {
+            'vendedor': 'Vendedor', 'supervisor': 'Supervisor', 'telefono': 'Teléfono',
+            'doc': 'Doc. cliente', 'cliente': 'Cliente',
+            'fecha_registro': 'F. Registro', 'fecha_programacion': 'F. Programación',
+            'estado_pedido': 'Estado pedido', 'estado_orden': 'Estado orden',
+            'direccion': 'Dirección', 'distrito': 'Distrito', 'motivo_rechazo': 'Motivo rechazo',
+        }
+        df = pd.DataFrame(rows).rename(columns=col_names)
+        buf = io.BytesIO()
+        with pd.ExcelWriter(buf, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='Rechazadas')
+            ws = writer.sheets['Rechazadas']
+            for col in ws.columns:
+                max_len = max((len(str(c.value or '')) for c in col), default=10)
+                ws.column_dimensions[col[0].column_letter].width = min(max_len + 2, 40)
+
+        buf.seek(0)
+        fname = f"ventas_rechazadas_{area or 'todos'}_{fecha.strftime('%Y%m%d')}.xlsx"
         return Response(
             buf.getvalue(),
             mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

@@ -1812,6 +1812,42 @@ def get_puntos_mapa_lima(mes, anio, area='', agencia_grupo=''):
             print(f"[mapa] Score cols no disponibles, usando base: {e}")
 
 
+def get_rechazadas_lima(fecha, area='', agencia_grupo=''):
+    """Órdenes programadas para `fecha` (date de Python) que NO se ejecutaron
+    -- 'rechazadas', para que el equipo llame y trate de recuperar la venta.
+    Basado en SQL/Winforce SQL/Prog_Lose_Lu.sql (Renzo, 2026-09-25): mismo
+    JOIN corregido que _AG_JOIN (typo 'CARHUAY' -> 'CARHUAYANO' de un
+    vendedor) para no perder su fila del cruce con dim_usuarios_Aliv."""
+    _ac  = _area_clause(area, col='wf.[Tipo de domicilio]')
+    _dl  = _dept_lima('wf')
+    _agc = _agencia_clause(agencia_grupo, col='wf.[Vendedor real]')
+    df = get_data(f"""
+        SELECT
+            ISNULL(ua.vendedor, wf.[Vendedor real])          AS vendedor,
+            ISNULL(ua.supervisor, '')                         AS supervisor,
+            ISNULL(wf.[Telf. cliente], '')                    AS telefono,
+            ISNULL(wf.[N° doc cliente], '')                   AS doc,
+            wf.[Fecha de registro]                            AS fecha_registro,
+            wf.[Fecha programación]                           AS fecha_programacion,
+            ISNULL(wf.Cliente, '')                            AS cliente,
+            ISNULL(wf.[Estado del Pedido], '')                AS estado_pedido,
+            ISNULL(wf.[Estado orden], '')                     AS estado_orden,
+            ISNULL(wf.[Dirección de Instalación], '')         AS direccion,
+            ISNULL(wf.Distrito, '')                           AS distrito,
+            COALESCE(NULLIF(wf.[Motivo rechazo orden], ''),
+                     NULLIF(wf.[Motivo Rechazo Pedido], ''), '') AS motivo_rechazo
+        FROM dbo.winforce_lima wf
+        {_AG_JOIN}
+        WHERE DAY(TRY_CONVERT(DATE, LEFT(wf.[Fecha programación], 10), 105))   = :dia
+          AND MONTH(TRY_CONVERT(DATE, LEFT(wf.[Fecha programación], 10), 105)) = :mes
+          AND YEAR(TRY_CONVERT(DATE, LEFT(wf.[Fecha programación], 10), 105))  = :anio
+          AND wf.[Estado orden] <> 'Ejecutada'
+          {_dl} {_ac} {_agc}
+        ORDER BY wf.[Fecha de registro] DESC
+    """, params={'dia': fecha.day, 'mes': fecha.month, 'anio': fecha.year})
+    return df.to_dict(orient='records')
+
+
 def get_registros_lima(mes, anio, area='', agencia_grupo=''):
     """Registros individuales de Lima (cualquier estado, no solo Ejecutada) para
     el buscador por documento/condominio y la tabla de detalle de clientes.
