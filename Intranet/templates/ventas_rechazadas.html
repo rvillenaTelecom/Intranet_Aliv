@@ -71,6 +71,7 @@
                     <th>Motivo rechazo</th>
                     <th>Dirección</th>
                     <th>Distrito</th>
+                    <th>Tipo de domicilio</th>
                 </tr>
             </thead>
             <tbody>
@@ -88,9 +89,10 @@
                     <td>{{ r.motivo_rechazo or '—' }}</td>
                     <td>{{ r.direccion }}</td>
                     <td>{{ r.distrito }}</td>
+                    <td>{{ r.tipo_domicilio }}</td>
                 </tr>
                 {% else %}
-                <tr><td colspan="12" style="text-align:center; color:var(--text-light); padding:24px;">Sin rechazadas para esta fecha/filtro.</td></tr>
+                <tr><td colspan="13" style="text-align:center; color:var(--text-light); padding:24px;">Sin rechazadas para esta fecha/filtro.</td></tr>
                 {% endfor %}
             </tbody>
         </table>

@@ -642,7 +642,8 @@ def api_ventas_rechazadas_excel():
             'doc': 'Doc. cliente', 'cliente': 'Cliente',
             'fecha_registro': 'F. Registro', 'fecha_programacion': 'F. Programación',
             'estado_pedido': 'Estado pedido', 'estado_orden': 'Estado orden',
-            'direccion': 'Dirección', 'distrito': 'Distrito', 'motivo_rechazo': 'Motivo rechazo',
+            'direccion': 'Dirección', 'distrito': 'Distrito', 'tipo_domicilio': 'Tipo de domicilio',
+            'motivo_rechazo': 'Motivo rechazo',
         }
         df = pd.DataFrame(rows).rename(columns=col_names)
         buf = io.BytesIO()

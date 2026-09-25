@@ -1836,6 +1836,7 @@ def get_rechazadas_lima(fecha_desde, fecha_hasta, area='', agencia_grupo=''):
             ISNULL(wf.[Estado orden], '')                     AS estado_orden,
             ISNULL(wf.[Dirección de Instalación], '')         AS direccion,
             ISNULL(wf.Distrito, '')                           AS distrito,
+            ISNULL(wf.[Tipo de domicilio], '')                AS tipo_domicilio,
             COALESCE(NULLIF(wf.[Motivo rechazo orden], ''),
                      NULLIF(wf.[Motivo Rechazo Pedido], ''), '') AS motivo_rechazo
         FROM dbo.winforce_lima wf
