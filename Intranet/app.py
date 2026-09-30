@@ -469,14 +469,20 @@ def dashboard_ventas():
             # 2026-09-30: la fila de Vertical no aparecia).
             _queries['kpi_vertical_sub'] = lambda: db_helper.get_kpi_lima(
                 mes, anio, area='Vertical', dia=dia, cumul=True, base_dias=base_dias, agencia_grupo='Sub')
+        # El resto de paneles de la página (tendencia, top distritos, estados,
+        # velocidad de planes, localización, mapa, registros) usan el mismo
+        # _area_kpi -- para Sub-agencias es '' (combinado), igual que
+        # kpi_lima arriba, así que TODA la página es consistente: si el
+        # resumen de arriba ya es la suma, el resto no puede seguir
+        # mostrando solo Horizontal.
         _queries.update({
-            'trend_lima':     lambda: db_helper.get_daily_trend_lima(mes, anio, area=area, agencia_grupo=agencia),
-            'top_dist':       lambda: db_helper.get_top_distritos_lima(mes, anio, area=area, dia=dia, agencia_grupo=agencia),
-            'dist_estados':   lambda: db_helper.get_distribucion_estados_lima(mes, anio, area=area, dia=dia, agencia_grupo=agencia),
-            'vel_planes':     lambda: db_helper.get_velocidad_planes_lima(mes, anio, area=area, dia=dia, agencia_grupo=agencia),
-            'loc_lima':       lambda: db_helper.get_localizacion_lima(mes, anio, area=area, agencia_grupo=agencia),
-            'puntos_mapa':    lambda: db_helper.get_puntos_mapa_lima(mes, anio, area=area, agencia_grupo=agencia),
-            'registros_lima': lambda: db_helper.get_registros_lima(mes, anio, area=area, agencia_grupo=agencia),
+            'trend_lima':     lambda: db_helper.get_daily_trend_lima(mes, anio, area=_area_kpi, agencia_grupo=agencia),
+            'top_dist':       lambda: db_helper.get_top_distritos_lima(mes, anio, area=_area_kpi, dia=dia, agencia_grupo=agencia),
+            'dist_estados':   lambda: db_helper.get_distribucion_estados_lima(mes, anio, area=_area_kpi, dia=dia, agencia_grupo=agencia),
+            'vel_planes':     lambda: db_helper.get_velocidad_planes_lima(mes, anio, area=_area_kpi, dia=dia, agencia_grupo=agencia),
+            'loc_lima':       lambda: db_helper.get_localizacion_lima(mes, anio, area=_area_kpi, agencia_grupo=agencia),
+            'puntos_mapa':    lambda: db_helper.get_puntos_mapa_lima(mes, anio, area=_area_kpi, agencia_grupo=agencia),
+            'registros_lima': lambda: db_helper.get_registros_lima(mes, anio, area=_area_kpi, agencia_grupo=agencia),
         })
         if area in ('Vertical', 'Horizontal'):
             _queries['pivot_agencia'] = lambda: db_helper.get_pivot_subagencias_lima(mes, anio, dia=dia)
