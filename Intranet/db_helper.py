@@ -1749,13 +1749,18 @@ def get_comparacion_meses_lima(mes1, anio1, mes2, anio2, area=''):
     }
 
 
-def get_puntos_mapa_lima(mes, anio, area='', agencia_grupo=''):
+def get_puntos_mapa_lima(mes, anio, area='', agencia_grupo='', dia=None, cumul=True):
     """Instalaciones con lat/lon para mapa interactivo — Lima y Callao.
-    Latitud/Longitud son TEXT en SQL Server → TRY_CAST para conversión segura."""
+    Latitud/Longitud son TEXT en SQL Server → TRY_CAST para conversión segura.
+    dia/cumul: mismo criterio que get_top_distritos_lima -- respeta el
+    corte Ayer/Hoy y el selector de Día de la página (antes siempre
+    mostraba el mes completo, ignorando esos filtros)."""
     import math
     _ac = _area_clause(area)
     _dl = _dept_lima()
     _agc = _agencia_clause(agencia_grupo)
+    _op = "<=" if cumul else "="
+    _da = f"AND DAY({_FP}) {_op} :dia" if dia else ""
     _where = f"""
         FROM dbo.winforce_lima
         LEFT JOIN dbo.dim_usuarios_Aliv ua ON [Vendedor real] = ua.vendedor
@@ -1766,7 +1771,7 @@ def get_puntos_mapa_lima(mes, anio, area='', agencia_grupo=''):
           AND TRY_CAST([Latitud]  AS FLOAT) <> 0
           AND TRY_CAST([Longitud] AS FLOAT) IS NOT NULL
           AND TRY_CAST([Longitud] AS FLOAT) <> 0
-          {_dl} {_ac} {_agc}
+          {_dl} {_ac} {_agc} {_da}
     """
     _base = """
         ISNULL([Distrito], 'Sin distrito')             AS distrito,
@@ -1788,6 +1793,8 @@ def get_puntos_mapa_lima(mes, anio, area='', agencia_grupo=''):
         ,TRY_CAST([Score_Minimo_KML] AS FLOAT)         AS score_minimo
     """
     params = {'mes': mes, 'anio': anio}
+    if dia:
+        params['dia'] = int(dia)
 
     def _score_zona(row):
         zona = (row.get('zona_kml') or '').strip()
@@ -1854,15 +1861,24 @@ def get_rechazadas_lima(fecha_desde, fecha_hasta, area='', agencia_grupo=''):
     return df.to_dict(orient='records')
 
 
-def get_registros_lima(mes, anio, area='', agencia_grupo=''):
+def get_registros_lima(mes, anio, area='', agencia_grupo='', dia=None, cumul=True):
     """Registros individuales de Lima (cualquier estado, no solo Ejecutada) para
     el buscador por documento/condominio y la tabla de detalle de clientes.
     A diferencia de get_puntos_mapa_lima esto no exige lat/lon ni Estado orden
     'Ejecutada' -- por eso encuentra ventas que aún no se instalaron.
+    dia/cumul: respeta el corte Ayer/Hoy y el selector de Día de la página
+    (antes siempre mostraba el mes completo, ignorando esos filtros), sobre
+    [Fecha de registro] -- mismo campo que usa el resto del dashboard para
+    "ventas"/preventas.
     Tope de 3000 filas más recientes (mismo criterio que get_mora_detalle)."""
     _ac = _area_clause(area)
     _dl = _dept_lima()
     _agc = _agencia_clause(agencia_grupo)
+    _op = "<=" if cumul else "="
+    _dr = f"AND DAY([Fecha de registro]) {_op} :dia" if dia else ""
+    params = {'mes': mes, 'anio': anio}
+    if dia:
+        params['dia'] = int(dia)
     try:
         df = get_data(f"""
             SELECT TOP 3000
@@ -1882,9 +1898,9 @@ def get_registros_lima(mes, anio, area='', agencia_grupo=''):
             FROM dbo.winforce_lima
             LEFT JOIN dbo.dim_usuarios_Aliv ua ON [Vendedor real] = ua.vendedor
             WHERE [Fecha de registro] >= CONVERT(VARCHAR(10), DATEFROMPARTS(:anio, :mes, 1), 120) AND [Fecha de registro] < CONVERT(VARCHAR(10), DATEADD(MONTH, 1, DATEFROMPARTS(:anio, :mes, 1)), 120)
-            {_dl} {_ac} {_agc}
+            {_dl} {_ac} {_agc} {_dr}
             ORDER BY [Fecha de registro] DESC
-        """, params={'mes': mes, 'anio': anio})
+        """, params=params)
         return df.to_dict(orient='records')
     except Exception as e:
         print(f"Error get_registros_lima: {e}")

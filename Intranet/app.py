@@ -481,8 +481,8 @@ def dashboard_ventas():
             'dist_estados':   lambda: db_helper.get_distribucion_estados_lima(mes, anio, area=_area_kpi, dia=dia, agencia_grupo=agencia),
             'vel_planes':     lambda: db_helper.get_velocidad_planes_lima(mes, anio, area=_area_kpi, dia=dia, agencia_grupo=agencia),
             'loc_lima':       lambda: db_helper.get_localizacion_lima(mes, anio, area=_area_kpi, agencia_grupo=agencia),
-            'puntos_mapa':    lambda: db_helper.get_puntos_mapa_lima(mes, anio, area=_area_kpi, agencia_grupo=agencia),
-            'registros_lima': lambda: db_helper.get_registros_lima(mes, anio, area=_area_kpi, agencia_grupo=agencia),
+            'puntos_mapa':    lambda: db_helper.get_puntos_mapa_lima(mes, anio, area=_area_kpi, dia=dia, agencia_grupo=agencia),
+            'registros_lima': lambda: db_helper.get_registros_lima(mes, anio, area=_area_kpi, dia=dia, agencia_grupo=agencia),
         })
         if area in ('Vertical', 'Horizontal'):
             _queries['pivot_agencia'] = lambda: db_helper.get_pivot_subagencias_lima(mes, anio, dia=dia)
