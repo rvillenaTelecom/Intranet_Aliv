@@ -767,6 +767,15 @@ function proySetBasis(btn, basis) {
 {% set av = pivot_agencia.altas[_pk] %}
 {% set vv = pivot_agencia.ventas[_pk] %}
 {% set dt = k.dias_trans if k.dias_trans and k.dias_trans > 0 else 1 %}
+{# Sub-agencias: la coordinadora maneja tanto Vertical como Horizontal, asi
+   que ademas de la columna de siempre (Horizontal) se agrega Vertical y un
+   Total que suma ambas -- pivot_agencia ya trae el desglose completo por
+   area, independiente del filtro _pk de arriba. #}
+{% set _mostrar_vertical = (area == 'Horizontal' and agencia == 'Sub') %}
+{% if _mostrar_vertical %}
+{% set av_vert = pivot_agencia.altas['vertical'] %}
+{% set vv_vert = pivot_agencia.ventas['vertical'] %}
+{% endif %}
 {% set _agencias_todas = [('ALIV','aliv'), ('DEZANET','dezanet'), ('LOTTUS','lottus'), ('SIPION','sipion'), ('SUB-AGENCIAS','sub_agencias'), ('SUB-AGENCIAS 2','sub_agencias_2')] %}
 {% if area == 'Horizontal' and agencia == 'Aliv' %}
 {% set _agencias = [('ALIV','aliv')] %}
@@ -778,10 +787,18 @@ function proySetBasis(btn, basis) {
 {% set ac_total = namespace(v=0) %}
 {% set av_total = namespace(v=0) %}
 {% set vv_total = namespace(v=0) %}
+{% if _mostrar_vertical %}
+{% set av_vert_total = namespace(v=0) %}
+{% set vv_vert_total = namespace(v=0) %}
+{% endif %}
 {% for label, key in _agencias %}
 {% set ac_total.v = ac_total.v + ac[key] %}
 {% set av_total.v = av_total.v + av[key] %}
 {% set vv_total.v = vv_total.v + vv[key] %}
+{% if _mostrar_vertical %}
+{% set av_vert_total.v = av_vert_total.v + av_vert[key] %}
+{% set vv_vert_total.v = vv_vert_total.v + vv_vert[key] %}
+{% endif %}
 {% endfor %}
 
 <!-- Cierre (ayer) + Top Distritos -->
@@ -829,21 +846,44 @@ function proySetBasis(btn, basis) {
         <div class="panel-title"><i class="fa-solid fa-chart-line"></i> {{ _area_label }} — Altas y Proyección por Agencia</div>
         <p style="font-size:11px; color:var(--text-secondary); margin-top:-10px; margin-bottom:10px;">Días transcurridos: <b>{{ dt }}</b> · Proyección a base <b>{{ base_dias }}d</b></p>
         <table class="data-table">
-            <thead><tr><th>Agencia</th><th class="num">Altas</th><th class="num">Proyección</th></tr></thead>
+            <thead>
+                <tr>
+                    <th>Agencia</th>
+                    {% if _mostrar_vertical %}
+                    <th class="num">Horizontal</th><th class="num">Vertical</th><th class="num">Total</th>
+                    {% else %}
+                    <th class="num">Altas</th>
+                    {% endif %}
+                    <th class="num">Proyección</th>
+                </tr>
+            </thead>
             <tbody>
                 {% for label, key in _agencias %}
+                {% set _tot = (av[key] + av_vert[key]) if _mostrar_vertical else av[key] %}
                 <tr>
                     <td style="font-weight:600;">{{ label }}</td>
+                    {% if _mostrar_vertical %}
                     <td class="num">{{ "{:,}".format(av[key]) }}</td>
-                    <td class="num">{{ "{:,}".format((av[key] / dt * base_dias) | round | int) }}</td>
+                    <td class="num">{{ "{:,}".format(av_vert[key]) }}</td>
+                    <td class="num" style="font-weight:600;">{{ "{:,}".format(_tot) }}</td>
+                    {% else %}
+                    <td class="num">{{ "{:,}".format(av[key]) }}</td>
+                    {% endif %}
+                    <td class="num">{{ "{:,}".format((_tot / dt * base_dias) | round | int) }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
             <tfoot>
                 <tr style="font-weight:800; background:var(--bg-card-hover);">
                     <td style="border-top:2px solid var(--border);">Total</td>
+                    {% if _mostrar_vertical %}
                     <td class="num" style="border-top:2px solid var(--border);">{{ "{:,}".format(av_total.v) }}</td>
-                    <td class="num" style="border-top:2px solid var(--border);">{{ "{:,}".format((av_total.v / dt * base_dias) | round | int) }}</td>
+                    <td class="num" style="border-top:2px solid var(--border);">{{ "{:,}".format(av_vert_total.v) }}</td>
+                    <td class="num" style="border-top:2px solid var(--border);">{{ "{:,}".format(av_total.v + av_vert_total.v) }}</td>
+                    {% else %}
+                    <td class="num" style="border-top:2px solid var(--border);">{{ "{:,}".format(av_total.v) }}</td>
+                    {% endif %}
+                    <td class="num" style="border-top:2px solid var(--border);">{{ "{:,}".format(((av_total.v + (av_vert_total.v if _mostrar_vertical else 0)) / dt * base_dias) | round | int) }}</td>
                 </tr>
             </tfoot>
         </table>
@@ -852,21 +892,44 @@ function proySetBasis(btn, basis) {
         <div class="panel-title"><i class="fa-solid fa-file-signature"></i> {{ _area_label }} — Ventas y Proyección por Agencia</div>
         <p style="font-size:11px; color:var(--text-secondary); margin-top:-10px; margin-bottom:10px;">Días transcurridos: <b>{{ dt }}</b> · Proyección a base <b>{{ base_dias }}d</b></p>
         <table class="data-table">
-            <thead><tr><th>Agencia</th><th class="num">Ventas</th><th class="num">Proyección</th></tr></thead>
+            <thead>
+                <tr>
+                    <th>Agencia</th>
+                    {% if _mostrar_vertical %}
+                    <th class="num">Horizontal</th><th class="num">Vertical</th><th class="num">Total</th>
+                    {% else %}
+                    <th class="num">Ventas</th>
+                    {% endif %}
+                    <th class="num">Proyección</th>
+                </tr>
+            </thead>
             <tbody>
                 {% for label, key in _agencias %}
+                {% set _tot = (vv[key] + vv_vert[key]) if _mostrar_vertical else vv[key] %}
                 <tr>
                     <td style="font-weight:600;">{{ label }}</td>
+                    {% if _mostrar_vertical %}
                     <td class="num">{{ "{:,}".format(vv[key]) }}</td>
-                    <td class="num">{{ "{:,}".format((vv[key] / dt * base_dias) | round | int) }}</td>
+                    <td class="num">{{ "{:,}".format(vv_vert[key]) }}</td>
+                    <td class="num" style="font-weight:600;">{{ "{:,}".format(_tot) }}</td>
+                    {% else %}
+                    <td class="num">{{ "{:,}".format(vv[key]) }}</td>
+                    {% endif %}
+                    <td class="num">{{ "{:,}".format((_tot / dt * base_dias) | round | int) }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
             <tfoot>
                 <tr style="font-weight:800; background:var(--bg-card-hover);">
                     <td style="border-top:2px solid var(--border);">Total</td>
+                    {% if _mostrar_vertical %}
                     <td class="num" style="border-top:2px solid var(--border);">{{ "{:,}".format(vv_total.v) }}</td>
-                    <td class="num" style="border-top:2px solid var(--border);">{{ "{:,}".format((vv_total.v / dt * base_dias) | round | int) }}</td>
+                    <td class="num" style="border-top:2px solid var(--border);">{{ "{:,}".format(vv_vert_total.v) }}</td>
+                    <td class="num" style="border-top:2px solid var(--border);">{{ "{:,}".format(vv_total.v + vv_vert_total.v) }}</td>
+                    {% else %}
+                    <td class="num" style="border-top:2px solid var(--border);">{{ "{:,}".format(vv_total.v) }}</td>
+                    {% endif %}
+                    <td class="num" style="border-top:2px solid var(--border);">{{ "{:,}".format(((vv_total.v + (vv_vert_total.v if _mostrar_vertical else 0)) / dt * base_dias) | round | int) }}</td>
                 </tr>
             </tfoot>
         </table>
