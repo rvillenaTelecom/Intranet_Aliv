@@ -1028,9 +1028,18 @@ function proySetBasis(btn, basis) {
             </tr>
         </thead>
         <tbody>
+            {% set _es_sub = (area == 'Horizontal' and agencia == 'Sub') %}
             <tr>
                 <td style="font-weight:700;">{{ _area_label }}</td>
                 <td class="num" style="font-weight:700; color:var(--success);">{{ "{:,}".format(k.altas) }}</td>
+                {% if _es_sub %}
+                <td class="num">—</td>
+                <td class="num">{{ "{:,}".format(k.proyeccion) }}</td>
+                <td class="num">—</td>
+                <td class="num">—</td>
+                <td class="num">{{ k.ritmo_actual }}/d</td>
+                <td class="num">—</td><td class="num">—</td>
+                {% else %}
                 <td class="num">{{ "{:,}".format(k.cuota) if k.cuota else '—' }}</td>
                 <td class="num">{{ "{:,}".format(k.proyeccion) }}</td>
                 <td class="num"><span class="{% if k.pct_proyeccion >= 100 %}badge-meta{% elif k.pct_proyeccion >= 80 %}badge-riesgo{% else %}badge-bajo{% endif %}">{{ k.pct_proyeccion }}%</span></td>
@@ -1038,19 +1047,33 @@ function proySetBasis(btn, basis) {
                 <td class="num">{{ k.ritmo_actual }}/d</td>
                 <td class="num" style="color:var(--warning); font-weight:600;">{{ k.ritmo_necesario }}/d</td>
                 <td class="num">{{ "{:,}".format(k.faltantes) }}</td>
+                {% endif %}
             </tr>
-            {% if area == 'Horizontal' and agencia == 'Sub' and kpi_vertical_sub %}
+            {% if _es_sub and kpi_vertical_sub %}
             {% set kv = kpi_vertical_sub %}
             <tr>
                 <td style="font-weight:700;">Vertical Sub-agencias</td>
                 <td class="num" style="font-weight:700; color:var(--success);">{{ "{:,}".format(kv.altas) }}</td>
-                <td class="num">{{ "{:,}".format(kv.cuota) if kv.cuota else '—' }}</td>
+                <td class="num">—</td>
                 <td class="num">{{ "{:,}".format(kv.proyeccion) }}</td>
-                <td class="num">{% if kv.cuota %}<span class="{% if kv.pct_proyeccion >= 100 %}badge-meta{% elif kv.pct_proyeccion >= 80 %}badge-riesgo{% else %}badge-bajo{% endif %}">{{ kv.pct_proyeccion }}%</span>{% else %}—{% endif %}</td>
-                <td class="num">{{ kv.alcance }}%</td>
+                <td class="num">—</td>
+                <td class="num">—</td>
                 <td class="num">{{ kv.ritmo_actual }}/d</td>
-                <td class="num" style="color:var(--warning); font-weight:600;">{{ kv.ritmo_necesario }}/d</td>
-                <td class="num">{{ "{:,}".format(kv.faltantes) }}</td>
+                <td class="num">—</td><td class="num">—</td>
+            </tr>
+            {% endif %}
+            {% if _es_sub and kpi_total_sub %}
+            {% set kt = kpi_total_sub %}
+            <tr style="background:var(--bg-card-hover);">
+                <td style="font-weight:800;">Total Sub-agencias (Horizontal + Vertical)</td>
+                <td class="num" style="font-weight:800; color:var(--success);">{{ "{:,}".format(kt.altas) }}</td>
+                <td class="num" style="font-weight:700;">{{ "{:,}".format(kt.cuota) if kt.cuota else '—' }}</td>
+                <td class="num">{{ "{:,}".format(kt.proyeccion) }}</td>
+                <td class="num">{% if kt.cuota %}<span class="{% if kt.pct_proyeccion >= 100 %}badge-meta{% elif kt.pct_proyeccion >= 80 %}badge-riesgo{% else %}badge-bajo{% endif %}">{{ kt.pct_proyeccion }}%</span>{% else %}—{% endif %}</td>
+                <td class="num">{{ kt.alcance }}%</td>
+                <td class="num">{{ kt.ritmo_actual }}/d</td>
+                <td class="num" style="color:var(--warning); font-weight:600;">{{ kt.ritmo_necesario }}/d</td>
+                <td class="num">{{ "{:,}".format(kt.faltantes) }}</td>
             </tr>
             {% endif %}
         </tbody>

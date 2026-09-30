@@ -492,6 +492,32 @@ def dashboard_ventas():
     fecha_cierre = (datetime.now() - timedelta(days=1)).strftime('%d/%m/%Y')
     _hoy_now = datetime.now()
     _dias_trans_mes, _dias_tot_mes, _ = db_helper._dias_mes(mes, anio)
+
+    kpi_total_sub = None
+    _kv = db_data.get('kpi_vertical_sub')
+    _kh = db_data.get('kpi_lima')
+    if area == 'Horizontal' and agencia == 'Sub' and _kh and _kv:
+        # La cuota de Horizontal_Sub (1787) pasa a ser la meta del TOTAL
+        # (Horizontal + Vertical de subagencias), no solo de Horizontal --
+        # pedido explicito: antes esa misma cuota se comparaba solo contra
+        # el avance de Horizontal, dejando a Vertical sin meta y a
+        # Horizontal con una meta que en realidad era del conjunto.
+        _altas    = _kh['altas'] + _kv['altas']
+        _cuota    = _kh['cuota']
+        _dt       = _kh['dias_trans'] if _kh['dias_trans'] and _kh['dias_trans'] > 0 else 1
+        _proy     = round(_altas / _dt * base_dias)
+        _dias_rest = max(base_dias - _dt, 1)
+        kpi_total_sub = {
+            'altas': _altas,
+            'cuota': _cuota,
+            'proyeccion': _proy,
+            'alcance': round(_altas / _cuota * 100, 1) if _cuota > 0 else 0,
+            'pct_proyeccion': round(_proy / _cuota * 100, 1) if _cuota > 0 else 0,
+            'ritmo_actual': round(_altas / _dt),
+            'ritmo_necesario': round(max(_cuota - _altas, 0) / _dias_rest),
+            'faltantes': max(_cuota - _altas, 0),
+        }
+
     return render_template('dashboard_ventas.html',
                            user=session['name'], role=session['role'],
                            mes_actual=mes, anio_actual=anio,
@@ -512,6 +538,7 @@ def dashboard_ventas():
                            aliv_avance_dia=db_data.get('aliv_avance_dia') or [],
                            aliv_proyeccion=db_data.get('aliv_proyeccion') or [],
                            kpi_vertical_sub=db_data.get('kpi_vertical_sub'),
+                           kpi_total_sub=kpi_total_sub,
                            hoy_dia=_hoy_now.day, hoy_mes=_hoy_now.month,
                            dias_tot_mes=_dias_tot_mes, dias_trans_mes=_dias_trans_mes)
 
