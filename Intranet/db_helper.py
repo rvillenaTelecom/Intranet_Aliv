@@ -185,7 +185,11 @@ def get_kpi_lima(mes, anio, area='', dia=None, cumul=False, base_dias=30, agenci
             # 'Horizontal_Aliv'/'Horizontal_Sub' en cuotas_lima). Si no está
             # definido ese reparto, cuota queda en 0 y el panel se oculta solo
             # (mismo comportamiento que un mes sin cuota definida).
-            if agencia_grupo and area == 'Horizontal':
+            if agencia_grupo and area in ('Horizontal', ''):
+                # area='' + agencia_grupo: vista combinada Vertical+Horizontal
+                # de un canal (ej. la coordinadora de Sub-agencias, que
+                # maneja ambas áreas) -- la cuota del canal sigue siendo la
+                # misma (no existe una cuota "Vertical" aparte por canal).
                 cuota = _cuota_lima(mes, 'Horizontal_Aliv' if agencia_grupo == 'Aliv' else 'Horizontal_Sub')
             elif agencia_grupo:
                 cuota = 0

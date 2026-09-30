@@ -762,7 +762,7 @@ function proySetBasis(btn, basis) {
 {% set _pk = 'horizontal' if area == 'Horizontal' else 'vertical' %}
 {% set _area_label = area %}
 {% if area == 'Horizontal' and agencia == 'Aliv' %}{% set _area_label = 'Horizontal Aliv' %}{% endif %}
-{% if area == 'Horizontal' and agencia == 'Sub' %}{% set _area_label = 'Horizontal Sub-agencias' %}{% endif %}
+{% if area == 'Horizontal' and agencia == 'Sub' %}{% set _area_label = 'Sub-agencias' %}{% endif %}
 {% set ac = pivot_agencia_cierre.altas[_pk] %}
 {% set av = pivot_agencia.altas[_pk] %}
 {% set vv = pivot_agencia.ventas[_pk] %}
@@ -1016,7 +1016,7 @@ function proySetBasis(btn, basis) {
 {% if area in ('Vertical', 'Horizontal') %}
 {% set _area_label = area %}
 {% if area == 'Horizontal' and agencia == 'Aliv' %}{% set _area_label = 'Horizontal Aliv' %}{% endif %}
-{% if area == 'Horizontal' and agencia == 'Sub' %}{% set _area_label = 'Horizontal Sub-agencias' %}{% endif %}
+{% if area == 'Horizontal' and agencia == 'Sub' %}{% set _area_label = 'Sub-agencias (Horizontal + Vertical)' %}{% endif %}
 <div class="panel mb16">
     <div class="panel-title"><i class="fa-solid fa-table-columns" style="color:var(--success);"></i> Resumen Lima — {{ _area_label }}</div>
     <div style="overflow-x:auto;">
@@ -1028,52 +1028,33 @@ function proySetBasis(btn, basis) {
             </tr>
         </thead>
         <tbody>
-            {% set _es_sub = (area == 'Horizontal' and agencia == 'Sub') %}
+            {# Para Sub-agencias, k YA es el combinado Horizontal+Vertical
+               (kpi_lima se pide con area='' para este caso -- ver
+               dashboard_ventas() en app.py), asi que esta fila principal
+               es directamente el total real contra la cuota real, sin
+               trucos. La fila de abajo es solo Vertical, de referencia. #}
             <tr>
                 <td style="font-weight:700;">{{ _area_label }}</td>
                 <td class="num" style="font-weight:700; color:var(--success);">{{ "{:,}".format(k.altas) }}</td>
-                {% if _es_sub %}
-                <td class="num">—</td>
-                <td class="num">{{ "{:,}".format(k.proyeccion) }}</td>
-                <td class="num">—</td>
-                <td class="num">—</td>
-                <td class="num">{{ k.ritmo_actual }}/d</td>
-                <td class="num">—</td><td class="num">—</td>
-                {% else %}
                 <td class="num">{{ "{:,}".format(k.cuota) if k.cuota else '—' }}</td>
                 <td class="num">{{ "{:,}".format(k.proyeccion) }}</td>
-                <td class="num"><span class="{% if k.pct_proyeccion >= 100 %}badge-meta{% elif k.pct_proyeccion >= 80 %}badge-riesgo{% else %}badge-bajo{% endif %}">{{ k.pct_proyeccion }}%</span></td>
+                <td class="num">{% if k.cuota %}<span class="{% if k.pct_proyeccion >= 100 %}badge-meta{% elif k.pct_proyeccion >= 80 %}badge-riesgo{% else %}badge-bajo{% endif %}">{{ k.pct_proyeccion }}%</span>{% else %}—{% endif %}</td>
                 <td class="num">{{ k.alcance }}%</td>
                 <td class="num">{{ k.ritmo_actual }}/d</td>
                 <td class="num" style="color:var(--warning); font-weight:600;">{{ k.ritmo_necesario }}/d</td>
                 <td class="num">{{ "{:,}".format(k.faltantes) }}</td>
-                {% endif %}
             </tr>
-            {% if _es_sub and kpi_vertical_sub %}
+            {% if area == 'Horizontal' and agencia == 'Sub' and kpi_vertical_sub %}
             {% set kv = kpi_vertical_sub %}
             <tr>
-                <td style="font-weight:700;">Vertical Sub-agencias</td>
-                <td class="num" style="font-weight:700; color:var(--success);">{{ "{:,}".format(kv.altas) }}</td>
+                <td style="font-weight:600; color:var(--text-secondary);">↳ solo Vertical (referencia)</td>
+                <td class="num" style="color:var(--text-secondary);">{{ "{:,}".format(kv.altas) }}</td>
                 <td class="num">—</td>
                 <td class="num">{{ "{:,}".format(kv.proyeccion) }}</td>
                 <td class="num">—</td>
                 <td class="num">—</td>
                 <td class="num">{{ kv.ritmo_actual }}/d</td>
                 <td class="num">—</td><td class="num">—</td>
-            </tr>
-            {% endif %}
-            {% if _es_sub and kpi_total_sub %}
-            {% set kt = kpi_total_sub %}
-            <tr style="background:var(--bg-card-hover);">
-                <td style="font-weight:800;">Total Sub-agencias (Horizontal + Vertical)</td>
-                <td class="num" style="font-weight:800; color:var(--success);">{{ "{:,}".format(kt.altas) }}</td>
-                <td class="num" style="font-weight:700;">{{ "{:,}".format(kt.cuota) if kt.cuota else '—' }}</td>
-                <td class="num">{{ "{:,}".format(kt.proyeccion) }}</td>
-                <td class="num">{% if kt.cuota %}<span class="{% if kt.pct_proyeccion >= 100 %}badge-meta{% elif kt.pct_proyeccion >= 80 %}badge-riesgo{% else %}badge-bajo{% endif %}">{{ kt.pct_proyeccion }}%</span>{% else %}—{% endif %}</td>
-                <td class="num">{{ kt.alcance }}%</td>
-                <td class="num">{{ kt.ritmo_actual }}/d</td>
-                <td class="num" style="color:var(--warning); font-weight:600;">{{ kt.ritmo_necesario }}/d</td>
-                <td class="num">{{ "{:,}".format(kt.faltantes) }}</td>
             </tr>
             {% endif %}
         </tbody>
