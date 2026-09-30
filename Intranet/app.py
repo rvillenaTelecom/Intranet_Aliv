@@ -464,6 +464,13 @@ def dashboard_ventas():
             _hoy = datetime.now()
             _queries['aliv_avance_dia'] = lambda: db_helper.get_aliv_horizontal_avance_dia(_hoy.day, _hoy.month, _hoy.year)
             _queries['aliv_proyeccion'] = lambda: db_helper.get_aliv_horizontal_proyeccion(mes, anio)
+        if area == 'Horizontal' and agencia == 'Sub':
+            # La coordinadora de Sub-agencias maneja Vertical y Horizontal --
+            # el Resumen Lima de siempre solo trae Horizontal (el area de la
+            # vista), asi que se agrega el mismo resumen pero en Vertical,
+            # tambien acotado a agencia=Sub.
+            _queries['kpi_vertical_sub'] = lambda: db_helper.get_kpi_lima(
+                mes, anio, area='Vertical', dia=dia, cumul=True, base_dias=base_dias, agencia_grupo='Sub')
         db_data = _run_parallel_queries(_queries, 'dashboard')
         # Un hipo pasajero de conexion (varias consultas corren en paralelo y
         # Azure a veces tira una) no debe quedar pegado 5 minutos en cache --
@@ -497,6 +504,7 @@ def dashboard_ventas():
                            pivot_agencia=db_data.get('pivot_agencia'),
                            aliv_avance_dia=db_data.get('aliv_avance_dia') or [],
                            aliv_proyeccion=db_data.get('aliv_proyeccion') or [],
+                           kpi_vertical_sub=db_data.get('kpi_vertical_sub'),
                            hoy_dia=_hoy_now.day, hoy_mes=_hoy_now.month,
                            dias_tot_mes=_dias_tot_mes, dias_trans_mes=_dias_trans_mes)
 

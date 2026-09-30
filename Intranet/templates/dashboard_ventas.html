@@ -775,6 +775,7 @@ function proySetBasis(btn, basis) {
 {% if _mostrar_vertical %}
 {% set av_vert = pivot_agencia.altas['vertical'] %}
 {% set vv_vert = pivot_agencia.ventas['vertical'] %}
+{% set ac_vert = pivot_agencia_cierre.altas['vertical'] %}
 {% endif %}
 {% set _agencias_todas = [('ALIV','aliv'), ('DEZANET','dezanet'), ('LOTTUS','lottus'), ('SIPION','sipion'), ('SUB-AGENCIAS','sub_agencias'), ('SUB-AGENCIAS 2','sub_agencias_2')] %}
 {% if area == 'Horizontal' and agencia == 'Aliv' %}
@@ -790,6 +791,7 @@ function proySetBasis(btn, basis) {
 {% if _mostrar_vertical %}
 {% set av_vert_total = namespace(v=0) %}
 {% set vv_vert_total = namespace(v=0) %}
+{% set ac_vert_total = namespace(v=0) %}
 {% endif %}
 {% for label, key in _agencias %}
 {% set ac_total.v = ac_total.v + ac[key] %}
@@ -798,6 +800,7 @@ function proySetBasis(btn, basis) {
 {% if _mostrar_vertical %}
 {% set av_vert_total.v = av_vert_total.v + av_vert[key] %}
 {% set vv_vert_total.v = vv_vert_total.v + vv_vert[key] %}
+{% set ac_vert_total.v = ac_vert_total.v + ac_vert[key] %}
 {% endif %}
 {% endfor %}
 
@@ -807,16 +810,40 @@ function proySetBasis(btn, basis) {
         <div class="panel-title"><i class="fa-solid fa-calendar-day"></i> Cierre {{ _area_label }} — {{ fecha_cierre }}</div>
         <p style="font-size:11px; color:var(--text-secondary); margin-top:-10px; margin-bottom:10px;">Altas ejecutadas ese día, por agencia</p>
         <table class="data-table">
-            <thead><tr><th>Agencia</th><th class="num">Altas</th></tr></thead>
+            <thead>
+                <tr>
+                    <th>Agencia</th>
+                    {% if _mostrar_vertical %}
+                    <th class="num">Horizontal</th><th class="num">Vertical</th><th class="num">Total</th>
+                    {% else %}
+                    <th class="num">Altas</th>
+                    {% endif %}
+                </tr>
+            </thead>
             <tbody>
                 {% for label, key in _agencias %}
-                <tr><td style="font-weight:600;">{{ label }}</td><td class="num">{{ "{:,}".format(ac[key]) }}</td></tr>
+                <tr>
+                    <td style="font-weight:600;">{{ label }}</td>
+                    {% if _mostrar_vertical %}
+                    <td class="num">{{ "{:,}".format(ac[key]) }}</td>
+                    <td class="num">{{ "{:,}".format(ac_vert[key]) }}</td>
+                    <td class="num" style="font-weight:600;">{{ "{:,}".format(ac[key] + ac_vert[key]) }}</td>
+                    {% else %}
+                    <td class="num">{{ "{:,}".format(ac[key]) }}</td>
+                    {% endif %}
+                </tr>
                 {% endfor %}
             </tbody>
             <tfoot>
                 <tr style="font-weight:800; background:var(--bg-card-hover);">
                     <td style="border-top:2px solid var(--border);">Total</td>
+                    {% if _mostrar_vertical %}
                     <td class="num" style="border-top:2px solid var(--border);">{{ "{:,}".format(ac_total.v) }}</td>
+                    <td class="num" style="border-top:2px solid var(--border);">{{ "{:,}".format(ac_vert_total.v) }}</td>
+                    <td class="num" style="border-top:2px solid var(--border);">{{ "{:,}".format(ac_total.v + ac_vert_total.v) }}</td>
+                    {% else %}
+                    <td class="num" style="border-top:2px solid var(--border);">{{ "{:,}".format(ac_total.v) }}</td>
+                    {% endif %}
                 </tr>
             </tfoot>
         </table>
@@ -1012,6 +1039,20 @@ function proySetBasis(btn, basis) {
                 <td class="num" style="color:var(--warning); font-weight:600;">{{ k.ritmo_necesario }}/d</td>
                 <td class="num">{{ "{:,}".format(k.faltantes) }}</td>
             </tr>
+            {% if area == 'Horizontal' and agencia == 'Sub' and kpi_vertical_sub %}
+            {% set kv = kpi_vertical_sub %}
+            <tr>
+                <td style="font-weight:700;">Vertical Sub-agencias</td>
+                <td class="num" style="font-weight:700; color:var(--success);">{{ "{:,}".format(kv.altas) }}</td>
+                <td class="num">{{ "{:,}".format(kv.cuota) if kv.cuota else '—' }}</td>
+                <td class="num">{{ "{:,}".format(kv.proyeccion) }}</td>
+                <td class="num">{% if kv.cuota %}<span class="{% if kv.pct_proyeccion >= 100 %}badge-meta{% elif kv.pct_proyeccion >= 80 %}badge-riesgo{% else %}badge-bajo{% endif %}">{{ kv.pct_proyeccion }}%</span>{% else %}—{% endif %}</td>
+                <td class="num">{{ kv.alcance }}%</td>
+                <td class="num">{{ kv.ritmo_actual }}/d</td>
+                <td class="num" style="color:var(--warning); font-weight:600;">{{ kv.ritmo_necesario }}/d</td>
+                <td class="num">{{ "{:,}".format(kv.faltantes) }}</td>
+            </tr>
+            {% endif %}
         </tbody>
     </table>
     </div>
