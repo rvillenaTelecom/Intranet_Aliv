@@ -36,14 +36,6 @@ _INTRANET_DIR  = os.path.dirname(os.path.abspath(__file__))
 _PIPELINE_DIR  = os.path.join(os.path.dirname(_INTRANET_DIR), 'Pipeline')
 _PIPELINE_SCRIPT = os.path.join(_PIPELINE_DIR, 'run_pipeline.py')
 _FASES_VALIDAS = {'bd', 'daily', 'consolidar', 'actualizar_ventas', 'subida_aliv', 'subida_referidos', 'reporte_diario', 'reporte_gerente', 'reporte_nocturno', 'reporte_proyeccion'}
-# Tablas a las que el admin puede subir un Excel a mano (respaldo manual
-# cuando el scraper de Playwright falla, ver pipeline_subir_excel()) --
-# whitelist explícita para no permitir escribir en cualquier tabla de la BD.
-_VENTAS_TABLES_EXCEL = {
-    'winforce_lima':    'Winforce (altas/ventas Lima)',
-    'ventas_aliv':       'Ventas Aliv (Win Activas)',
-    'ventas_referidos':  'Ventas Referidos',
-}
 # Render no tiene Playwright/Chromium instalado (Intranet/requirements.txt no
 # los incluye a propósito) -- el pipeline de scraping solo puede correr desde
 # la PC local. Render define RENDER=true automáticamente en su entorno.
@@ -841,57 +833,7 @@ def eliminar_usuario(uid):
 def pipeline():
     return render_template('pipeline.html',
                            user=session['name'], role=session['role'],
-                           corriendo=_pipeline_running, is_render=IS_RENDER,
-                           ventas_tables=_VENTAS_TABLES_EXCEL)
-
-
-@app.route('/pipeline/subir-excel', methods=['POST'])
-@login_required
-def pipeline_subir_excel():
-    """Migración manual: sube un Excel con las mismas columnas de una tabla
-    de ventas y lo inserta tal cual -- respaldo para cuando el scraper de
-    Playwright falla (ver WinforceLima2026.py)."""
-    if session.get('role') != 'admin':
-        return jsonify({'ok': False, 'error': 'Sin permisos de administrador'}), 403
-
-    tabla = request.form.get('tabla', '')
-    if tabla not in _VENTAS_TABLES_EXCEL:
-        return jsonify({'ok': False, 'error': 'Tabla no válida'}), 400
-
-    archivo = request.files.get('archivo')
-    if not archivo or not archivo.filename:
-        return jsonify({'ok': False, 'error': 'No se recibió ningún archivo'}), 400
-    if not archivo.filename.lower().endswith(('.xlsx', '.xls')):
-        return jsonify({'ok': False, 'error': 'El archivo debe ser .xlsx o .xls'}), 400
-
-    try:
-        import pandas as pd
-        df = pd.read_excel(archivo)
-    except Exception as e:
-        return jsonify({'ok': False, 'error': f'No se pudo leer el Excel: {e}'}), 400
-
-    if df.empty:
-        return jsonify({'ok': False, 'error': 'El Excel no tiene filas'}), 400
-
-    try:
-        columnas_validas = set(db_helper.get_columnas_tabla_excel(tabla))
-    except Exception as e:
-        return jsonify({'ok': False, 'error': f'No se pudo validar las columnas de {tabla}: {e}'}), 500
-
-    desconocidas = [c for c in df.columns if c not in columnas_validas]
-    if desconocidas:
-        return jsonify({
-            'ok': False,
-            'error': f'{len(desconocidas)} columna(s) del Excel no existen en {tabla}: {", ".join(desconocidas)}',
-        }), 400
-
-    try:
-        filas = db_helper.insertar_excel_tabla(tabla, df)
-    except Exception as e:
-        import traceback; traceback.print_exc()
-        return jsonify({'ok': False, 'error': f'Error al insertar en la base de datos: {e}'}), 500
-
-    return jsonify({'ok': True, 'filas': filas, 'tabla': tabla})
+                           corriendo=_pipeline_running, is_render=IS_RENDER)
 
 
 @app.route('/pipeline/ejecutar', methods=['POST'])

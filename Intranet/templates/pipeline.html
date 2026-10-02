@@ -180,49 +180,6 @@
 </div>
 <!-- ═══════════ /ZONA 1 ═══════════ -->
 
-<!-- ═══════════ ZONA 1B — MIGRACIÓN MANUAL (EXCEL) ═══════════ -->
-<div class="pl-section pl-section-db">
-    <div class="pl-section-head">
-        <div class="pl-section-icon"><i class="fa-solid fa-file-excel"></i></div>
-        <div>
-            <span class="pl-section-eyebrow">Respaldo manual</span>
-            <div class="pl-section-title">Migración manual (Excel)</div>
-            <div class="pl-section-desc">Para cuando el scraper de Playwright falla (WinForce cambió algo, el sitio está caído, etc.): sube un Excel con las mismas columnas de la tabla y se inserta tal cual, sin buscar duplicados -- se asume que el Excel ya viene depurado.</div>
-        </div>
-        <div class="pl-section-count">{{ ventas_tables|length }} tablas</div>
-    </div>
-
-<div class="pl-grid">
-    {% for tabla, label in ventas_tables.items() %}
-    <div class="pl-card" data-tabla="{{ tabla }}">
-        <div class="pl-card-header">
-            <div class="pl-card-icon"><i class="fa-solid fa-table-cells"></i></div>
-        </div>
-        <div class="pl-card-body">
-            <div class="pl-card-title">{{ label }}</div>
-            <div class="pl-card-desc">Columnas deben coincidir con <code>{{ tabla }}</code> (pueden faltar columnas, pero no sobrar).</div>
-            <input type="file" id="excelFile_{{ tabla }}" accept=".xlsx,.xls"
-                   style="width:100%; font-size:12px; color:var(--text-secondary); margin-top:8px;"
-                   {% if role != 'admin' %}disabled{% endif %}>
-            <div id="excelMsg_{{ tabla }}" style="font-size:12px; margin-top:8px; min-height:16px;"></div>
-        </div>
-        <div class="pl-card-footer">
-            {% if role == 'admin' %}
-            <button class="pl-btn pl-btn-slate" id="excelBtn_{{ tabla }}" onclick="subirExcel('{{ tabla }}')">
-                <i class="fa-solid fa-upload"></i> Subir Excel
-            </button>
-            {% else %}
-            <button class="pl-btn pl-btn-run" disabled>
-                <i class="fa-solid fa-upload"></i> Subir Excel
-            </button>
-            {% endif %}
-        </div>
-    </div>
-    {% endfor %}
-</div>
-</div>
-<!-- ═══════════ /ZONA 1B ═══════════ -->
-
 <!-- ═══════════ ZONA 2 — REPORTES PDF ═══════════ -->
 <div class="pl-section pl-section-reportes">
     <div class="pl-section-head">
@@ -606,41 +563,6 @@ function setRunning(running) {
         statusEl.innerHTML = '<i class="fa-solid fa-circle-check"></i> Listo';
         if (cancelBtn) cancelBtn.style.display = 'none';
     }
-}
-
-function subirExcel(tabla) {
-    const input = document.getElementById('excelFile_' + tabla);
-    const msgEl = document.getElementById('excelMsg_' + tabla);
-    const btn   = document.getElementById('excelBtn_' + tabla);
-    if (!input.files.length) {
-        msgEl.style.color = 'var(--danger)';
-        msgEl.textContent = 'Selecciona un archivo primero.';
-        return;
-    }
-    const fd = new FormData();
-    fd.append('tabla', tabla);
-    fd.append('archivo', input.files[0]);
-    btn.disabled = true;
-    msgEl.style.color = 'var(--text-secondary)';
-    msgEl.textContent = 'Subiendo…';
-    fetch('/pipeline/subir-excel', { method: 'POST', body: fd })
-        .then(r => r.json())
-        .then(data => {
-            btn.disabled = false;
-            if (data.ok) {
-                msgEl.style.color = 'var(--success)';
-                msgEl.textContent = data.filas + ' filas insertadas en ' + data.tabla + '.';
-                input.value = '';
-            } else {
-                msgEl.style.color = 'var(--danger)';
-                msgEl.textContent = data.error || 'Error desconocido.';
-            }
-        })
-        .catch(err => {
-            btn.disabled = false;
-            msgEl.style.color = 'var(--danger)';
-            msgEl.textContent = 'Error de red: ' + err;
-        });
 }
 
 function ejecutar(fase) {
