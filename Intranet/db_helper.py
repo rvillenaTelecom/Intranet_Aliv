@@ -2862,3 +2862,35 @@ def get_prediccion_dia():
     except Exception as e:
         print(f"Error get_prediccion_dia: {e}")
         return None
+
+
+# ─── MIGRACIÓN MANUAL (EXCEL) ────────────────────────────────────────────────
+# Respaldo para cuando el scraper de Playwright falla (ver pipeline.html,
+# sección "Subir Excel") -- el admin sube un Excel con las mismas columnas de
+# la tabla y se inserta tal cual, sin buscar duplicados (se asume que el
+# Excel ya viene depurado del lado del usuario).
+
+# Columnas IDENTITY (autogeneradas por SQL Server) que nunca deben venir en
+# el Excel -- intentar insertarlas tira error de SQL Server.
+_EXCEL_TABLAS_COLUMNAS_IDENTITY = {
+    'ventas_referidos': {'id'},
+}
+
+
+def get_columnas_tabla_excel(tabla):
+    """Columnas válidas para subir por Excel a `tabla` -- todas las columnas
+    reales de la tabla, menos las IDENTITY (autogeneradas)."""
+    df = get_data(f"SELECT TOP 0 * FROM dbo.{tabla}")
+    identity = _EXCEL_TABLAS_COLUMNAS_IDENTITY.get(tabla, set())
+    return [c for c in df.columns if c not in identity]
+
+
+def insertar_excel_tabla(tabla, df):
+    """Inserta las filas de `df` (ya validadas contra get_columnas_tabla_excel)
+    en `tabla`, tal cual -- sin buscar duplicados. `tabla` debe venir ya
+    validado contra una whitelist (ver _VENTAS_TABLES_EXCEL en app.py) antes
+    de llegar acá, porque se interpola directo en el SQL."""
+    from db_config import get_engine
+    engine = get_engine()
+    df.to_sql(tabla, engine, schema='dbo', if_exists='append', index=False)
+    return len(df)
